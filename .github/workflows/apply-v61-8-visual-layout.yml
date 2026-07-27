@@ -1,0 +1,116 @@
+name: Apply v61.8 Visual Layout System
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/visual-layout-system-v61-8'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Generate v61.8 production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/v618_apply.py
+          rm -f tools/v618_apply.py tools/v618_chunk_1.txt tools/v618_chunk_2.txt tools/v618_chunk_3.txt tools/v618_chunk_4.txt tools/v618_chunk_5.txt
+          rm -f .github/workflows/apply-v61-8-visual-layout.yml
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null || { php -l "$file"; exit 1; }
+          done < <(find . -path './.git' -prune -o -type f -name '*.php' -print0)
+          echo 'PHP syntax passed.'
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find assets/js -type f -name '*.js' -print0)
+
+      - name: CSS structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          for path in Path('assets/css').glob('*.css'):
+              source = path.read_text(encoding='utf-8')
+              depth = 0
+              quote = None
+              escaped = False
+              comment = False
+              index = 0
+              while index < len(source):
+                  char = source[index]
+                  nxt = source[index + 1] if index + 1 < len(source) else ''
+                  if comment:
+                      if char == '*' and nxt == '/':
+                          comment = False
+                          index += 2
+                          continue
+                      index += 1
+                      continue
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                      index += 1
+                      continue
+                  if char == '/' and nxt == '*':
+                      comment = True
+                      index += 2
+                      continue
+                  if char in ('"', "'"):
+                      quote = char
+                  elif char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                      if depth < 0:
+                          raise SystemExit(f'Unbalanced CSS braces in {path}')
+                  index += 1
+              if depth != 0 or quote or comment:
+                  raise SystemExit(f'Unbalanced CSS structure in {path}')
+          print('CSS structure passed.')
+          PY
+
+      - name: Page editor regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-v61-4.php
+          php tests/landing-page-editor-v61-5.php
+          php tests/landing-page-editor-v61-8.php
+
+      - name: Commit generated upgrade
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Build responsive visual layout system v61.8'
+          git push origin HEAD:${{ github.head_ref }}
