@@ -14,6 +14,7 @@ Validated locally:
 - Upper-left Back to editor control is present
 - Visual library category filtering and image upload controls are present
 - No SQL migration is required
+- Repository source restored from the checksum-verified v61.2 archive
 
 Deployment verification required:
 - Current live landing page imports into the Home canvas
