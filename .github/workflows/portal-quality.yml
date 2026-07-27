@@ -1,0 +1,69 @@
+name: North Mountain Media Portal Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  portal-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find . -type f -name '*.php' -print0)
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            node --check "$file" >/dev/null
+          done < <(find . -type f -name '*.js' -print0)
+
+      - name: Required v61 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f index.php
+          test -f portal/site-builder.php
+          test -f portal/site-builder-core.php
+          test -f portal/site-builder-api.php
+          test -f portal/menus-admin.php
+          test -f portal/site-analytics-view.php
+          test -f portal/microgifter-connectors.php
+          test -f assets/js/site-builder.js
+          test -f assets/js/menu-manager.js
+          test -f database/visual_site_builder_v61.sql
+          test -f VISUAL-SITE-BUILDER-SETUP-v61.md
+
+      - name: Repository safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -f config.php
+          test ! -f north-mountain-media-portal-v61.zip
+
+          if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print | grep -q .; then
+            echo 'Unsafe configuration or runtime file found.' >&2
+            find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print
+            exit 1
+          fi
+
+          if grep -RIlE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|ghp_|github_pat_|AKIA[0-9A-Z]{16}' . \
+            --exclude-dir=.git \
+            --exclude='portal-quality.yml' \
+            >/tmp/nmm-secret-files.txt; then
+            echo 'Credential-like content detected.' >&2
+            cat /tmp/nmm-secret-files.txt
+            exit 1
+          fi

@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/portal/bootstrap.php';
+if(!nmm_module_enabled('project_intake'))json_response(['ok'=>false,'message'=>'This public module is currently unavailable.'],404);
+require_once dirname(__DIR__).'/portal/visitor-intelligence.php';
+require_once dirname(__DIR__).'/portal/appointments-booking.php';
+require_once dirname(__DIR__).'/portal/proposals-intake.php';
+if(!is_post())json_response(['ok'=>false,'message'=>'Method not allowed.'],405);if(!same_origin_request())json_response(['ok'=>false,'message'=>'Invalid request origin.'],403);verify_csrf();$json=strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH']??''))==='xmlhttprequest';
+try{if(!proposals_schema_available()||!proposals_settings()['intake_public_enabled'])throw new RuntimeException('Project intake is currently unavailable.');$template=intake_template_by_id(max(0,(int)($_POST['template_id']??0)));if(!$template||$template['status']!=='active')throw new RuntimeException('Intake template unavailable.');$email=strtolower(trim((string)($_POST['email']??'')));if(rate_limit_exceeded('project_intake',$email.'|'.request_ip(),6,3600))throw new RuntimeException('Too many intake attempts. Please try again later.');$token=strtolower(trim((string)($_POST['intake_token']??'')));$existing=$token!==''?intake_by_token($token):null;if($existing&&(int)$existing['template_id']!==(int)$template['id'])throw new RuntimeException('The intake token does not match this form.');$result=intake_submit_public($template,intake_questions((int)$template['id']),$_POST,$existing);if($json)json_response(['ok'=>true,'message'=>$result['message'],'confirmation_url'=>$result['confirmation_url']]);redirect($result['confirmation_url']);}catch(Throwable $e){error_log('NMM intake failed: '.$e->getMessage());if($json)json_response(['ok'=>false,'message'=>$e->getMessage()],422);redirect('intake.php?intake_error='.rawurlencode($e->getMessage()));}

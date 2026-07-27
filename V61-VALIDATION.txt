@@ -1,0 +1,23 @@
+North Mountain Media Portal v61 validation
+Build: 20260727-visual-site-builder-v61
+
+Validated locally:
+- 141 PHP files passed PHP 8.4 syntax validation
+- 19 JavaScript files passed Node.js syntax validation
+- 13 stylesheets passed structural brace validation
+- v61 migration tables are synchronized into the full installation schema
+- Required editor, menu manager, analytics, music-event, and Microgifter connector sources are present
+- Site Builder, Navigation, Site Analytics, and v60.1 dashboard previews render without PHP warnings or fatal errors
+- Protected Site Builder media and Microgifter cache storage controls are present
+- Existing public-module controls remain present, including Portfolio
+- No active config.php or live credentials are included
+
+Deployment verification still required:
+- MySQL/MariaDB migration execution
+- Browser drag-and-drop interaction
+- Draft, preview, publish, revision, and restore persistence
+- Menu assignment and nested dropdown rendering
+- Builder media upload persistence
+- CRM contact/conversion writes
+- Visitor Intelligence and Music Library analytics totals
+- Microgifter API, MCP, and HomeServer/MCP contracts

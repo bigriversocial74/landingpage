@@ -1,0 +1,20 @@
+North Mountain Media Portfolio and Secure Portal
+Build: 20260727-dashboard-launcher-v60-1
+
+v60.1 Dashboard Administrator Launcher
+
+SQL:
+- No SQL required
+
+Delivered:
+- Removed the dashboard action row beneath statistics
+- Larger centered + launcher modal
+- Data Queries and Actions tabs
+- All former dashboard action-row links moved into Actions
+- Responsive centered query and action cards
+- Keyboard tab switching
+- Backdrop, outside-click, close-button, and Escape dismissal
+- Global administrator availability from the fixed assistant composer
+
+Deployment preserves active config.php and the complete storage/ directory.
+Browser behavior requires deployed-server verification.

@@ -1,0 +1,27 @@
+North Mountain Media Portfolio and Secure Portal
+Build: 20260727-site-controls-landing-v60
+
+v60 Site Modules, Landing Page Builder, Branding & SEO
+
+Required SQL:
+- database/site_modules_landing_v60.sql
+- Import after database/proposals_intake_v59.sql
+- Full schema synchronized in database/north_mountain_portal.sql
+
+Delivered:
+- Public module on/off controls in System → Settings
+- Separate Portfolio toggle
+- Resume, Music Library, Blog, Events, Bookings, Project Intake, and Call Us toggles
+- Optional Landing Page home-page toggle
+- Four mobile-responsive landing templates
+- Hero and supporting image uploads
+- Primary and secondary button settings
+- Feature-card content builder
+- Logo upload and replacement across public and portal navigation
+- Mobile header choice: logo, site name, or hidden
+- Basic SEO title, description, keywords, canonical URL, indexing, and social image
+- Existing resume/portfolio workspace preserved at workspace.php
+- Disabled public modules return safe 404 responses without deleting data
+
+Deployment preserves active config.php and the complete storage/ directory.
+Live setting writes, uploads, public route behavior, and browser responsiveness require deployed-server verification.
