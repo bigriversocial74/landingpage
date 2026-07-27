@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-landing-page-builder-v61.5 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.6 */
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
@@ -190,6 +190,16 @@ $bootstrap = [
     'mediaUpload' => app_url('portal/site-builder-media.php'),
     'preview' => app_url('page-preview.php?id=' . (int)$page['id']),
 ];
+$bootstrapJson = json_encode(
+    $bootstrap,
+    JSON_UNESCAPED_SLASHES
+    | JSON_UNESCAPED_UNICODE
+    | JSON_HEX_TAG
+    | JSON_HEX_AMP
+    | JSON_HEX_APOS
+    | JSON_HEX_QUOT
+    | JSON_THROW_ON_ERROR
+);
 
 $modalLabels = [
     'header' => 'Header & navigation',
@@ -207,8 +217,8 @@ $modalLabels = [
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="csrf-token" content="<?=e(csrf_token())?>">
 <title>Page Editor — <?=e(setting('site_name','North Mountain Media'))?></title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.5'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.5'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.6'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.6'))?>">
 </head>
 <body class="site-editor-body editor-booting">
 <div class="site-editor-shell">
@@ -382,7 +392,8 @@ $modalLabels = [
 </aside>
 <button class="site-library-backdrop" data-library-close aria-label="Close library"></button>
 </div>
-<script>window.NMM_SITE_BUILDER=<?=json_encode($bootstrap,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;</script>
-<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.5'))?>"></script>
+<textarea id="nmm-site-builder-bootstrap" hidden><?=e($bootstrapJson)?></textarea>
+<script src="<?=e(app_url('assets/js/site-builder-bootstrap.js?v=20260727-v61.6'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.6'))?>"></script>
 </body>
 </html>
