@@ -1,0 +1,138 @@
+name: Apply Landing Page Editor Toggle Repair
+
+on:
+  push:
+    branches:
+      - fix/landing-page-editor-toggle-v61-1
+    paths:
+      - .github/workflows/apply-landing-page-editor-toggle.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/landing-page-editor-toggle-v61-1
+          fetch-depth: 0
+
+      - name: Integrate Page Editor with Landing Page toggle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          bootstrap = Path('portal/bootstrap.php')
+          source = bootstrap.read_text()
+
+          old_label = "            'builder' => 'Site Builder',"
+          new_label = "            'builder' => 'Page Editor',"
+          if old_label not in source:
+              raise SystemExit('Site Builder navigation label was not found.')
+          source = source.replace(old_label, new_label, 1)
+
+          nav_point = """    ];
+
+              $script = $isAdmin ? 'admin.php' : 'client.php';
+          """
+          nav_replacement = """    ];
+
+              $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');
+              if ($isAdmin && !$landingPageEditorEnabled) {
+                  unset($adminNavigationGroups['Work']['builder']);
+              }
+
+              $script = $isAdmin ? 'admin.php' : 'client.php';
+          """
+          if nav_point not in source:
+              raise SystemExit('Administrator navigation insertion point was not found.')
+          source = source.replace(nav_point, nav_replacement, 1)
+
+          old_launcher = """                                <a href=\"<?= e(app_url('portal/site-builder.php')) ?>\"><span>Build</span><strong>Site Builder</strong><small>Visual pages, sections, and blocks</small></a>
+          """
+          new_launcher = """                                <?php if ($landingPageEditorEnabled): ?>
+                                      <a href=\"<?= e(app_url('portal/admin.php?view=builder')) ?>\"><span>Build</span><strong>Page Editor</strong><small>Visual landing pages, sections, and blocks</small></a>
+                                  <?php endif; ?>
+          """
+          if old_launcher not in source:
+              raise SystemExit('Dashboard launcher Site Builder link was not found.')
+          source = source.replace(old_launcher, new_launcher, 1)
+          bootstrap.write_text(source)
+
+          admin = Path('portal/admin.php')
+          admin_source = admin.read_text()
+          old_settings = '''<header class="site-settings-heading"><div><span>Landing page fallback</span><h2>Starter content and legacy templates</h2><p>These settings remain as a safe fallback until a page is published from the v61 Visual Site Builder. The existing resume and portfolio workspace remains available at <code>workspace.php</code>.</p></div><div class="site-settings-heading-actions"><a class="button button-primary" href="<?=e(app_url('portal/site-builder.php'))?>">Open visual editor</a><a class="button" href="<?=e(app_url('landing-page.php?preview=1'))?>" target="_blank" rel="noopener">Preview landing page</a></div></header>'''
+          new_settings = '''<header class="site-settings-heading"><div><span>Landing page workspace</span><h2>Page Editor and starter content</h2><p>Enable the Landing Page module above and save settings to expose the Page Editor in the administrator navigation. These starter settings remain as a safe fallback until a page is published from the visual editor.</p></div><div class="site-settings-heading-actions"><?php if(nmm_module_enabled('landing_page')):?><a class="button button-primary" href="<?=e(app_url('portal/site-builder.php'))?>">Open Page Editor</a><?php else:?><span class="button" aria-disabled="true">Enable Landing Page to open editor</span><?php endif;?><a class="button" href="<?=e(app_url('landing-page.php?preview=1'))?>" target="_blank" rel="noopener">Preview landing page</a></div></header>'''
+          if old_settings not in admin_source:
+              raise SystemExit('Landing page settings editor header was not found.')
+          admin.write_text(admin_source.replace(old_settings, new_settings, 1))
+
+          tests = Path('tests')
+          tests.mkdir(exist_ok=True)
+          Path('tests/landing-page-editor-toggle.php').write_text('''<?php
+          declare(strict_types=1);
+
+          $bootstrap = file_get_contents(__DIR__ . '/../portal/bootstrap.php');
+          $admin = file_get_contents(__DIR__ . '/../portal/admin.php');
+
+          if ($bootstrap === false || $admin === false) {
+              fwrite(STDERR, "Unable to read portal source.\\n");
+              exit(1);
+          }
+
+          $checks = [
+              "nmm_module_enabled('landing_page')" => $bootstrap,
+              "unset($adminNavigationGroups['Work']['builder'])" => $bootstrap,
+              "'builder' => 'Page Editor'" => $bootstrap,
+              'if ($landingPageEditorEnabled)' => $bootstrap,
+              'Enable Landing Page to open editor' => $admin,
+              'Open Page Editor' => $admin,
+          ];
+
+          foreach ($checks as $needle => $haystack) {
+              if (!str_contains($haystack, $needle)) {
+                  fwrite(STDERR, "Missing Landing Page editor integration: {$needle}\\n");
+                  exit(1);
+              }
+          }
+
+          echo "Landing Page editor toggle integration passed.\\n";
+          ''')
+
+          workflow = Path('.github/workflows/portal-quality.yml')
+          quality = workflow.read_text()
+          anchor = """      - name: Repository safety
+          """
+          step = """      - name: Landing Page editor toggle
+                  run: php tests/landing-page-editor-toggle.php
+
+                - name: Repository safety
+          """
+          if 'name: Landing Page editor toggle' not in quality:
+              if anchor not in quality:
+                  raise SystemExit('Quality workflow insertion point was not found.')
+              quality = quality.replace(anchor, step, 1)
+              workflow.write_text(quality)
+          PY
+
+          php -l portal/bootstrap.php
+          php -l portal/admin.php
+          php -l tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-toggle.php
+
+      - name: Remove temporary repair workflow
+        run: rm -f .github/workflows/apply-landing-page-editor-toggle.yml
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix Landing Page Page Editor navigation toggle'
+          git push origin HEAD:fix/landing-page-editor-toggle-v61-1
