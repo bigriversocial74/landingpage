@@ -1,43 +1,44 @@
-/* North Mountain Media build: 20260727-visual-site-builder-v61 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.2 */
 (() => {
   'use strict';
+
   const boot = window.NMM_SITE_BUILDER || {};
+  const clone = (value) => structuredClone(value);
   const state = {
     page: { ...(boot.page || {}) },
-    payload: structuredClone(boot.payload || { version: 1, theme: {}, sections: [] }),
+    payload: clone(boot.payload || { version: 2, theme: {}, sections: [] }),
     selected: null,
     history: [],
     future: [],
     libraryKind: 'sections',
+    libraryCategory: 'All',
     device: 'desktop',
-    dirty: false,
+    dirty: Boolean(boot.legacyImported),
+    activePanel: 'sections',
   };
+
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const uid = (prefix = 'item') => `${prefix}-${Math.random().toString(16).slice(2, 12)}`;
-  const clone = (value) => structuredClone(value);
-  const rekeyItem = (item) => { const copy = clone(item); copy.id = uid(copy.type || 'item'); if (Array.isArray(copy.blocks)) copy.blocks = copy.blocks.map(rekeyItem); return copy; };
-  const moveBlock = (fromSection, fromBlock, toSection, toBlock = null) => {
-    if (!state.payload.sections[fromSection]?.blocks?.[fromBlock] || !state.payload.sections[toSection]) return;
-    snapshot();
-    const [moved] = state.payload.sections[fromSection].blocks.splice(fromBlock, 1);
-    state.payload.sections[toSection].blocks ||= [];
-    let target = toBlock === null ? state.payload.sections[toSection].blocks.length : toBlock;
-    if (fromSection === toSection && fromBlock < target) target -= 1;
-    target = Math.max(0, Math.min(target, state.payload.sections[toSection].blocks.length));
-    state.payload.sections[toSection].blocks.splice(target, 0, moved);
-    state.selected = { kind: 'block', sectionIndex: toSection, blockIndex: target };
-    renderAll(); renderInspector();
+  const escapeHtml = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+  const rekeyItem = (item) => {
+    const copy = clone(item);
+    copy.id = uid(copy.type || 'item');
+    if (Array.isArray(copy.blocks)) copy.blocks = copy.blocks.map(rekeyItem);
+    return copy;
   };
+
   const canvas = $('[data-editor-canvas]');
   const frame = $('[data-canvas-frame]');
   const saveState = $('[data-save-state]');
   const library = $('[data-library-drawer]');
   const libraryItems = $('[data-library-items]');
-
-  const escapeHtml = (value) => String(value ?? '')
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+  const categoryHost = $('[data-library-categories]');
+  const libraryCount = $('[data-library-count]');
+  const backButton = $('[data-editor-back]');
+  const brandLogo = $('.site-editor-brand-logo');
 
   const markDirty = (message = 'Unsaved changes') => {
     state.dirty = true;
@@ -45,7 +46,7 @@
   };
   const snapshot = () => {
     state.history.push(JSON.stringify(state.payload));
-    if (state.history.length > 80) state.history.shift();
+    if (state.history.length > 100) state.history.shift();
     state.future = [];
     markDirty();
   };
@@ -56,28 +57,56 @@
     markDirty();
   };
 
+  const pageTemplate = () => $('[data-page-field="template_key"]')?.value || state.page.template_key || state.payload.theme?.template || 'split';
+  const templateImageKey = (template, slot) => `image_${template}_${slot}`;
+  const findSection = (type) => state.payload.sections?.find((section) => section.type === type) || null;
+  const findSectionIndex = (type) => state.payload.sections?.findIndex((section) => section.type === type) ?? -1;
+  const ensureSection = (type) => {
+    let section = findSection(type);
+    if (!section) {
+      section = sectionDefaults(type);
+      state.payload.sections ||= [];
+      state.payload.sections.push(section);
+    }
+    section.settings ||= {};
+    section.blocks ||= [];
+    return section;
+  };
+  const ensureButton = (section, index, style = 'primary') => {
+    section.blocks ||= [];
+    const buttons = section.blocks.filter((block) => block.type === 'button');
+    let button = buttons[index];
+    if (!button) {
+      button = { id: uid('button'), type: 'button', settings: { label: index === 0 ? 'Get started' : '', url: index === 0 ? '#' : '', style } };
+      section.blocks.push(button);
+    }
+    button.settings ||= {};
+    button.settings.style ||= style;
+    return button;
+  };
+
   const sectionDefaults = (type) => {
     const base = { id: uid(type), type, settings: {}, blocks: [] };
     const presets = {
-      hero: { settings: { eyebrow: 'North Mountain Media', headline: 'Build something clear and useful.', text: 'Add a strong introduction and a practical next step.', alignment: 'left' }, blocks: [
+      hero: { settings: { eyebrow: 'North Mountain Media', headline: 'Build something clear and useful.', text: 'Add a strong introduction and a practical next step.', body: '', alignment: 'left', layout: 'split', image: '', imageAlt: '' }, blocks: [
         { id: uid('button'), type: 'button', settings: { label: 'Start a project', url: 'intake.php', style: 'primary' } },
       ] },
-      content: { settings: { eyebrow: 'Story', headline: 'Explain the idea.', text: 'Use this section for clear editorial content.', alignment: 'left' } },
-      features: { settings: { eyebrow: 'Capabilities', headline: 'What this experience provides.', text: 'Present the core benefits or services.' }, blocks: [
-        { id: uid('feature'), type: 'feature', settings: { title: 'Focused strategy', text: 'Start with the goal and audience.' } },
-        { id: uid('feature'), type: 'feature', settings: { title: 'Connected workflow', text: 'Bring the right tools together.' } },
-        { id: uid('feature'), type: 'feature', settings: { title: 'Measurable progress', text: 'Track meaningful outcomes.' } },
+      content: { settings: { eyebrow: 'Story', headline: 'Explain the idea.', text: 'Use this section for clear editorial content.', body: '', alignment: 'left', layout: 'editorial', image: '', imageAlt: '' } },
+      features: { settings: { eyebrow: 'Capabilities', headline: 'What this experience provides.', text: 'Present the core benefits or services.', layout: 'grid', image: '', imageAlt: '' }, blocks: [
+        { id: uid('feature'), type: 'feature', settings: { title: 'Focused strategy', text: 'Start with the goal and audience.', image: '', imageAlt: '' } },
+        { id: uid('feature'), type: 'feature', settings: { title: 'Connected workflow', text: 'Bring the right tools together.', image: '', imageAlt: '' } },
+        { id: uid('feature'), type: 'feature', settings: { title: 'Measurable progress', text: 'Track meaningful outcomes.', image: '', imageAlt: '' } },
       ] },
-      columns: { settings: { eyebrow: 'Highlights', headline: 'Flexible content columns.', text: '' }, blocks: [
+      columns: { settings: { eyebrow: 'Highlights', headline: 'Flexible content columns.', text: '', layout: 'cards' }, blocks: [
         { id: uid('stat'), type: 'stat', settings: { value: '01', label: 'First result' } },
         { id: uid('stat'), type: 'stat', settings: { value: '02', label: 'Second result' } },
       ] },
-      media: { settings: { eyebrow: 'Featured media', headline: 'Show the work.', text: 'Add a wide image or media presentation.', image: '', imageAlt: '' } },
+      media: { settings: { eyebrow: 'Featured media', headline: 'Show the work.', text: 'Add a wide image or media presentation.', image: '', imageAlt: '', layout: 'wide' } },
       portfolio: { settings: { eyebrow: 'Portfolio', headline: 'Featured project', text: '', projectId: '0' } },
       music: { settings: { eyebrow: 'Music Library', headline: 'Listen now', text: '', trackId: '0' } },
       events: { settings: { eyebrow: 'Upcoming', headline: 'Events', text: '' } },
       contact: { settings: { eyebrow: 'Contact', headline: 'Start a conversation.', text: 'Tell us about the project or opportunity.', opportunity: 'Website inquiry', buttonLabel: 'Send inquiry' } },
-      cta: { settings: { eyebrow: 'Next step', headline: 'Ready to move forward?', text: 'Choose a focused next action.' }, blocks: [
+      cta: { settings: { eyebrow: 'Next step', headline: 'Ready to move forward?', text: 'Choose a focused next action.', alignment: 'center' }, blocks: [
         { id: uid('button'), type: 'button', settings: { label: 'Get started', url: 'intake.php', style: 'primary' } },
       ] },
       microgifter: { settings: { eyebrow: 'Microgifter', headline: 'Social gifting and automated commerce.', text: 'Connect a campaign or offer when the service is ready.', title: 'Send a meaningful local gift', buttonLabel: 'Explore offer', url: '#' } },
@@ -88,57 +117,107 @@
 
   const blockDefaults = (type) => {
     const presets = {
-      heading: { text: 'New heading' }, text: { text: 'Add supporting copy.' }, image: { url: '', alt: '' },
-      button: { label: 'Learn more', url: '#', style: 'primary' }, feature: { title: 'Feature', text: 'Explain the value.' },
-      stat: { value: '100%', label: 'Result' }, testimonial: { quote: 'Add a customer quote.', name: 'Customer name' },
-      audio: { url: '' }, music_track: { trackId: '0' }, portfolio_project: { projectId: '0' }, event_list: {},
-      contact_form: { opportunity: 'Website inquiry', buttonLabel: 'Send inquiry' }, microgifter_offer: { title: 'Microgifter offer', text: 'Connect a live campaign or offer.', buttonLabel: 'Explore offer', url: '#' },
-      divider: {}, spacer: { height: '48' },
+      heading: { text: 'New heading' },
+      text: { text: 'Add supporting copy.' },
+      image: { url: '', alt: '', caption: '' },
+      image_text: { image: '', imageAlt: '', title: 'Image and text', text: 'Explain the idea or value.', buttonLabel: '', buttonUrl: '' },
+      button: { label: 'Learn more', url: '#', style: 'primary' },
+      button_group: { primaryLabel: 'Get started', primaryUrl: '#', secondaryLabel: 'Learn more', secondaryUrl: '#' },
+      feature: { title: 'Feature', text: 'Explain the value.', image: '', imageAlt: '' },
+      stat: { value: '100%', label: 'Result' },
+      testimonial: { quote: 'Add a customer quote.', name: 'Customer name', role: '', image: '', imageAlt: '' },
+      quote: { quote: 'Add a highlighted statement.', citation: '' },
+      gallery: { images: '', alt: 'Gallery image' },
+      video: { url: '', poster: '' },
+      audio: { title: 'Audio', url: '' },
+      music_track: { trackId: '0' },
+      portfolio_project: { projectId: '0' },
+      event_list: {},
+      contact_form: { opportunity: 'Website inquiry', buttonLabel: 'Send inquiry' },
+      newsletter: { label: 'Email address', placeholder: 'you@example.com', buttonLabel: 'Subscribe', opportunity: 'Newsletter signup' },
+      social_links: { links: 'LinkedIn|https://linkedin.com\nInstagram|https://instagram.com' },
+      microgifter_offer: { title: 'Microgifter offer', text: 'Connect a live campaign or offer.', buttonLabel: 'Explore offer', url: '#' },
+      divider: {},
+      spacer: { height: '48' },
     };
     return { id: uid(type), type, settings: clone(presets[type] || presets.text) };
   };
 
+  const libraryVisual = (info, type) => {
+    const icon = info.icon || type;
+    const visual = {
+      hero: '<i></i><b></b><em></em>', content: '<b></b><i></i><i></i>', features: '<b></b><i></i><i></i><i></i>', columns: '<i></i><i></i><i></i>',
+      media: '<b></b><i></i>', image: '<b></b><i></i>', 'image-text': '<b></b><i></i><em></em>', button: '<b></b>', buttons: '<b></b><b></b>',
+      heading: '<strong>Aa</strong>', text: '<i></i><i></i><i></i>', feature: '<b></b><strong></strong><i></i>', stat: '<strong>42</strong><i></i>', quote: '<strong>“ ”</strong><i></i>',
+      gallery: '<b></b><b></b><b></b><b></b>', video: '<b>▶</b>', audio: '<b>♫</b><i></i>', music: '<b>♫</b><i></i>', portfolio: '<b></b><i></i>', events: '<b>31</b><i></i>',
+      contact: '<i></i><i></i><b></b>', newsletter: '<i></i><b></b>', social: '<b>in</b><b>◎</b>', gift: '<b>◇</b><i></i>', divider: '<hr>', spacer: '<i></i>', cta: '<strong></strong><b></b>',
+    };
+    return `<div class="site-library-card-preview preview-${escapeHtml(icon)}">${visual[icon] || '<b></b><i></i>'}</div>`;
+  };
+
   const renderBlockPreview = (block) => {
-    const s = block.settings || {};
+    const settings = block.settings || {};
     const type = block.type;
-    if (type === 'heading') return `<h3>${escapeHtml(s.text || 'Heading')}</h3>`;
-    if (type === 'text') return `<p>${escapeHtml(s.text || 'Paragraph')}</p>`;
-    if (type === 'button') return `<span class="editor-preview-button">${escapeHtml(s.label || 'Button')}</span>`;
-    if (type === 'feature') return `<strong>${escapeHtml(s.title || 'Feature')}</strong><p>${escapeHtml(s.text || '')}</p>`;
-    if (type === 'stat') return `<strong class="editor-preview-stat">${escapeHtml(s.value || '0')}</strong><span>${escapeHtml(s.label || 'Metric')}</span>`;
-    if (type === 'testimonial') return `<blockquote>“${escapeHtml(s.quote || 'Quote')}”<br><small>${escapeHtml(s.name || 'Customer')}</small></blockquote>`;
-    if (type === 'image') return s.url ? `<img src="${escapeHtml(s.url)}" alt="">` : '<span>Image</span>';
+    if (type === 'heading') return `<h3>${escapeHtml(settings.text || 'Heading')}</h3>`;
+    if (type === 'text') return `<p>${escapeHtml(settings.text || 'Paragraph')}</p>`;
+    if (type === 'button') return `<span class="editor-preview-button">${escapeHtml(settings.label || 'Button')}</span>`;
+    if (type === 'button_group') return `<div class="editor-preview-buttons"><span>${escapeHtml(settings.primaryLabel || 'Get started')}</span><span>${escapeHtml(settings.secondaryLabel || 'Learn more')}</span></div>`;
+    if (type === 'feature') return `${settings.image ? `<img src="${escapeHtml(settings.image)}" alt="">` : ''}<strong>${escapeHtml(settings.title || 'Feature')}</strong><p>${escapeHtml(settings.text || '')}</p>`;
+    if (type === 'stat') return `<strong class="editor-preview-stat">${escapeHtml(settings.value || '0')}</strong><span>${escapeHtml(settings.label || 'Metric')}</span>`;
+    if (type === 'testimonial') return `${settings.image ? `<img class="editor-preview-avatar" src="${escapeHtml(settings.image)}" alt="">` : ''}<blockquote>“${escapeHtml(settings.quote || 'Quote')}”<br><small>${escapeHtml(settings.name || 'Customer')}</small></blockquote>`;
+    if (type === 'quote') return `<blockquote>“${escapeHtml(settings.quote || 'Highlighted statement')}”</blockquote>`;
+    if (type === 'image') return settings.url ? `<img src="${escapeHtml(settings.url)}" alt="">` : '<span class="editor-image-placeholder">Upload image</span>';
+    if (type === 'image_text') return `<div class="editor-image-text-preview">${settings.image ? `<img src="${escapeHtml(settings.image)}" alt="">` : '<span>Image</span>'}<div><strong>${escapeHtml(settings.title || 'Image and text')}</strong><p>${escapeHtml(settings.text || '')}</p></div></div>`;
+    if (type === 'gallery') {
+      const images = String(settings.images || '').split(/\r?\n/).filter(Boolean).slice(0, 4);
+      return `<div class="editor-gallery-preview">${images.length ? images.map((url) => `<img src="${escapeHtml(url)}" alt="">`).join('') : '<span>Upload gallery images</span>'}</div>`;
+    }
+    if (type === 'video') return settings.poster ? `<div class="editor-video-preview"><img src="${escapeHtml(settings.poster)}" alt=""><b>▶</b></div>` : '<strong>▶ Video</strong>';
     if (type.includes('music') || type === 'audio') return `<strong>♫ ${escapeHtml(type.replaceAll('_', ' '))}</strong>`;
     if (type.includes('portfolio')) return '<strong>Featured portfolio project</strong>';
     if (type.includes('event')) return '<strong>Upcoming events</strong>';
     if (type.includes('contact')) return '<strong>Contact form</strong>';
+    if (type === 'newsletter') return '<strong>Email signup</strong>';
+    if (type === 'social_links') return '<strong>Social links</strong>';
     if (type.includes('microgifter')) return '<strong>Microgifter offer</strong>';
     return `<span>${escapeHtml(type.replaceAll('_', ' '))}</span>`;
+  };
+
+  const sectionImageMarkup = (section) => {
+    const settings = section.settings || {};
+    if (!settings.image) return '';
+    return `<figure class="editor-section-image"><img src="${escapeHtml(settings.image)}" alt=""></figure>`;
   };
 
   const renderCanvas = () => {
     if (!canvas) return;
     canvas.replaceChildren();
+    const pageShell = document.createElement('div');
+    pageShell.className = `editor-page-preview template-${escapeHtml(pageTemplate())}`;
+    const links = (boot.site?.moduleLinks || []).slice(0, 7).map((link) => `<span>${escapeHtml(link.label)}</span>`).join('');
+    pageShell.innerHTML = `<header class="editor-page-header"><img src="${escapeHtml(boot.site?.logo || '')}" alt="${escapeHtml(boot.site?.logoAlt || '')}"><nav>${links}</nav></header><main data-preview-main></main><footer class="editor-page-footer"><span>${escapeHtml(state.payload.theme?.footerText || boot.site?.name || 'North Mountain Media')}</span></footer>`;
+    const main = $('[data-preview-main]', pageShell);
+
     if (!state.payload.sections?.length) {
-      const empty = document.createElement('div');
-      empty.className = 'editor-canvas-empty';
-      empty.innerHTML = '<div><strong>Start with a section</strong><p>Open the block library and drag or click a section onto the canvas.</p></div>';
-      canvas.append(empty);
+      main.innerHTML = '<div class="editor-canvas-empty"><div><strong>Start with a section</strong><p>Open the visible library and click or drag a section onto the canvas.</p></div></div>';
+      canvas.append(pageShell);
       return;
     }
+
     state.payload.sections.forEach((section, sectionIndex) => {
       const node = document.createElement('section');
-      node.className = `editor-canvas-section section-${section.type}`;
+      node.className = `editor-canvas-section section-${section.type} layout-${escapeHtml(section.settings?.layout || 'default')}`;
       if (state.selected?.kind === 'section' && state.selected.index === sectionIndex) node.classList.add('active');
       node.draggable = true;
       node.dataset.sectionIndex = sectionIndex;
-      const s = section.settings || {};
-      node.innerHTML = `<button type="button" class="editor-select-section" aria-label="Edit ${escapeHtml(section.type)} section"></button><div class="editor-canvas-section-content"><small>${escapeHtml(s.eyebrow || section.type.replaceAll('_', ' '))}</small><h2>${escapeHtml(s.headline || section.type.replaceAll('_', ' '))}</h2><p>${escapeHtml(s.text || '')}</p><div class="editor-canvas-blocks"></div></div>`;
+      const settings = section.settings || {};
+      const background = settings.backgroundImage ? `style="background-image:linear-gradient(rgba(8,18,30,.34),rgba(8,18,30,.34)),url('${escapeHtml(settings.backgroundImage)}')"` : '';
+      node.innerHTML = `<button type="button" class="editor-select-section" aria-label="Edit ${escapeHtml(section.type)} section"></button><div class="editor-canvas-section-content" ${background}><div class="editor-section-copy"><small>${escapeHtml(settings.eyebrow || section.type.replaceAll('_', ' '))}</small><h2>${escapeHtml(settings.headline || section.type.replaceAll('_', ' '))}</h2><p>${escapeHtml(settings.text || '')}</p>${settings.body ? `<p class="editor-section-body">${escapeHtml(settings.body)}</p>` : ''}</div>${sectionImageMarkup(section)}<div class="editor-canvas-blocks"></div></div>`;
       $('.editor-select-section', node)?.addEventListener('click', () => selectItem({ kind: 'section', index: sectionIndex }));
       const blocks = $('.editor-canvas-blocks', node);
       (section.blocks || []).forEach((block, blockIndex) => {
         const blockNode = document.createElement('article');
-        blockNode.className = 'editor-canvas-block';
+        blockNode.className = `editor-canvas-block block-${block.type}`;
         blockNode.draggable = true;
         blockNode.dataset.sectionIndex = sectionIndex;
         blockNode.dataset.blockIndex = blockIndex;
@@ -152,8 +231,11 @@
           const location = event.dataTransfer.getData('text/x-nmm-block-location');
           const libraryType = event.dataTransfer.getData('text/x-nmm-library-type');
           const libraryKind = event.dataTransfer.getData('text/x-nmm-library-kind');
-          if (location) { try { const from = JSON.parse(location); moveBlock(Number(from.sectionIndex), Number(from.blockIndex), sectionIndex, blockIndex); } catch {} }
-          else if (libraryType && libraryKind === 'blocks') { addBlock(libraryType, sectionIndex, blockIndex); }
+          if (location) {
+            try { const from = JSON.parse(location); moveBlock(Number(from.sectionIndex), Number(from.blockIndex), sectionIndex, blockIndex); } catch {}
+          } else if (libraryType && libraryKind === 'blocks') {
+            addBlock(libraryType, sectionIndex, blockIndex);
+          }
         });
         blocks.append(blockNode);
       });
@@ -172,15 +254,31 @@
           snapshot();
           const [moved] = state.payload.sections.splice(source, 1);
           state.payload.sections.splice(sectionIndex, 0, moved);
-          state.selected = null; renderAll();
+          state.selected = null;
+          renderAll();
         } else if (libraryType && libraryKind === 'sections') {
           addSection(libraryType, sectionIndex);
         } else if (libraryType && libraryKind === 'blocks') {
           addBlock(libraryType, sectionIndex);
         }
       });
-      canvas.append(node);
+      main.append(node);
     });
+    canvas.append(pageShell);
+  };
+
+  const moveBlock = (fromSection, fromBlock, toSection, toBlock = null) => {
+    if (!state.payload.sections[fromSection]?.blocks?.[fromBlock] || !state.payload.sections[toSection]) return;
+    snapshot();
+    const [moved] = state.payload.sections[fromSection].blocks.splice(fromBlock, 1);
+    state.payload.sections[toSection].blocks ||= [];
+    let target = toBlock === null ? state.payload.sections[toSection].blocks.length : toBlock;
+    if (fromSection === toSection && fromBlock < target) target -= 1;
+    target = Math.max(0, Math.min(target, state.payload.sections[toSection].blocks.length));
+    state.payload.sections[toSection].blocks.splice(target, 0, moved);
+    state.selected = { kind: 'block', sectionIndex: toSection, blockIndex: target };
+    renderAll();
+    renderInspector();
   };
 
   const renderLists = () => {
@@ -188,44 +286,71 @@
     const layerTree = $('[data-layer-tree]');
     [sectionList, layerTree].forEach((target) => target?.replaceChildren());
     (state.payload.sections || []).forEach((section, index) => {
-      const row = document.createElement('button'); row.type = 'button'; row.className = 'editor-section-row';
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'editor-section-row';
       if (state.selected?.kind === 'section' && state.selected.index === index) row.classList.add('active');
       row.innerHTML = `<b>⋮⋮</b><span>${escapeHtml(section.settings?.headline || section.type.replaceAll('_', ' '))}</span><small>${escapeHtml(section.type)}</small>`;
       row.addEventListener('click', () => selectItem({ kind: 'section', index }));
       sectionList?.append(row);
-      const layer = row.cloneNode(true); layer.className = 'editor-layer-row'; layer.addEventListener('click', () => selectItem({ kind: 'section', index })); layerTree?.append(layer);
+      const layer = row.cloneNode(true);
+      layer.className = 'editor-layer-row';
+      layer.addEventListener('click', () => selectItem({ kind: 'section', index }));
+      layerTree?.append(layer);
       (section.blocks || []).forEach((block, blockIndex) => {
-        const child = document.createElement('button'); child.type = 'button'; child.className = 'editor-layer-row'; child.style.marginLeft = '18px';
+        const child = document.createElement('button');
+        child.type = 'button';
+        child.className = 'editor-layer-row';
+        child.style.marginLeft = '18px';
         child.innerHTML = `<b>↳</b><span>${escapeHtml(block.settings?.title || block.settings?.label || block.type.replaceAll('_', ' '))}</span>`;
-        child.addEventListener('click', () => selectItem({ kind: 'block', sectionIndex: index, blockIndex })); layerTree?.append(child);
+        child.addEventListener('click', () => selectItem({ kind: 'block', sectionIndex: index, blockIndex }));
+        layerTree?.append(child);
       });
     });
   };
 
   const fieldDefinitions = (item) => {
-    const type = item.type; const defs = [];
-    const section = Object.hasOwn(boot.sections || {}, type);
-    if (section) {
-      if (type !== 'spacer') defs.push(['eyebrow', 'Eyebrow', 'text'], ['headline', 'Headline', 'textarea'], ['text', 'Supporting text', 'textarea']);
-      if (['hero', 'content', 'cta'].includes(type)) defs.push(['alignment', 'Alignment', 'select:left,center,right']);
-      if (type === 'media') defs.push(['image', 'Image URL', 'text'], ['imageAlt', 'Image alt text', 'text']);
-      if (type === 'music') defs.push(['trackId', 'Music track', 'data:musicTracks']);
-      if (type === 'portfolio') defs.push(['projectId', 'Portfolio project', 'data:portfolioProjects']);
-      if (type === 'contact') defs.push(['opportunity', 'Opportunity type', 'text'], ['buttonLabel', 'Button label', 'text']);
-      if (type === 'microgifter') defs.push(['title', 'Offer title fallback', 'text'], ['offerId', 'Offer / campaign ID', 'text'], ['buttonLabel', 'Button label', 'text'], ['url', 'Fallback URL', 'text']);
-      if (type === 'spacer') defs.push(['height', 'Height', 'number']);
-      defs.push(['backgroundColor', 'Background color', 'color'], ['backgroundImage', 'Background image URL', 'text'], ['paddingTop', 'Top spacing', 'number'], ['paddingBottom', 'Bottom spacing', 'number'], ['hidden', 'Hide section', 'checkbox'], ['hideOnDesktop', 'Hide on desktop', 'checkbox'], ['hideOnTablet', 'Hide on tablet', 'checkbox'], ['hideOnMobile', 'Hide on mobile', 'checkbox']);
+    const type = item.type;
+    const definitions = [];
+    const isSection = Object.hasOwn(boot.sections || {}, type);
+    if (isSection) {
+      if (type !== 'spacer') definitions.push(['eyebrow', 'Eyebrow', 'text'], ['headline', 'Headline', 'textarea'], ['text', 'Supporting text', 'textarea']);
+      if (['hero', 'content'].includes(type)) definitions.push(['body', 'Additional body copy', 'textarea']);
+      if (!['spacer', 'events', 'contact', 'music', 'portfolio', 'microgifter'].includes(type)) definitions.push(['image', 'Section image', 'image'], ['imageAlt', 'Image alt text', 'text']);
+      if (['hero', 'content', 'features', 'media', 'cta', 'columns'].includes(type)) definitions.push(['layout', 'Layout', 'select:default,split,centered,editorial,showcase,grid,cards,wide']);
+      if (['hero', 'content', 'cta'].includes(type)) definitions.push(['alignment', 'Alignment', 'select:left,center,right']);
+      if (type === 'music') definitions.push(['trackId', 'Music track', 'data:musicTracks']);
+      if (type === 'portfolio') definitions.push(['projectId', 'Portfolio project', 'data:portfolioProjects']);
+      if (type === 'contact') definitions.push(['opportunity', 'Opportunity type', 'text'], ['buttonLabel', 'Button label', 'text']);
+      if (type === 'microgifter') definitions.push(['title', 'Offer title fallback', 'text'], ['offerId', 'Offer / campaign ID', 'text'], ['buttonLabel', 'Button label', 'text'], ['url', 'Fallback URL', 'text']);
+      if (type === 'spacer') definitions.push(['height', 'Height', 'number']);
+      definitions.push(['backgroundColor', 'Background color', 'color'], ['backgroundImage', 'Background image', 'image'], ['paddingTop', 'Top spacing', 'number'], ['paddingBottom', 'Bottom spacing', 'number'], ['hidden', 'Hide section', 'checkbox'], ['hideOnDesktop', 'Hide on desktop', 'checkbox'], ['hideOnTablet', 'Hide on tablet', 'checkbox'], ['hideOnMobile', 'Hide on mobile', 'checkbox']);
     } else {
       const map = {
-        heading: [['text', 'Heading', 'textarea']], text: [['text', 'Paragraph', 'textarea']], image: [['url', 'Image URL', 'text'], ['alt', 'Alt text', 'text']],
-        button: [['label', 'Button label', 'text'], ['url', 'Link', 'text'], ['style', 'Style', 'select:primary,secondary,text']], feature: [['title', 'Title', 'text'], ['text', 'Description', 'textarea']],
-        stat: [['value', 'Value', 'text'], ['label', 'Label', 'text']], testimonial: [['quote', 'Quote', 'textarea'], ['name', 'Name', 'text']], audio: [['url', 'Audio URL', 'text']],
-        music_track: [['trackId', 'Music track', 'data:musicTracks']], portfolio_project: [['projectId', 'Portfolio project', 'data:portfolioProjects']], contact_form: [['opportunity', 'Opportunity type', 'text'], ['buttonLabel', 'Button label', 'text']],
+        heading: [['text', 'Heading', 'textarea']],
+        text: [['text', 'Paragraph', 'textarea']],
+        image: [['url', 'Image', 'image'], ['alt', 'Alt text', 'text'], ['caption', 'Caption', 'text']],
+        image_text: [['image', 'Image', 'image'], ['imageAlt', 'Image alt text', 'text'], ['title', 'Title', 'text'], ['text', 'Description', 'textarea'], ['buttonLabel', 'Button label', 'text'], ['buttonUrl', 'Button link', 'text']],
+        button: [['label', 'Button label', 'text'], ['url', 'Link', 'text'], ['style', 'Style', 'select:primary,secondary,text']],
+        button_group: [['primaryLabel', 'Primary label', 'text'], ['primaryUrl', 'Primary link', 'text'], ['secondaryLabel', 'Secondary label', 'text'], ['secondaryUrl', 'Secondary link', 'text']],
+        feature: [['image', 'Feature image', 'image'], ['imageAlt', 'Image alt text', 'text'], ['title', 'Title', 'text'], ['text', 'Description', 'textarea']],
+        stat: [['value', 'Value', 'text'], ['label', 'Label', 'text']],
+        testimonial: [['image', 'Portrait', 'image'], ['imageAlt', 'Portrait alt text', 'text'], ['quote', 'Quote', 'textarea'], ['name', 'Name', 'text'], ['role', 'Role or company', 'text']],
+        quote: [['quote', 'Quote', 'textarea'], ['citation', 'Citation', 'text']],
+        gallery: [['images', 'Gallery images', 'gallery'], ['alt', 'Default alt text', 'text']],
+        video: [['url', 'Video URL', 'text'], ['poster', 'Poster image', 'image']],
+        audio: [['title', 'Audio title', 'text'], ['url', 'Audio URL', 'text']],
+        music_track: [['trackId', 'Music track', 'data:musicTracks']],
+        portfolio_project: [['projectId', 'Portfolio project', 'data:portfolioProjects']],
+        contact_form: [['opportunity', 'Opportunity type', 'text'], ['buttonLabel', 'Button label', 'text']],
+        newsletter: [['label', 'Field label', 'text'], ['placeholder', 'Placeholder', 'text'], ['buttonLabel', 'Button label', 'text'], ['opportunity', 'Opportunity type', 'text']],
+        social_links: [['links', 'Links', 'textarea']],
         microgifter_offer: [['title', 'Title fallback', 'text'], ['offerId', 'Offer / campaign ID', 'text'], ['text', 'Description fallback', 'textarea'], ['buttonLabel', 'Button label', 'text'], ['url', 'Fallback URL', 'text']],
         spacer: [['height', 'Height', 'number']],
-      }; defs.push(...(map[type] || [['text', 'Content', 'textarea']]));
+      };
+      definitions.push(...(map[type] || [['text', 'Content', 'textarea']]));
     }
-    return defs;
+    return definitions;
   };
 
   const selectedItem = () => {
@@ -233,70 +358,528 @@
     if (state.selected.kind === 'section') return state.payload.sections[state.selected.index] || null;
     return state.payload.sections[state.selected.sectionIndex]?.blocks?.[state.selected.blockIndex] || null;
   };
+
+  const chooseAndUploadImage = (button, onComplete, multipleAppend = false) => {
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'image/jpeg,image/png,image/webp,image/gif';
+    picker.multiple = multipleAppend;
+    picker.addEventListener('change', async () => {
+      const files = [...(picker.files || [])];
+      if (!files.length) return;
+      const original = button.textContent;
+      try {
+        button.disabled = true;
+        const urls = [];
+        for (let index = 0; index < files.length; index += 1) {
+          button.textContent = `Uploading ${index + 1}/${files.length}…`;
+          urls.push(await uploadImage(files[index]));
+        }
+        onComplete(urls);
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
+    picker.click();
+  };
+
   const renderInspector = () => {
-    const inspector = $('[data-inspector]'); const fields = $('[data-inspector-fields]'); const item = selectedItem();
-    if (!inspector || !fields || !item) { if (inspector) inspector.hidden = true; return; }
+    const inspector = $('[data-inspector]');
+    const fields = $('[data-inspector-fields]');
+    const item = selectedItem();
+    if (!inspector || !fields || !item) {
+      if (inspector) inspector.hidden = true;
+      updateBackButton();
+      return;
+    }
     inspector.hidden = false;
-    $$('.site-editor-panels>section:not(.site-editor-inspector)').forEach((panel) => panel.hidden = true);
+    $$('.site-editor-panels>section:not(.site-editor-inspector)').forEach((panel) => { panel.hidden = true; });
     $('[data-inspector-title]').textContent = item.type.replaceAll('_', ' ');
     fields.replaceChildren();
     fieldDefinitions(item).forEach(([key, label, kind]) => {
-      const wrapper = document.createElement('label'); wrapper.textContent = label;
+      const wrapper = document.createElement('label');
+      wrapper.textContent = label;
       let input;
-      if (kind === 'textarea') { input = document.createElement('textarea'); input.rows = 4; }
-      else if (kind.startsWith('select:')) { input = document.createElement('select'); kind.slice(7).split(',').forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value; input.append(option); }); }
-      else if (kind.startsWith('data:')) { input = document.createElement('select'); const blank = document.createElement('option'); blank.value = '0'; blank.textContent = 'Choose an item'; input.append(blank); (boot.dataSources?.[kind.slice(5)] || []).forEach((item) => { const option = document.createElement('option'); option.value = item.value; option.textContent = item.label; input.append(option); }); }
-      else { input = document.createElement('input'); input.type = kind || 'text'; }
-      if (kind === 'checkbox') input.checked = Boolean(item.settings?.[key]); else input.value = item.settings?.[key] ?? '';
+      if (kind === 'textarea' || kind === 'gallery') {
+        input = document.createElement('textarea');
+        input.rows = kind === 'gallery' ? 7 : 4;
+      } else if (kind.startsWith('select:')) {
+        input = document.createElement('select');
+        kind.slice(7).split(',').forEach((value) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          input.append(option);
+        });
+      } else if (kind.startsWith('data:')) {
+        input = document.createElement('select');
+        const blank = document.createElement('option');
+        blank.value = '0';
+        blank.textContent = 'Choose an item';
+        input.append(blank);
+        (boot.dataSources?.[kind.slice(5)] || []).forEach((sourceItem) => {
+          const option = document.createElement('option');
+          option.value = sourceItem.value;
+          option.textContent = sourceItem.label;
+          input.append(option);
+        });
+      } else {
+        input = document.createElement('input');
+        input.type = kind === 'image' ? 'url' : (kind || 'text');
+      }
+      if (kind === 'checkbox') input.checked = Boolean(item.settings?.[key]);
+      else input.value = item.settings?.[key] ?? '';
       let started = false;
-      const update = () => { if (!started) { snapshot(); started = true; } item.settings ||= {}; item.settings[key] = kind === 'checkbox' ? input.checked : input.value; renderCanvas(); renderLists(); markDirty(); };
+      const update = () => {
+        if (!started) { snapshot(); started = true; }
+        item.settings ||= {};
+        item.settings[key] = kind === 'checkbox' ? input.checked : input.value;
+        renderCanvas();
+        renderLists();
+        markDirty();
+      };
       input.addEventListener(kind === 'checkbox' || input.tagName === 'SELECT' ? 'change' : 'input', update);
       input.addEventListener('blur', () => { started = false; });
-      wrapper.classList.toggle('editor-check', kind === 'checkbox'); wrapper.append(input);
-      if (['image','backgroundImage'].includes(key) || (item.type === 'image' && key === 'url')) {
-        const upload = document.createElement('button'); upload.type = 'button'; upload.textContent = 'Upload image'; upload.className = 'editor-inline-upload';
-        upload.addEventListener('click', () => { const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/jpeg,image/png,image/webp,image/gif'; picker.addEventListener('change', async () => { try { upload.disabled = true; upload.textContent = 'Uploading…'; const url = await uploadImage(picker.files?.[0]); snapshot(); item.settings ||= {}; item.settings[key] = url; renderAll(false); renderInspector(); } catch (error) { alert(error.message); } finally { upload.disabled = false; upload.textContent = 'Upload image'; } }); picker.click(); }); wrapper.append(upload);
+      wrapper.classList.toggle('editor-check', kind === 'checkbox');
+      wrapper.append(input);
+
+      if (kind === 'image' || kind === 'gallery') {
+        const upload = document.createElement('button');
+        upload.type = 'button';
+        upload.className = 'editor-inline-upload';
+        upload.textContent = kind === 'gallery' ? 'Upload gallery images' : 'Upload image';
+        upload.addEventListener('click', () => chooseAndUploadImage(upload, (urls) => {
+          snapshot();
+          item.settings ||= {};
+          if (kind === 'gallery') {
+            const existing = String(item.settings[key] || '').split(/\r?\n/).filter(Boolean);
+            item.settings[key] = [...existing, ...urls].slice(0, 8).join('\n');
+          } else {
+            item.settings[key] = urls[0] || '';
+          }
+          input.value = item.settings[key];
+          renderAll(false);
+          renderInspector();
+          markDirty();
+        }, kind === 'gallery'));
+        wrapper.append(upload);
       }
       fields.append(wrapper);
     });
+    updateBackButton();
   };
 
-  const selectItem = (selection) => { state.selected = selection; renderAll(); renderInspector(); };
-  const addSection = (type, at = null) => {
-    snapshot(); const section = sectionDefaults(type); const index = at === null ? state.payload.sections.length : at;
-    state.payload.sections.splice(index, 0, section); state.selected = { kind: 'section', index }; closeLibrary(); renderAll(); renderInspector();
+  const selectItem = (selection) => {
+    state.selected = selection;
+    renderAll();
+    renderInspector();
   };
+
+  const addSection = (type, at = null) => {
+    snapshot();
+    const section = sectionDefaults(type);
+    const index = at === null ? state.payload.sections.length : at;
+    state.payload.sections.splice(index, 0, section);
+    state.selected = { kind: 'section', index };
+    closeLibrary();
+    renderAll();
+    renderInspector();
+  };
+
   const addBlock = (type, sectionIndex = null, at = null) => {
     if (sectionIndex === null) sectionIndex = state.selected?.kind === 'section' ? state.selected.index : state.selected?.sectionIndex;
-    if (!Number.isInteger(sectionIndex) || !state.payload.sections[sectionIndex]) { alert('Select a section before adding a block.'); return; }
-    snapshot(); const block = blockDefaults(type); state.payload.sections[sectionIndex].blocks ||= []; const blockIndex = at === null ? state.payload.sections[sectionIndex].blocks.length : Math.max(0, Math.min(at, state.payload.sections[sectionIndex].blocks.length)); state.payload.sections[sectionIndex].blocks.splice(blockIndex, 0, block);
-    state.selected = { kind: 'block', sectionIndex, blockIndex }; closeLibrary(); renderAll(); renderInspector();
+    if (!Number.isInteger(sectionIndex) || !state.payload.sections[sectionIndex]) {
+      alert('Select a section before adding a block.');
+      return;
+    }
+    snapshot();
+    const block = blockDefaults(type);
+    state.payload.sections[sectionIndex].blocks ||= [];
+    const blockIndex = at === null ? state.payload.sections[sectionIndex].blocks.length : Math.max(0, Math.min(at, state.payload.sections[sectionIndex].blocks.length));
+    state.payload.sections[sectionIndex].blocks.splice(blockIndex, 0, block);
+    state.selected = { kind: 'block', sectionIndex, blockIndex };
+    closeLibrary();
+    renderAll();
+    renderInspector();
+  };
+
+  const librarySource = () => state.libraryKind === 'sections' ? boot.sections : state.libraryKind === 'blocks' ? boot.blocks : {};
+
+  const renderLibraryCategories = () => {
+    if (!categoryHost) return;
+    categoryHost.replaceChildren();
+    const source = librarySource();
+    const categories = state.libraryKind === 'saved'
+      ? ['All', 'Section', 'Block']
+      : ['All', ...new Set(Object.values(source || {}).map((item) => item.category || 'Other'))];
+    if (!categories.includes(state.libraryCategory)) state.libraryCategory = 'All';
+    categories.forEach((category) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = category;
+      button.classList.toggle('active', category === state.libraryCategory);
+      button.addEventListener('click', () => { state.libraryCategory = category; renderLibrary(); });
+      categoryHost.append(button);
+    });
   };
 
   const renderLibrary = () => {
-    if (!libraryItems) return; libraryItems.replaceChildren();
-    const query = ($('[data-library-search]')?.value || '').toLowerCase();
-    let source = state.libraryKind === 'sections' ? boot.sections : state.libraryKind === 'blocks' ? boot.blocks : {};
+    if (!libraryItems) return;
+    libraryItems.replaceChildren();
+    renderLibraryCategories();
+    const query = ($('[data-library-search]')?.value || '').toLowerCase().trim();
+    let count = 0;
+
     if (state.libraryKind === 'saved') {
-      (boot.savedBlocks || []).filter((saved) => !query || `${saved.name} ${saved.block_type} ${saved.category}`.toLowerCase().includes(query)).forEach((saved) => {
+      (boot.savedBlocks || []).filter((saved) => {
+        const kind = saved.category === 'section' ? 'Section' : 'Block';
+        const matchCategory = state.libraryCategory === 'All' || state.libraryCategory === kind;
+        const matchQuery = !query || `${saved.name} ${saved.block_type} ${saved.category}`.toLowerCase().includes(query);
+        return matchCategory && matchQuery;
+      }).forEach((saved) => {
+        count += 1;
         const kind = saved.category === 'section' ? 'section' : 'block';
-        const card = document.createElement('button'); card.type = 'button'; card.className = 'site-library-card'; card.innerHTML = `<span>Saved ${kind}</span><strong>${escapeHtml(saved.name)}</strong><p>${escapeHtml(saved.block_type)}</p>`;
-        card.addEventListener('click', () => { try { const item = rekeyItem(JSON.parse(saved.payload_json)); snapshot(); if (kind === 'section') { state.payload.sections.push(item); state.selected = { kind: 'section', index: state.payload.sections.length - 1 }; } else { const sectionIndex = state.selected?.kind === 'section' ? state.selected.index : state.selected?.sectionIndex; if (!Number.isInteger(sectionIndex)) throw new Error(); state.payload.sections[sectionIndex].blocks ||= []; state.payload.sections[sectionIndex].blocks.push(item); state.selected = { kind: 'block', sectionIndex, blockIndex: state.payload.sections[sectionIndex].blocks.length - 1 }; } closeLibrary(); renderAll(); renderInspector(); } catch { alert(kind === 'section' ? 'The saved section could not be added.' : 'Select a section before adding this saved block.'); } }); libraryItems.append(card);
-      }); return;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'site-library-card';
+        card.innerHTML = `${libraryVisual({ icon: kind === 'section' ? 'columns' : 'feature' }, saved.block_type)}<div class="site-library-card-copy"><span>Saved ${kind}</span><strong>${escapeHtml(saved.name)}</strong><p>${escapeHtml(saved.block_type)}</p></div>`;
+        card.addEventListener('click', () => {
+          try {
+            const item = rekeyItem(JSON.parse(saved.payload_json));
+            snapshot();
+            if (kind === 'section') {
+              state.payload.sections.push(item);
+              state.selected = { kind: 'section', index: state.payload.sections.length - 1 };
+            } else {
+              const sectionIndex = state.selected?.kind === 'section' ? state.selected.index : state.selected?.sectionIndex;
+              if (!Number.isInteger(sectionIndex)) throw new Error();
+              state.payload.sections[sectionIndex].blocks ||= [];
+              state.payload.sections[sectionIndex].blocks.push(item);
+              state.selected = { kind: 'block', sectionIndex, blockIndex: state.payload.sections[sectionIndex].blocks.length - 1 };
+            }
+            closeLibrary();
+            renderAll();
+            renderInspector();
+          } catch {
+            alert(kind === 'section' ? 'The saved section could not be added.' : 'Select a section before adding this saved block.');
+          }
+        });
+        libraryItems.append(card);
+      });
+    } else {
+      Object.entries(librarySource() || {}).forEach(([type, info]) => {
+        const category = info.category || 'Other';
+        const haystack = `${type} ${info.label || ''} ${category} ${info.description || ''} ${info.keywords || ''}`.toLowerCase();
+        if (query && !haystack.includes(query)) return;
+        if (state.libraryCategory !== 'All' && state.libraryCategory !== category) return;
+        count += 1;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'site-library-card';
+        card.draggable = true;
+        card.innerHTML = `${libraryVisual(info, type)}<div class="site-library-card-copy"><span>${escapeHtml(category)}</span><strong>${escapeHtml(info.label || type)}</strong><p>${escapeHtml(info.description || `Add ${type.replaceAll('_', ' ')}`)}</p></div>`;
+        card.addEventListener('dragstart', (event) => {
+          event.dataTransfer.setData('text/x-nmm-library-type', type);
+          event.dataTransfer.setData('text/x-nmm-library-kind', state.libraryKind);
+        });
+        card.addEventListener('click', () => state.libraryKind === 'sections' ? addSection(type) : addBlock(type));
+        libraryItems.append(card);
+      });
     }
-    Object.entries(source || {}).forEach(([type, info]) => {
-      const haystack = `${type} ${info.label || ''} ${info.category || ''} ${info.description || ''}`.toLowerCase(); if (query && !haystack.includes(query)) return;
-      const card = document.createElement('button'); card.type = 'button'; card.className = 'site-library-card'; card.draggable = true;
-      card.innerHTML = `<span>${escapeHtml(info.category || state.libraryKind)}</span><strong>${escapeHtml(info.label || type)}</strong><p>${escapeHtml(info.description || `Add ${type.replaceAll('_', ' ')}`)}</p>`;
-      card.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/x-nmm-library-type', type); event.dataTransfer.setData('text/x-nmm-library-kind', state.libraryKind); });
-      card.addEventListener('click', () => state.libraryKind === 'sections' ? addSection(type) : addBlock(type)); libraryItems.append(card);
+
+    if (libraryCount) libraryCount.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+    if (count === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'site-library-empty';
+      empty.innerHTML = '<strong>No matching items</strong><p>Try another category or search term.</p>';
+      libraryItems.append(empty);
+    }
+  };
+
+  const openLibrary = (kind = 'sections') => {
+    state.libraryKind = kind;
+    state.libraryCategory = 'All';
+    library?.classList.add('open');
+    library?.setAttribute('aria-hidden', 'false');
+    $$('[data-library-kind]').forEach((button) => button.classList.toggle('active', button.dataset.libraryKind === kind));
+    $('[data-library-title]').textContent = kind === 'sections' ? 'Add sections' : kind === 'blocks' ? 'Add blocks' : 'Saved items';
+    renderLibrary();
+  };
+  const closeLibrary = () => {
+    library?.classList.remove('open');
+    library?.setAttribute('aria-hidden', 'true');
+  };
+
+  const captureLandingContent = () => {
+    const hero = ensureSection('hero');
+    const features = ensureSection('features');
+    const cta = ensureSection('cta');
+    const primary = ensureButton(hero, 0, 'primary');
+    const secondary = ensureButton(hero, 1, 'secondary');
+    const closing = ensureButton(cta, 0, 'primary');
+    return {
+      hero: clone(hero.settings),
+      primary: clone(primary.settings),
+      secondary: clone(secondary.settings),
+      features: clone(features.settings),
+      featureBlocks: clone(features.blocks || []),
+      cta: clone(cta.settings),
+      closing: clone(closing.settings),
+      footerText: state.payload.theme?.footerText || '',
+    };
+  };
+
+  const applyTemplate = (template, preserveContent = true) => {
+    if (!boot.templates?.[template]) return;
+    const content = preserveContent ? captureLandingContent() : null;
+    const imageInventory = Object.fromEntries(Object.entries(state.payload.theme || {}).filter(([key]) => key.startsWith('image_')));
+    snapshot();
+    state.payload = clone(boot.templates[template]);
+    state.payload.theme ||= {};
+    Object.assign(state.payload.theme, imageInventory, { template });
+    if (content) {
+      const hero = ensureSection('hero');
+      Object.assign(hero.settings, content.hero, { layout: template, alignment: template === 'centered' ? 'center' : content.hero.alignment || 'left' });
+      hero.blocks = [
+        { id: uid('button'), type: 'button', settings: content.primary },
+        { id: uid('button'), type: 'button', settings: content.secondary },
+      ].filter((block) => block.settings.label || block.settings.url);
+      const features = ensureSection('features');
+      Object.assign(features.settings, content.features);
+      features.blocks = content.featureBlocks.map(rekeyItem);
+      const cta = ensureSection('cta');
+      Object.assign(cta.settings, content.cta);
+      cta.blocks = [{ id: uid('button'), type: 'button', settings: content.closing }];
+      state.payload.theme.footerText = content.footerText;
+    }
+    const templateField = $('[data-page-field="template_key"]');
+    if (templateField) templateField.value = template;
+    state.page.template_key = template;
+    applyAllTemplateImages(template);
+    state.selected = null;
+    renderAll();
+    renderLandingSettings();
+  };
+
+  const applyImageSlot = (template, slot, url) => {
+    state.payload.theme ||= {};
+    state.payload.theme[templateImageKey(template, slot)] = url;
+    if (template !== pageTemplate()) return;
+    if (slot === 'hero') ensureSection('hero').settings.image = url;
+    if (slot === 'supporting') {
+      const media = findSection('media') || findSection('content');
+      if (media && media.type !== 'hero') media.settings.image = url;
+      else ensureSection('features').settings.image = url;
+    }
+    if (slot === 'feature_background') ensureSection('features').settings.backgroundImage = url;
+    if (slot === 'cta_background') ensureSection('cta').settings.backgroundImage = url;
+    if (slot === 'social') {
+      const field = $('[data-page-field="seo_social_image"]');
+      if (field) field.value = url;
+    }
+  };
+
+  const applyAllTemplateImages = (template) => {
+    (boot.templateImages?.[template] || []).forEach((slot) => {
+      const url = state.payload.theme?.[templateImageKey(template, slot.slot)] || '';
+      applyImageSlot(template, slot.slot, url);
     });
   };
-  const openLibrary = (kind = 'sections') => { state.libraryKind = kind; library?.classList.add('open'); library?.setAttribute('aria-hidden', 'false'); $$('[data-library-kind]').forEach((b) => b.classList.toggle('active', b.dataset.libraryKind === kind)); $('[data-library-title]').textContent = kind === 'sections' ? 'Add sections' : kind === 'blocks' ? 'Add blocks' : 'Saved blocks'; renderLibrary(); };
-  const closeLibrary = () => { library?.classList.remove('open'); library?.setAttribute('aria-hidden', 'true'); };
 
-  const renderTheme = () => $$('[data-theme-field]').forEach((input) => { input.value = state.payload.theme?.[input.dataset.themeField] ?? input.value; });
-  const renderAll = (inspector = true) => { renderCanvas(); renderLists(); renderTheme(); if (inspector && state.selected) renderInspector(); };
+  const bindLandingControl = (input, read, write, eventName = 'input') => {
+    input.value = read() ?? '';
+    let started = false;
+    input.addEventListener(eventName, () => {
+      if (!started) { snapshot(); started = true; }
+      write(input.value);
+      renderCanvas();
+      renderLists();
+      markDirty();
+    });
+    input.addEventListener('blur', () => { started = false; });
+  };
+
+  const landingField = (label, type = 'text', className = '') => {
+    const wrapper = document.createElement('label');
+    wrapper.className = `landing-setting-field ${className}`.trim();
+    const span = document.createElement('span');
+    span.textContent = label;
+    const input = type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
+    if (type === 'textarea') input.rows = 4;
+    else input.type = type;
+    wrapper.append(span, input);
+    return { wrapper, input };
+  };
+
+  const renderLandingSettings = () => {
+    const host = $('[data-landing-settings]');
+    if (!host) return;
+    host.replaceChildren();
+    const template = pageTemplate();
+    const hero = ensureSection('hero');
+    const features = ensureSection('features');
+    const cta = ensureSection('cta');
+    const primary = ensureButton(hero, 0, 'primary');
+    const secondary = ensureButton(hero, 1, 'secondary');
+    const closing = ensureButton(cta, 0, 'primary');
+
+    const templatePanel = document.createElement('section');
+    templatePanel.className = 'landing-settings-group';
+    templatePanel.innerHTML = `<header><span>Template</span><h3>Landing page layout</h3><p>Each template keeps its own image inventory.</p></header><div class="landing-template-picker" data-template-picker></div><button type="button" class="landing-source-import" data-import-current-landing>Load ${escapeHtml(boot.landingSourceLabel || 'current landing page')} into canvas</button>`;
+    const picker = $('[data-template-picker]', templatePanel);
+    Object.keys(boot.templates || {}).filter((key) => key !== 'blank').forEach((key) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `landing-template-option template-${key}`;
+      button.classList.toggle('active', key === template);
+      button.innerHTML = `<span class="landing-template-mini"><i></i><b></b><em></em></span><strong>${escapeHtml(key)}</strong>`;
+      button.addEventListener('click', () => {
+        if (key === pageTemplate()) return;
+        if (!confirm(`Apply the ${key} template while preserving the current landing-page copy and feature cards?`)) return;
+        applyTemplate(key, true);
+      });
+      picker.append(button);
+    });
+    $('[data-import-current-landing]', templatePanel)?.addEventListener('click', () => {
+      if (!boot.landingSourcePayload || !confirm(`Replace the canvas with the ${boot.landingSourceLabel || 'current landing page'}?`)) return;
+      snapshot();
+      state.payload = clone(boot.landingSourcePayload);
+      const importedTemplate = state.payload.theme?.template || pageTemplate();
+      const templateField = $('[data-page-field="template_key"]');
+      if (templateField && boot.templates?.[importedTemplate]) templateField.value = importedTemplate;
+      state.page.template_key = importedTemplate;
+      state.selected = null;
+      markDirty('Current landing page loaded · save draft');
+      renderAll();
+      renderLandingSettings();
+    });
+    host.append(templatePanel);
+
+    const heroPanel = document.createElement('section');
+    heroPanel.className = 'landing-settings-group';
+    heroPanel.innerHTML = '<header><span>Opening section</span><h3>Hero content</h3></header><div class="landing-settings-grid" data-hero-fields></div>';
+    const heroFields = $('[data-hero-fields]', heroPanel);
+    [
+      ['Eyebrow', 'text', () => hero.settings.eyebrow, (value) => { hero.settings.eyebrow = value; }],
+      ['Headline', 'textarea', () => hero.settings.headline, (value) => { hero.settings.headline = value; }],
+      ['Subheadline', 'textarea', () => hero.settings.text, (value) => { hero.settings.text = value; }],
+      ['Supporting text', 'textarea', () => hero.settings.body, (value) => { hero.settings.body = value; }],
+      ['Primary button label', 'text', () => primary.settings.label, (value) => { primary.settings.label = value; }],
+      ['Primary button link', 'text', () => primary.settings.url, (value) => { primary.settings.url = value; }],
+      ['Secondary button label', 'text', () => secondary.settings.label, (value) => { secondary.settings.label = value; }],
+      ['Secondary button link', 'text', () => secondary.settings.url, (value) => { secondary.settings.url = value; }],
+    ].forEach(([label, type, read, write]) => {
+      const field = landingField(label, type, type === 'textarea' ? 'full' : '');
+      bindLandingControl(field.input, read, write);
+      heroFields.append(field.wrapper);
+    });
+    host.append(heroPanel);
+
+    const featurePanel = document.createElement('section');
+    featurePanel.className = 'landing-settings-group';
+    featurePanel.innerHTML = '<header><span>Feature inventory</span><h3>Main value section</h3></header><div class="landing-settings-grid" data-feature-fields></div>';
+    const featureFields = $('[data-feature-fields]', featurePanel);
+    [
+      ['Section eyebrow', 'text', () => features.settings.eyebrow, (value) => { features.settings.eyebrow = value; }],
+      ['Section headline', 'textarea', () => features.settings.headline, (value) => { features.settings.headline = value; }],
+      ['Section description', 'textarea', () => features.settings.text, (value) => { features.settings.text = value; }],
+    ].forEach(([label, type, read, write]) => {
+      const field = landingField(label, type, type === 'textarea' ? 'full' : '');
+      bindLandingControl(field.input, read, write);
+      featureFields.append(field.wrapper);
+    });
+    const inventory = landingField('Feature cards — one Title|Description per line', 'textarea', 'full');
+    inventory.input.rows = 8;
+    bindLandingControl(inventory.input,
+      () => (features.blocks || []).filter((block) => block.type === 'feature').map((block) => `${block.settings?.title || ''}|${block.settings?.text || ''}`).join('\n'),
+      (value) => {
+        const existingImages = (features.blocks || []).filter((block) => block.type === 'feature').map((block) => ({ image: block.settings?.image || '', imageAlt: block.settings?.imageAlt || '' }));
+        features.blocks = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 12).map((line, index) => {
+          const [title, ...parts] = line.split('|');
+          return { id: uid('feature'), type: 'feature', settings: { title: title.trim(), text: parts.join('|').trim(), ...(existingImages[index] || { image: '', imageAlt: '' }) } };
+        });
+      });
+    featureFields.append(inventory.wrapper);
+    host.append(featurePanel);
+
+    const imagePanel = document.createElement('section');
+    imagePanel.className = 'landing-settings-group';
+    imagePanel.innerHTML = `<header><span>${escapeHtml(template)} template</span><h3>Image inventory</h3><p>Images stay assigned to this template when you switch layouts.</p></header><div class="landing-image-inventory" data-image-inventory></div>`;
+    const imageHost = $('[data-image-inventory]', imagePanel);
+    (boot.templateImages?.[template] || []).forEach((slot) => {
+      const key = templateImageKey(template, slot.slot);
+      const url = state.payload.theme?.[key] || '';
+      const card = document.createElement('article');
+      card.className = 'landing-inventory-card';
+      card.innerHTML = `<div class="landing-inventory-preview">${url ? `<img src="${escapeHtml(url)}" alt="">` : '<span>No image assigned</span>'}</div><div><strong>${escapeHtml(slot.label)}</strong><p>${escapeHtml(slot.description)}</p><div class="landing-inventory-actions"><button type="button" data-upload>Upload image</button>${url ? '<button type="button" data-clear>Clear</button>' : ''}</div></div>`;
+      $('[data-upload]', card)?.addEventListener('click', (event) => chooseAndUploadImage(event.currentTarget, (urls) => {
+        snapshot();
+        applyImageSlot(template, slot.slot, urls[0] || '');
+        markDirty();
+        renderAll();
+        renderLandingSettings();
+      }));
+      $('[data-clear]', card)?.addEventListener('click', () => {
+        snapshot();
+        applyImageSlot(template, slot.slot, '');
+        markDirty();
+        renderAll();
+        renderLandingSettings();
+      });
+      imageHost.append(card);
+    });
+    host.append(imagePanel);
+
+    const closingPanel = document.createElement('section');
+    closingPanel.className = 'landing-settings-group';
+    closingPanel.innerHTML = '<header><span>Closing section</span><h3>CTA and footer</h3></header><div class="landing-settings-grid" data-closing-fields></div>';
+    const closingFields = $('[data-closing-fields]', closingPanel);
+    [
+      ['CTA eyebrow', 'text', () => cta.settings.eyebrow, (value) => { cta.settings.eyebrow = value; }],
+      ['CTA headline', 'textarea', () => cta.settings.headline, (value) => { cta.settings.headline = value; }],
+      ['CTA button label', 'text', () => closing.settings.label, (value) => { closing.settings.label = value; }],
+      ['CTA button link', 'text', () => closing.settings.url, (value) => { closing.settings.url = value; }],
+      ['Footer text', 'text', () => state.payload.theme?.footerText || '', (value) => { state.payload.theme ||= {}; state.payload.theme.footerText = value; }],
+    ].forEach(([label, type, read, write]) => {
+      const field = landingField(label, type, type === 'textarea' ? 'full' : '');
+      bindLandingControl(field.input, read, write);
+      closingFields.append(field.wrapper);
+    });
+    host.append(closingPanel);
+  };
+
+  const renderTheme = () => $$('[data-theme-field]').forEach((input) => {
+    input.value = state.payload.theme?.[input.dataset.themeField] ?? input.value;
+  });
+
+  const updateBackButton = () => {
+    const show = Boolean(state.selected) || state.activePanel !== 'sections';
+    if (backButton) backButton.hidden = !show;
+    if (brandLogo) brandLogo.hidden = show;
+  };
+
+  const activatePanel = (key) => {
+    state.activePanel = key;
+    state.selected = null;
+    $('[data-inspector]').hidden = true;
+    $$('[data-editor-tab]').forEach((button) => button.classList.toggle('active', button.dataset.editorTab === key));
+    $$('[data-editor-panel]').forEach((panel) => { panel.hidden = panel.dataset.editorPanel !== key; });
+    if (key === 'landing') renderLandingSettings();
+    updateBackButton();
+  };
+
+  const renderAll = (inspector = true) => {
+    renderCanvas();
+    renderLists();
+    renderTheme();
+    if (state.activePanel === 'landing') renderLandingSettings();
+    if (inspector && state.selected) renderInspector();
+    if (frame) frame.className = `site-editor-canvas-frame device-${state.device} template-${pageTemplate()}`;
+    updateBackButton();
+  };
 
   const pageData = () => {
     const get = (name) => $(`[data-page-field="${name}"]`);
@@ -312,25 +895,46 @@
       seo_index_enabled: Boolean(get('seo_index_enabled')?.checked),
     };
   };
+
   const request = async (action, extra = {}) => {
     if (saveState) saveState.textContent = 'Saving…';
-    const response = await fetch(boot.api, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': boot.csrf }, body: JSON.stringify({ action, ...extra }) });
+    const response = await fetch(boot.api, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': boot.csrf },
+      body: JSON.stringify({ action, ...extra }),
+    });
     const result = await response.json().catch(() => ({ ok: false, message: 'Invalid server response.' }));
-    if (!response.ok || !result.ok) throw new Error(result.message || 'The request failed.'); return result;
+    if (!response.ok || !result.ok) throw new Error(result.message || 'The request failed.');
+    return result;
   };
+
   const uploadImage = async (file) => {
     if (!file) throw new Error('Choose an image.');
-    const body = new FormData(); body.append('image', file); body.append('_csrf', boot.csrf);
-    const response = await fetch(boot.mediaUpload, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'X-CSRF-Token': boot.csrf, Accept: 'application/json' }, body });
+    const body = new FormData();
+    body.append('image', file);
+    body.append('_csrf', boot.csrf);
+    const response = await fetch(boot.mediaUpload, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'X-CSRF-Token': boot.csrf, Accept: 'application/json' }, body,
+    });
     const result = await response.json().catch(() => ({ ok: false, message: 'Invalid upload response.' }));
-    if (!response.ok || !result.ok) throw new Error(result.message || 'Image upload failed.'); return result.url;
+    if (!response.ok || !result.ok) throw new Error(result.message || 'Image upload failed.');
+    return result.url;
   };
 
   const save = async (publish = false) => {
     try {
-      const result = await request(publish ? 'publish_page' : 'save_page', { page_id: Number(state.page.id), payload: state.payload, ...pageData() });
-      state.dirty = false; if (saveState) saveState.textContent = result.message; if (publish) state.page.status = 'published';
-    } catch (error) { if (saveState) saveState.textContent = 'Save failed'; alert(error.message); }
+      const result = await request(publish ? 'publish_page' : 'save_page', {
+        page_id: Number(state.page.id), payload: state.payload, ...pageData(),
+      });
+      state.dirty = false;
+      if (saveState) saveState.textContent = result.message;
+      if (publish) state.page.status = 'published';
+      if (result.preview_url) $('[data-preview]')?.setAttribute('href', result.preview_url);
+    } catch (error) {
+      if (saveState) saveState.textContent = 'Save failed';
+      alert(error.message);
+    }
   };
 
   canvas?.addEventListener('dragover', (event) => event.preventDefault());
@@ -343,32 +947,130 @@
     if (type && kind === 'blocks') addBlock(type);
   });
 
-  $$('[data-editor-tab]').forEach((button) => button.addEventListener('click', () => {
-    state.selected = null; $('[data-inspector]').hidden = true; $$('[data-editor-tab]').forEach((b) => b.classList.toggle('active', b === button));
-    $$('[data-editor-panel]').forEach((panel) => panel.hidden = panel.dataset.editorPanel !== button.dataset.editorTab);
-  }));
-  $$('[data-library-open]').forEach((b) => b.addEventListener('click', () => openLibrary(b.dataset.libraryOpen)));
-  $$('[data-library-close]').forEach((b) => b.addEventListener('click', closeLibrary));
-  $$('[data-library-kind]').forEach((b) => b.addEventListener('click', () => openLibrary(b.dataset.libraryKind)));
+  $$('[data-editor-tab]').forEach((button) => button.addEventListener('click', () => activatePanel(button.dataset.editorTab)));
+  backButton?.addEventListener('click', () => activatePanel('sections'));
+  $$('[data-library-open]').forEach((button) => button.addEventListener('click', () => openLibrary(button.dataset.libraryOpen)));
+  $$('[data-library-close]').forEach((button) => button.addEventListener('click', closeLibrary));
+  $$('[data-library-kind]').forEach((button) => button.addEventListener('click', () => openLibrary(button.dataset.libraryKind)));
   $('[data-library-search]')?.addEventListener('input', renderLibrary);
-  $('[data-inspector-back]')?.addEventListener('click', () => { state.selected = null; $('[data-inspector]').hidden = true; $('[data-editor-panel="sections"]').hidden = false; renderAll(false); });
-  $('[data-delete-selected]')?.addEventListener('click', () => { if (!state.selected || !confirm('Delete the selected item?')) return; snapshot(); if (state.selected.kind === 'section') state.payload.sections.splice(state.selected.index, 1); else state.payload.sections[state.selected.sectionIndex].blocks.splice(state.selected.blockIndex, 1); state.selected = null; $('[data-inspector]').hidden = true; $('[data-editor-panel="sections"]').hidden = false; renderAll(false); });
-  $('[data-duplicate-selected]')?.addEventListener('click', () => { const item = selectedItem(); if (!item) return; snapshot(); const copy = rekeyItem(item); if (state.selected.kind === 'section') state.payload.sections.splice(state.selected.index + 1, 0, copy); else state.payload.sections[state.selected.sectionIndex].blocks.splice(state.selected.blockIndex + 1, 0, copy); renderAll(); });
-  $('[data-save-reusable]')?.addEventListener('click', async () => { const item = selectedItem(); if (!item || !state.selected) return; const kind = state.selected.kind === 'section' ? 'section' : 'block'; const name = prompt(`Reusable ${kind} name`, item.settings?.headline || item.settings?.title || item.settings?.label || item.type); if (!name) return; try { await request('save_reusable_item', { name, kind, item }); alert(`Reusable ${kind} saved.`); } catch (error) { alert(error.message); } });
-  $$('[data-theme-field]').forEach((input) => { let started = false; input.addEventListener('input', () => { if (!started) { snapshot(); started = true; } state.payload.theme ||= {}; state.payload.theme[input.dataset.themeField] = input.value; markDirty(); }); input.addEventListener('blur', () => { started = false; }); });
-  $$('[data-device]').forEach((button) => button.addEventListener('click', () => { state.device = button.dataset.device; frame.className = `site-editor-canvas-frame device-${state.device}`; $$('[data-device]').forEach((b) => b.classList.toggle('active', b.dataset.device === state.device)); }));
-  $('[data-save-draft]')?.addEventListener('click', () => save(false)); $('[data-publish]')?.addEventListener('click', () => save(true));
-  $('[data-undo]')?.addEventListener('click', () => { if (!state.history.length) return; state.future.push(JSON.stringify(state.payload)); restoreSnapshot(state.history.pop()); });
-  $('[data-redo]')?.addEventListener('click', () => { if (!state.future.length) return; state.history.push(JSON.stringify(state.payload)); restoreSnapshot(state.future.pop()); });
-  $('[data-page-select]')?.addEventListener('change', (event) => { if (state.dirty && !confirm('Discard unsaved changes?')) { event.target.value = state.page.id; return; } location.href = `site-builder.php?page=${encodeURIComponent(event.target.value)}`; });
-  $('[data-create-page]')?.addEventListener('click', async () => { const title = prompt('Page title', 'New page'); if (!title) return; const slug = prompt('Page slug', title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')); if (!slug) return; try { const result = await request('create_page', { title, slug, page_type: 'custom', template_key: 'blank' }); location.href = result.redirect; } catch (error) { alert(error.message); } });
-  $('[data-load-template]')?.addEventListener('click', () => { const key = $('[data-page-field="template_key"]')?.value || 'blank'; if (!boot.templates?.[key] || !confirm('Replace the current canvas with this starter template?')) return; snapshot(); state.payload = clone(boot.templates[key]); state.selected = null; renderAll(); });
-  $$('[data-restore-revision]').forEach((button) => button.addEventListener('click', async () => { if (!confirm('Restore this revision into the current draft?')) return; try { const result = await request('restore_revision', { page_id: Number(state.page.id), revision_id: Number(button.dataset.restoreRevision) }); location.href = result.redirect; } catch (error) { alert(error.message); } }));
-  $$('[data-page-media-upload]').forEach((button) => button.addEventListener('click', () => { const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/jpeg,image/png,image/webp,image/gif'; picker.addEventListener('change', async () => { try { button.disabled = true; button.textContent = 'Uploading…'; const url = await uploadImage(picker.files?.[0]); const field = $(`[data-page-field="${button.dataset.pageMediaUpload}"]`); if (field) { field.value = url; markDirty(); } } catch (error) { alert(error.message); } finally { button.disabled = false; button.textContent = 'Upload social image'; } }); picker.click(); }));
-  $('[data-archive-page]')?.addEventListener('click', async () => { if (!confirm('Archive this page? Published links will stop working.')) return; try { const result = await request('archive_page', { page_id: Number(state.page.id) }); state.dirty = false; location.href = result.redirect; } catch (error) { alert(error.message); } });
+  $('[data-inspector-back]')?.addEventListener('click', () => activatePanel('sections'));
+  $('[data-delete-selected]')?.addEventListener('click', () => {
+    if (!state.selected || !confirm('Delete the selected item?')) return;
+    snapshot();
+    if (state.selected.kind === 'section') state.payload.sections.splice(state.selected.index, 1);
+    else state.payload.sections[state.selected.sectionIndex].blocks.splice(state.selected.blockIndex, 1);
+    activatePanel('sections');
+    renderAll(false);
+  });
+  $('[data-duplicate-selected]')?.addEventListener('click', () => {
+    const item = selectedItem();
+    if (!item) return;
+    snapshot();
+    const copy = rekeyItem(item);
+    if (state.selected.kind === 'section') state.payload.sections.splice(state.selected.index + 1, 0, copy);
+    else state.payload.sections[state.selected.sectionIndex].blocks.splice(state.selected.blockIndex + 1, 0, copy);
+    renderAll();
+  });
+  $('[data-save-reusable]')?.addEventListener('click', async () => {
+    const item = selectedItem();
+    if (!item || !state.selected) return;
+    const kind = state.selected.kind === 'section' ? 'section' : 'block';
+    const name = prompt(`Reusable ${kind} name`, item.settings?.headline || item.settings?.title || item.settings?.label || item.type);
+    if (!name) return;
+    try {
+      await request('save_reusable_item', { name, kind, item });
+      alert(`Reusable ${kind} saved.`);
+    } catch (error) { alert(error.message); }
+  });
+  $$('[data-theme-field]').forEach((input) => {
+    let started = false;
+    input.addEventListener('input', () => {
+      if (!started) { snapshot(); started = true; }
+      state.payload.theme ||= {};
+      state.payload.theme[input.dataset.themeField] = input.value;
+      renderCanvas();
+      markDirty();
+    });
+    input.addEventListener('blur', () => { started = false; });
+  });
+  $$('[data-device]').forEach((button) => button.addEventListener('click', () => {
+    state.device = button.dataset.device;
+    if (frame) frame.className = `site-editor-canvas-frame device-${state.device} template-${pageTemplate()}`;
+    $$('[data-device]').forEach((item) => item.classList.toggle('active', item.dataset.device === state.device));
+  }));
+  $('[data-save-draft]')?.addEventListener('click', () => save(false));
+  $('[data-publish]')?.addEventListener('click', () => save(true));
+  $('[data-undo]')?.addEventListener('click', () => {
+    if (!state.history.length) return;
+    state.future.push(JSON.stringify(state.payload));
+    restoreSnapshot(state.history.pop());
+  });
+  $('[data-redo]')?.addEventListener('click', () => {
+    if (!state.future.length) return;
+    state.history.push(JSON.stringify(state.payload));
+    restoreSnapshot(state.future.pop());
+  });
+  $('[data-page-select]')?.addEventListener('change', (event) => {
+    if (state.dirty && !confirm('Discard unsaved changes?')) {
+      event.target.value = state.page.id;
+      return;
+    }
+    location.href = `site-builder.php?page=${encodeURIComponent(event.target.value)}`;
+  });
+  $('[data-create-page]')?.addEventListener('click', async () => {
+    const title = prompt('Page title', 'New page');
+    if (!title) return;
+    const slug = prompt('Page slug', title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+    if (!slug) return;
+    try {
+      const result = await request('create_page', { title, slug, page_type: 'custom', template_key: 'blank' });
+      location.href = result.redirect;
+    } catch (error) { alert(error.message); }
+  });
+  $('[data-load-template]')?.addEventListener('click', () => {
+    const key = $('[data-page-field="template_key"]')?.value || 'blank';
+    if (!boot.templates?.[key] || !confirm('Replace the current canvas with this starter template?')) return;
+    applyTemplate(key, false);
+  });
+  $$('[data-restore-revision]').forEach((button) => button.addEventListener('click', async () => {
+    if (!confirm('Restore this revision into the current draft?')) return;
+    try {
+      const result = await request('restore_revision', { page_id: Number(state.page.id), revision_id: Number(button.dataset.restoreRevision) });
+      location.href = result.redirect;
+    } catch (error) { alert(error.message); }
+  }));
+  $$('[data-page-media-upload]').forEach((button) => button.addEventListener('click', () => chooseAndUploadImage(button, (urls) => {
+    const field = $(`[data-page-field="${button.dataset.pageMediaUpload}"]`);
+    if (field) {
+      snapshot();
+      field.value = urls[0] || '';
+      markDirty();
+    }
+  })));
+  $('[data-archive-page]')?.addEventListener('click', async () => {
+    if (!confirm('Archive this page? Published links will stop working.')) return;
+    try {
+      const result = await request('archive_page', { page_id: Number(state.page.id) });
+      state.dirty = false;
+      location.href = result.redirect;
+    } catch (error) { alert(error.message); }
+  });
   $$('[data-page-field]').forEach((field) => field.addEventListener('input', markDirty));
   $('[data-sidebar-toggle]')?.addEventListener('click', () => $('[data-editor-sidebar]')?.classList.toggle('open'));
-  window.addEventListener('beforeunload', (event) => { if (!state.dirty) return; event.preventDefault(); event.returnValue = ''; });
-  document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); save(false); } if (event.key === 'Escape') closeLibrary(); });
+  window.addEventListener('beforeunload', (event) => {
+    if (!state.dirty) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+  document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      save(false);
+    }
+    if (event.key === 'Escape') closeLibrary();
+  });
+
+  applyAllTemplateImages(pageTemplate());
   renderAll(false);
+  if (boot.legacyImported) markDirty('Current landing page loaded · save draft');
 })();

@@ -2724,21 +2724,12 @@ if(is_post()){
             if(!in_array($mobileLogoMode,['logo','name','hidden'],true)){
                 $mobileLogoMode='logo';
             }
-            $landingTemplate=input('landing_template');
-            if(!in_array($landingTemplate,['split','centered','editorial','showcase'],true)){
-                $landingTemplate='split';
-            }
-
             $pairs=[
                 'site_name'=>substr($siteName,0,190),
                 'portal_welcome'=>substr(input('portal_welcome'),0,2000),
                 'site_logo_alt'=>substr(input('site_logo_alt'),0,190),
                 'mobile_header_logo_mode'=>$mobileLogoMode,
-                'seo_title'=>substr(input('seo_title'),0,190),
-                'seo_description'=>substr(input('seo_description'),0,500),
-                'seo_keywords'=>substr(input('seo_keywords'),0,500),
                 'seo_site_url'=>rtrim(substr(input('seo_site_url'),0,500),'/'),
-                'seo_index_enabled'=>isset($_POST['seo_index_enabled'])?'1':'0',
                 'microgifter_connection_mode'=>in_array(input('microgifter_connection_mode'),['disabled','demo','api','mcp','homeserver'],true)?input('microgifter_connection_mode'):'disabled',
                 'microgifter_endpoint'=>substr(input('microgifter_endpoint'),0,500),
                 'microgifter_merchant_id'=>substr(input('microgifter_merchant_id'),0,190),
@@ -2747,24 +2738,6 @@ if(is_post()){
                 'microgifter_live_transactions_enabled'=>isset($_POST['microgifter_live_transactions_enabled'])?'1':'0',
                 'microgifter_contact_sync_enabled'=>isset($_POST['microgifter_contact_sync_enabled'])?'1':'0',
                 'microgifter_analytics_sync_enabled'=>isset($_POST['microgifter_analytics_sync_enabled'])?'1':'0',
-                'landing_template'=>$landingTemplate,
-                'landing_eyebrow'=>substr(input('landing_eyebrow'),0,190),
-                'landing_headline'=>substr(input('landing_headline'),0,300),
-                'landing_subheadline'=>substr(input('landing_subheadline'),0,700),
-                'landing_body'=>substr(input('landing_body'),0,2500),
-                'landing_primary_button_label'=>substr(input('landing_primary_button_label'),0,120),
-                'landing_primary_button_url'=>nmm_normalize_public_link(input('landing_primary_button_url')),
-                'landing_secondary_button_label'=>substr(input('landing_secondary_button_label'),0,120),
-                'landing_secondary_button_url'=>nmm_normalize_public_link(input('landing_secondary_button_url')),
-                'landing_hero_image_alt'=>substr(input('landing_hero_image_alt'),0,300),
-                'landing_secondary_image_alt'=>substr(input('landing_secondary_image_alt'),0,300),
-                'landing_section_eyebrow'=>substr(input('landing_section_eyebrow'),0,190),
-                'landing_section_title'=>substr(input('landing_section_title'),0,300),
-                'landing_section_body'=>substr(input('landing_section_body'),0,1600),
-                'landing_features'=>substr(input('landing_features'),0,5000),
-                'landing_cta_eyebrow'=>substr(input('landing_cta_eyebrow'),0,190),
-                'landing_cta_title'=>substr(input('landing_cta_title'),0,400),
-                'landing_footer_text'=>substr(input('landing_footer_text'),0,300),
             ];
             foreach(nmm_module_definitions() as $moduleKey=>$definition){
                 $pairs['module_'.$moduleKey.'_enabled']=isset($_POST['module_'.$moduleKey.'_enabled'])?'1':'0';
@@ -2772,9 +2745,6 @@ if(is_post()){
 
             $uploadSlots=[
                 'site_logo'=>['type'=>'logo','stored'=>'site_logo_stored_name','mime'=>'site_logo_mime','remove'=>'remove_site_logo'],
-                'landing_hero_image'=>['type'=>'landing','stored'=>'landing_hero_image_stored_name','mime'=>'landing_hero_image_mime','remove'=>'remove_landing_hero_image'],
-                'landing_secondary_image'=>['type'=>'landing','stored'=>'landing_secondary_image_stored_name','mime'=>'landing_secondary_image_mime','remove'=>'remove_landing_secondary_image'],
-                'seo_social_image'=>['type'=>'landing','stored'=>'seo_social_image_stored_name','mime'=>'seo_social_image_mime','remove'=>'remove_seo_social_image'],
             ];
 
             foreach($uploadSlots as $field=>$slot){
@@ -2808,7 +2778,7 @@ if(is_post()){
                 $statement->execute(['k'=>$key,'v'=>$value]);
             }
             log_activity('site_settings_updated','settings');
-            flash('success','Site modules, landing page, branding, and SEO settings updated.');
+            flash('success','Site modules, branding, and integration settings updated.');
             redirect('portal/admin.php?view=settings');
         }
         if($action==='save_account_profile'){
@@ -6534,11 +6504,7 @@ $cardClass=$isVideo
 
 if($view==='settings'){
 $moduleDefinitions=nmm_module_definitions();
-$landingTemplate=nmm_landing_template();
 $logoUrl=nmm_site_logo_url();
-$heroImageUrl=nmm_site_media_url('hero');
-$secondaryImageUrl=nmm_site_media_url('secondary');
-$socialImageUrl=nmm_site_media_url('social');
 ?>
 <form method="post" enctype="multipart/form-data" class="site-settings-form">
 <?=csrf_field()?>
@@ -6571,43 +6537,9 @@ $socialImageUrl=nmm_site_media_url('social');
 <?php if(nmm_site_setting('site_logo_stored_name')!==''):?><label class="checkbox-row full"><input type="checkbox" name="remove_site_logo" value="1"><span>Remove the uploaded logo and restore the packaged default.</span></label><?php endif;?>
 <label class="field full"><span>Mobile header branding</span><select name="mobile_header_logo_mode"><option value="logo" <?=nmm_site_logo_mode()==='logo'?'selected':''?>>Display uploaded logo</option><option value="name" <?=nmm_site_logo_mode()==='name'?'selected':''?>>Display site name as text</option><option value="hidden" <?=nmm_site_logo_mode()==='hidden'?'selected':''?>>Hide branding; show menu and account actions only</option></select><small>This controls the compact public header shown on phones and tablets.</small></label>
 <label class="field full"><span>Client portal welcome</span><textarea name="portal_welcome" rows="3"><?=e(setting('portal_welcome','Project updates, secure communications, voice notes, calls, and shared files in one place.'))?></textarea></label>
+<label class="field full"><span>Public site URL</span><input type="url" name="seo_site_url" value="<?=e(nmm_site_setting('seo_site_url'))?>" placeholder="https://northmountainmedia.com"><small>Used as the global canonical base. Page title, description, social image, and indexing are managed inside the Page Editor.</small></label>
 </div>
 </div>
-</section>
-
-<section class="form-panel site-settings-panel landing-builder-panel">
-<header class="site-settings-heading"><div><span>Landing page workspace</span><h2>Page Editor and starter content</h2><p>Enable the Landing Page module above and save settings to expose the Page Editor in the administrator navigation. These starter settings remain as a safe fallback until a page is published from the visual editor.</p></div><div class="site-settings-heading-actions"><?php if(nmm_module_enabled('landing_page')):?><a class="button button-primary" href="<?=e(app_url('portal/site-builder.php'))?>">Open Page Editor</a><?php else:?><span class="button" aria-disabled="true">Enable Landing Page to open editor</span><?php endif;?><a class="button" href="<?=e(app_url('landing-page.php?preview=1'))?>" target="_blank" rel="noopener">Preview landing page</a></div></header>
-<div class="landing-template-grid">
-<?php foreach(['split'=>['Split','Editorial split hero with image'], 'centered'=>['Centered','Centered statement with wide media'], 'editorial'=>['Editorial','Warm magazine-style composition'], 'showcase'=>['Showcase','Dark high-contrast product presentation']] as $templateKey=>$templateInfo):?>
-<label class="landing-template-card template-<?=e($templateKey)?>"><input type="radio" name="landing_template" value="<?=e($templateKey)?>" <?=$landingTemplate===$templateKey?'checked':''?>><span class="template-swatch"><i></i><b></b><em></em></span><strong><?=e($templateInfo[0])?></strong><small><?=e($templateInfo[1])?></small></label>
-<?php endforeach;?>
-</div>
-
-<div class="settings-subsection"><h3>Hero content</h3><div class="form-grid">
-<label class="field"><span>Eyebrow</span><input name="landing_eyebrow" value="<?=e(nmm_site_setting('landing_eyebrow','North Mountain Media'))?>" maxlength="190"></label>
-<label class="field"><span>Headline</span><input name="landing_headline" value="<?=e(nmm_site_setting('landing_headline','Connected digital systems for ambitious ideas.'))?>" maxlength="300"></label>
-<label class="field full"><span>Subheadline</span><textarea name="landing_subheadline" rows="3"><?=e(nmm_site_setting('landing_subheadline','Strategy, design, content, CRM, commerce, and client operations brought together in one practical system.'))?></textarea></label>
-<label class="field full"><span>Supporting text</span><textarea name="landing_body" rows="4"><?=e(nmm_site_setting('landing_body','North Mountain Media builds focused digital products and operational platforms that help businesses, creators, and new ventures move from fragmented tools to connected execution.'))?></textarea></label>
-<label class="field"><span>Primary button label</span><input name="landing_primary_button_label" value="<?=e(nmm_site_setting('landing_primary_button_label','Start a project'))?>" maxlength="120"></label>
-<label class="field"><span>Primary button link</span><input name="landing_primary_button_url" value="<?=e(nmm_site_setting('landing_primary_button_url','intake.php'))?>" maxlength="500"></label>
-<label class="field"><span>Secondary button label</span><input name="landing_secondary_button_label" value="<?=e(nmm_site_setting('landing_secondary_button_label','View portfolio'))?>" maxlength="120"></label>
-<label class="field"><span>Secondary button link</span><input name="landing_secondary_button_url" value="<?=e(nmm_site_setting('landing_secondary_button_url','workspace.php'))?>" maxlength="500"></label>
-</div></div>
-
-<div class="settings-subsection"><h3>Landing page images</h3><div class="landing-image-settings">
-<div class="landing-image-card"><?php if($heroImageUrl!==''):?><img src="<?=e($heroImageUrl)?>" alt=""><?php else:?><div class="landing-image-empty">Hero image</div><?php endif;?><label class="field"><span>Hero image</span><input type="file" name="landing_hero_image" accept="image/jpeg,image/png,image/webp,image/gif"></label><label class="field"><span>Hero image alt text</span><input name="landing_hero_image_alt" value="<?=e(nmm_site_setting('landing_hero_image_alt','North Mountain Media featured work'))?>"></label><?php if(nmm_site_setting('landing_hero_image_stored_name')!==''):?><label class="checkbox-row"><input type="checkbox" name="remove_landing_hero_image" value="1"><span>Remove image</span></label><?php endif;?></div>
-<div class="landing-image-card"><?php if($secondaryImageUrl!==''):?><img src="<?=e($secondaryImageUrl)?>" alt=""><?php else:?><div class="landing-image-empty">Section image</div><?php endif;?><label class="field"><span>Section image</span><input type="file" name="landing_secondary_image" accept="image/jpeg,image/png,image/webp,image/gif"></label><label class="field"><span>Section image alt text</span><input name="landing_secondary_image_alt" value="<?=e(nmm_site_setting('landing_secondary_image_alt','North Mountain Media project detail'))?>"></label><?php if(nmm_site_setting('landing_secondary_image_stored_name')!==''):?><label class="checkbox-row"><input type="checkbox" name="remove_landing_secondary_image" value="1"><span>Remove image</span></label><?php endif;?></div>
-</div></div>
-
-<div class="settings-subsection"><h3>Feature section</h3><div class="form-grid">
-<label class="field"><span>Section eyebrow</span><input name="landing_section_eyebrow" value="<?=e(nmm_site_setting('landing_section_eyebrow','What we build'))?>"></label>
-<label class="field"><span>Section title</span><input name="landing_section_title" value="<?=e(nmm_site_setting('landing_section_title','A clearer path from concept to working system.'))?>"></label>
-<label class="field full"><span>Section description</span><textarea name="landing_section_body" rows="3"><?=e(nmm_site_setting('landing_section_body','Choose a focused starting point, connect the required workflows, and create a platform that can grow without losing clarity.'))?></textarea></label>
-<label class="field full"><span>Feature cards</span><textarea name="landing_features" rows="7"><?=e(nmm_site_setting('landing_features',"Strategy and planning|Translate goals into a clear system and launch path.\nConnected execution|Bring content, CRM, commerce, and client operations together.\nMeasurable progress|Use practical workflows, reporting, and follow-through."))?></textarea><small>One card per line. Use <code>Title|Description</code>. Up to six cards.</small></label>
-<label class="field"><span>Closing eyebrow</span><input name="landing_cta_eyebrow" value="<?=e(nmm_site_setting('landing_cta_eyebrow','Ready to build'))?>"></label>
-<label class="field"><span>Closing headline</span><input name="landing_cta_title" value="<?=e(nmm_site_setting('landing_cta_title','Turn the next idea into a connected working system.'))?>"></label>
-<label class="field full"><span>Footer text</span><input name="landing_footer_text" value="<?=e(nmm_site_setting('landing_footer_text','North Mountain Media · Phoenix, Arizona'))?>"></label>
-</div></div>
 </section>
 
 <section class="form-panel site-settings-panel microgifter-settings-panel">
@@ -6626,18 +6558,7 @@ $socialImageUrl=nmm_site_media_url('social');
 </div><p class="microgifter-test-result" data-microgifter-test-result></p>
 </section>
 
-<section class="form-panel site-settings-panel">
-<header class="site-settings-heading"><div><span>Search and sharing</span><h2>Basic SEO</h2><p>Set the default title, description, keywords, canonical site address, indexing preference, and social image for the landing page.</p></div></header>
-<div class="seo-settings-layout"><div class="form-grid">
-<label class="field"><span>SEO title</span><input name="seo_title" value="<?=e(nmm_site_setting('seo_title',setting('site_name','North Mountain Media')?:'North Mountain Media'))?>" maxlength="190"></label>
-<label class="field"><span>Canonical site URL</span><input type="url" name="seo_site_url" value="<?=e(nmm_site_setting('seo_site_url'))?>" placeholder="https://example.com"></label>
-<label class="field full"><span>Meta description</span><textarea name="seo_description" rows="3" maxlength="500"><?=e(nmm_site_setting('seo_description'))?></textarea></label>
-<label class="field full"><span>Keywords</span><input name="seo_keywords" value="<?=e(nmm_site_setting('seo_keywords'))?>" maxlength="500"><small>Comma-separated keywords are optional; the title and description matter more.</small></label>
-<label class="checkbox-row full"><input type="checkbox" name="seo_index_enabled" value="1" <?=nmm_setting_bool('seo_index_enabled',true)?'checked':''?>><span>Allow search engines to index and follow the public landing page.</span></label>
-</div><div class="landing-image-card seo-image-card"><?php if($socialImageUrl!==''):?><img src="<?=e($socialImageUrl)?>" alt=""><?php else:?><div class="landing-image-empty">Social sharing image</div><?php endif;?><label class="field"><span>Social image</span><input type="file" name="seo_social_image" accept="image/jpeg,image/png,image/webp,image/gif"><small>Recommended: 1200 × 630.</small></label><?php if(nmm_site_setting('seo_social_image_stored_name')!==''):?><label class="checkbox-row"><input type="checkbox" name="remove_seo_social_image" value="1"><span>Remove image</span></label><?php endif;?></div></div>
-</section>
-
-<div class="site-settings-savebar"><span>Changes become active immediately after saving.</span><button class="button button-primary">Save site settings</button></div>
+<div class="site-settings-savebar"><span>Module, branding, and connection changes become active after saving.</span><button class="button button-primary">Save site settings</button></div>
 </form>
 <script>
 (() => {

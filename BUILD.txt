@@ -1,40 +1,26 @@
 North Mountain Media Portfolio and Secure Portal
-Build: 20260727-visual-site-builder-v61
+Build: 20260727-landing-page-builder-v61.2
 
-v61 Visual Site Builder, Navigation & Analytics
+v61.2 Landing Page Builder, Visual Block Library & Template Image Inventory
 
 Required SQL:
-- database/visual_site_builder_v61.sql
-- Import after database/site_modules_landing_v60.sql
-- Full schema synchronized in database/north_mountain_portal.sql
+- No new SQL required
+- Uses the existing database/visual_site_builder_v61.sql schema
 
 Delivered:
-- Dedicated visual page editor with a 268-pixel editor sidebar
-- Right-side sliding section and block library
-- Drag-and-drop sections and blocks
-- Block movement within and across sections
-- Split, Centered, Editorial, Showcase, and Blank starter layouts
-- Reusable sections and blocks
-- Builder image uploads
-- Responsive desktop, tablet, and mobile preview modes
-- Draft, preview, publish, archive, revisions, restore, undo, and redo
-- Per-page SEO and responsive visibility controls
-- WordPress-style navigation manager
-- Nested menus and desktop, mobile, sidebar, and footer locations
-- Published custom pages and XML sitemap integration
-- Site Analytics dashboard
-- Music Library starts, pauses, resumes, completions, skips, tracks, albums, and engagement
-- Microgifter REST API, MCP, HomeServer/MCP, demo, and disabled connector modes
-- Encrypted connector credentials
-- Microgifter-ready offer, contact, and conversion workflows
-- Live Microgifter transactions disabled by default
-- Existing v60 landing settings retained as a safe fallback
-- v60.1 dashboard launcher retained
-
-Preview files:
-- site-builder-preview-v61.php
-- navigation-preview-v61.php
-- site-analytics-preview-v61.php
+- Home landing page selected by default in Page Editor
+- Safe current-landing-page import into the Home canvas
+- Manual current-page import for existing builder histories
+- Landing Settings contained only in the Page Editor sidebar
+- Module toggles retained in System Settings
+- Landing template, content, feature inventory, CTA, footer, and page SEO moved out of System Settings
+- Upper-left Back to editor control
+- Template-specific image inventories
+- Visual section and block cards
+- Search, category filters, counts, click insertion, and drag insertion
+- Expanded 12-section and 23-block starter library
+- Image upload for all image-capable sections and blocks
+- Existing draft, preview, publish, revisions, responsive modes, reusable items, menus, analytics, and Microgifter architecture retained
 
 Deployment preserves active config.php and the complete storage/ directory.
-Live database, browser, CRM, analytics, media, and external connector behavior requires deployed-server verification.
+Live browser, database, media, and public rendering behavior requires deployed-server verification.

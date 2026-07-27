@@ -30,7 +30,66 @@ jobs:
             node --check "$file" >/dev/null
           done < <(find . -type f -name '*.js' -print0)
 
-      - name: Required v61 source
+      - name: CSS structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          for path in Path('.').rglob('*.css'):
+              if '.git' in path.parts:
+                  continue
+              source = path.read_text(encoding='utf-8')
+              depth = 0
+              quote = None
+              escaped = False
+              comment = False
+              index = 0
+              while index < len(source):
+                  char = source[index]
+                  nxt = source[index + 1] if index + 1 < len(source) else ''
+                  if comment:
+                      if char == '*' and nxt == '/':
+                          comment = False
+                          index += 2
+                          continue
+                      index += 1
+                      continue
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                      index += 1
+                      continue
+                  if char == '/' and nxt == '*':
+                      comment = True
+                      index += 2
+                      continue
+                  if char in ('"', "'"):
+                      quote = char
+                  elif char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                      if depth < 0:
+                          raise SystemExit(f'Unbalanced CSS braces in {path}')
+                  index += 1
+              if depth != 0 or quote or comment:
+                  raise SystemExit(f'Unbalanced CSS structure in {path}')
+          print('CSS structure passed.')
+          PY
+
+      - name: Landing page builder regression
+        run: |
+          set -euo pipefail
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+
+      - name: Required v61.2 source
         shell: bash
         run: |
           set -euo pipefail
@@ -43,8 +102,12 @@ jobs:
           test -f portal/microgifter-connectors.php
           test -f assets/js/site-builder.js
           test -f assets/js/menu-manager.js
+          test -f assets/css/site-builder-admin.css
+          test -f assets/css/site-builder-public.css
           test -f database/visual_site_builder_v61.sql
           test -f VISUAL-SITE-BUILDER-SETUP-v61.md
+          test -f LANDING-PAGE-BUILDER-SETUP-v61.2.md
+          test -f V61.2-VALIDATION.txt
 
       - name: Repository safety
         shell: bash
@@ -52,6 +115,8 @@ jobs:
           set -euo pipefail
           test ! -f config.php
           test ! -f north-mountain-media-portal-v61.zip
+          test ! -d .nmm-v612
+          test ! -f .github/workflows/apply-v61-2-builder.yml
 
           if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print | grep -q .; then
             echo 'Unsafe configuration or runtime file found.' >&2
