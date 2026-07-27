@@ -22,13 +22,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tools/v617_fix_generator.py
           python3 tools/v617_sidebar.py
           python3 tools/v617_editor_js.py
           python3 tools/v617_core.py
           python3 tools/v617_styles.py
           python3 tools/v617_public_js.py
           python3 tools/v617_tests.py
-          rm -f tools/v617_sidebar.py tools/v617_editor_js.py tools/v617_core.py tools/v617_styles.py tools/v617_public_js.py tools/v617_tests.py
+          rm -f tools/v617_fix_generator.py tools/v617_sidebar.py tools/v617_editor_js.py tools/v617_core.py tools/v617_styles.py tools/v617_public_js.py tools/v617_tests.py
           rm -f .github/workflows/apply-v61-7-visual-editor.yml
 
       - name: PHP syntax
