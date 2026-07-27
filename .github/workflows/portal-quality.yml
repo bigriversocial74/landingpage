@@ -52,12 +52,17 @@ jobs:
           set -euo pipefail
           test ! -f config.php
           test ! -f north-mountain-media-portal-v61.zip
-          if find . -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) | grep -q .; then
+
+          if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print | grep -q .; then
             echo 'Unsafe configuration or runtime file found.' >&2
-            find . -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \)
+            find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print
             exit 1
           fi
-          if grep -RIlE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|ghp_|github_pat_|AKIA[0-9A-Z]{16}' . --exclude-dir=.git >/tmp/nmm-secret-files.txt; then
+
+          if grep -RIlE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|ghp_|github_pat_|AKIA[0-9A-Z]{16}' . \
+            --exclude-dir=.git \
+            --exclude='portal-quality.yml' \
+            >/tmp/nmm-secret-files.txt; then
             echo 'Credential-like content detected.' >&2
             cat /tmp/nmm-secret-files.txt
             exit 1
