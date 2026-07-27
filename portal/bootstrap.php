@@ -1117,7 +1117,7 @@ function portal_header(string $title, string $active, array $user): void
             'projects' => 'Client Projects',
             'files' => 'Files',
             'knowledge' => 'Knowledge Base',
-            'builder' => 'Site Builder',
+            'builder' => 'Page Editor',
             'menus' => 'Navigation',
         ],
         'System' => [
@@ -1125,6 +1125,11 @@ function portal_header(string $title, string $active, array $user): void
             'account' => 'Account',
         ],
     ];
+
+    $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');
+    if ($isAdmin && !$landingPageEditorEnabled) {
+        unset($adminNavigationGroups['Work']['builder']);
+    }
 
     $script = $isAdmin ? 'admin.php' : 'client.php';
     $flashes = pull_flashes();
@@ -1505,7 +1510,9 @@ function portal_footer(): void
                                 <a href="<?= e(app_url('portal/admin.php?view=crm')) ?>"><span>Open</span><strong>CRM</strong><small>Contacts, leads, and opportunities</small></a>
                                 <a href="<?= e(app_url('portal/admin.php?view=analytics')) ?>"><span>Open</span><strong>Visitor Intelligence</strong><small>Traffic and conversion analytics</small></a>
                                 <a href="<?= e(app_url('portal/admin.php?view=site-analytics')) ?>"><span>Open</span><strong>Site Analytics</strong><small>Website and Music Library activity</small></a>
-                                <a href="<?= e(app_url('portal/site-builder.php')) ?>"><span>Build</span><strong>Site Builder</strong><small>Visual pages, sections, and blocks</small></a>
+                                <?php if ($landingPageEditorEnabled): ?>
+                                    <a href="<?= e(app_url('portal/admin.php?view=builder')) ?>"><span>Build</span><strong>Page Editor</strong><small>Visual landing pages, sections, and blocks</small></a>
+                                <?php endif; ?>
                                 <a href="<?= e(app_url('portal/admin.php?view=menus')) ?>"><span>Manage</span><strong>Navigation</strong><small>Menus, dropdowns, and locations</small></a>
                                 <a href="<?= e(app_url('portal/admin.php?view=blog&edit=new')) ?>"><span>Create</span><strong>Blog post</strong><small>Start a new article</small></a>
                                 <a href="<?= e(app_url('portal/admin.php?view=events&edit=new')) ?>"><span>Create</span><strong>Event</strong><small>Add an event or registration page</small></a>
