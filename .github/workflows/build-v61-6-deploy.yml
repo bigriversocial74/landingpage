@@ -1,0 +1,51 @@
+name: Build v61.6 Deploy Artifact
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout merged source
+        uses: actions/checkout@v4
+
+      - name: Build clean deployment package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf deploy
+          mkdir -p deploy/assets/css deploy/assets/js deploy/portal
+
+          cp assets/css/site-builder-admin.css deploy/assets/css/
+          cp assets/css/site-builder-public.css deploy/assets/css/
+          cp assets/js/site-builder-bootstrap.js deploy/assets/js/
+          cp assets/js/site-builder.js deploy/assets/js/
+          cp portal/site-builder-core.php deploy/portal/
+          cp portal/site-builder.php deploy/portal/
+
+          cat > deploy/DEPLOY-v61.6.txt <<'EOF'
+          North Mountain Media Portal v61.6 deploy package
+          Source merge: 1cdfc5ea7c18d000e26775d814fabd6b2ac6cefd
+
+          Upload these files over the existing portal.
+          Preserve the live config.php and the complete storage/ directory.
+          No SQL migration is required.
+          EOF
+
+          find deploy -type f -print | sort
+          test ! -e deploy/config.php
+          test ! -e deploy/storage
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v61.6-deploy
+          path: deploy/
+          if-no-files-found: error
+          retention-days: 30
