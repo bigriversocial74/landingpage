@@ -15,3 +15,4 @@ Validated locally:
 - Visual library opens as a modal with search and category filters
 - v61.3 asset cache keys are present
 - No SQL migration is required
+- Clean PR source contains no transfer archive or temporary workflow
