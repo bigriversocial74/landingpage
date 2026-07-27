@@ -27,7 +27,6 @@ jobs:
             .nmm-v612/chunk-01.txt \
             .nmm-v612/chunk-02.txt \
             .nmm-v612/chunk-03a.txt \
-            .nmm-v612/chunk-03b.txt \
             .nmm-v612/chunk-04.txt \
             .nmm-v612/chunk-05.txt \
             | base64 -d > /tmp/v612-source.tgz
