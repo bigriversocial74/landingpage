@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260727-landing-page-builder-v61.2 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.3 */
 (() => {
   'use strict';
 
@@ -13,7 +13,7 @@
     libraryKind: 'sections',
     libraryCategory: 'All',
     device: 'desktop',
-    dirty: Boolean(boot.legacyImported),
+    dirty: Boolean(boot.defaultTemplateLoaded || boot.legacyImported),
     activePanel: 'sections',
   };
 
@@ -39,6 +39,8 @@
   const libraryCount = $('[data-library-count]');
   const backButton = $('[data-editor-back]');
   const brandLogo = $('.site-editor-brand-logo');
+  const editorModal = $('[data-editor-modal]');
+  const inspectorModal = $('[data-inspector]');
 
   const markDirty = (message = 'Unsaved changes') => {
     state.dirty = true;
@@ -199,8 +201,9 @@
     const main = $('[data-preview-main]', pageShell);
 
     if (!state.payload.sections?.length) {
-      main.innerHTML = '<div class="editor-canvas-empty"><div><strong>Start with a section</strong><p>Open the visible library and click or drag a section onto the canvas.</p></div></div>';
+      main.innerHTML = '<div class="editor-canvas-empty"><div><strong>No page sections are loaded</strong><p>The active landing template should appear here automatically. Open the section library only when you want to add more.</p><button type="button" data-empty-library-open>Open section library</button></div></div>';
       canvas.append(pageShell);
+      $('[data-empty-library-open]', pageShell)?.addEventListener('click', () => openLibrary('sections'));
       return;
     }
 
@@ -396,7 +399,7 @@
       return;
     }
     inspector.hidden = false;
-    $$('.site-editor-panels>section:not(.site-editor-inspector)').forEach((panel) => { panel.hidden = true; });
+    inspector.setAttribute('aria-hidden', 'false');
     $('[data-inspector-title]').textContent = item.type.replaceAll('_', ' ');
     fields.replaceChildren();
     fieldDefinitions(item).forEach(([key, label, kind]) => {
@@ -611,6 +614,60 @@
   const closeLibrary = () => {
     library?.classList.remove('open');
     library?.setAttribute('aria-hidden', 'true');
+  };
+
+  const modalTitles = {
+    landing: 'Landing settings',
+    styles: 'Global styles',
+    responsive: 'Responsive preview',
+    revisions: 'Revision history',
+    seo: 'SEO and sharing',
+    page: 'Page settings',
+  };
+
+  const openEditorModal = (key) => {
+    const panel = $(`[data-editor-modal-panel="${key}"]`);
+    if (!editorModal || !panel) return;
+    closeLibrary();
+    closeInspector();
+    $$('[data-editor-modal-panel]').forEach((item) => { item.hidden = item !== panel; });
+    const title = $('[data-editor-modal-title]');
+    if (title) title.textContent = modalTitles[key] || 'Editor settings';
+    if (key === 'landing') renderLandingSettings();
+    if (key === 'styles') renderTheme();
+    editorModal.hidden = false;
+    editorModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('editor-modal-open');
+    panel.querySelector('input,textarea,select,button')?.focus({ preventScroll: true });
+  };
+
+  const closeEditorModal = () => {
+    if (!editorModal) return;
+    editorModal.hidden = true;
+    editorModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('editor-modal-open');
+  };
+
+  const payloadHasSections = (payload) => Array.isArray(payload?.sections) && payload.sections.length > 0;
+  const ensureDefaultLandingCanvas = () => {
+    if (state.page.page_type !== 'landing' || payloadHasSections(state.payload)) return false;
+    const requested = boot.activeLandingTemplate && boot.activeLandingTemplate !== 'blank'
+      ? boot.activeLandingTemplate
+      : (state.page.template_key && state.page.template_key !== 'blank' ? state.page.template_key : 'split');
+    const candidates = [boot.landingSourcePayload, boot.templates?.[requested], boot.templates?.split];
+    const source = candidates.find(payloadHasSections);
+    if (!source) return false;
+    state.payload = clone(source);
+    state.payload.theme ||= {};
+    const template = state.payload.theme.template && state.payload.theme.template !== 'blank'
+      ? state.payload.theme.template
+      : requested;
+    state.payload.theme.template = template;
+    state.page.template_key = template;
+    const templateField = $('[data-page-field="template_key"]');
+    if (templateField) templateField.value = template;
+    state.dirty = true;
+    return true;
   };
 
   const captureLandingContent = () => {
@@ -856,18 +913,28 @@
   });
 
   const updateBackButton = () => {
-    const show = Boolean(state.selected) || state.activePanel !== 'sections';
+    const show = Boolean(state.selected);
     if (backButton) backButton.hidden = !show;
     if (brandLogo) brandLogo.hidden = show;
   };
 
-  const activatePanel = (key) => {
-    state.activePanel = key;
+  const closeInspector = () => {
     state.selected = null;
-    $('[data-inspector]').hidden = true;
+    if (inspectorModal) {
+      inspectorModal.hidden = true;
+      inspectorModal.setAttribute('aria-hidden', 'true');
+    }
+    renderCanvas();
+    renderLists();
+    updateBackButton();
+  };
+
+  const activatePanel = (key) => {
+    if (!['sections', 'layers'].includes(key)) return;
+    state.activePanel = key;
+    closeInspector();
     $$('[data-editor-tab]').forEach((button) => button.classList.toggle('active', button.dataset.editorTab === key));
     $$('[data-editor-panel]').forEach((panel) => { panel.hidden = panel.dataset.editorPanel !== key; });
-    if (key === 'landing') renderLandingSettings();
     updateBackButton();
   };
 
@@ -875,7 +942,6 @@
     renderCanvas();
     renderLists();
     renderTheme();
-    if (state.activePanel === 'landing') renderLandingSettings();
     if (inspector && state.selected) renderInspector();
     if (frame) frame.className = `site-editor-canvas-frame device-${state.device} template-${pageTemplate()}`;
     updateBackButton();
@@ -948,17 +1014,20 @@
   });
 
   $$('[data-editor-tab]').forEach((button) => button.addEventListener('click', () => activatePanel(button.dataset.editorTab)));
-  backButton?.addEventListener('click', () => activatePanel('sections'));
+  $$('[data-editor-modal-open]').forEach((button) => button.addEventListener('click', () => openEditorModal(button.dataset.editorModalOpen)));
+  $$('[data-editor-modal-close]').forEach((button) => button.addEventListener('click', closeEditorModal));
+  backButton?.addEventListener('click', closeInspector);
   $$('[data-library-open]').forEach((button) => button.addEventListener('click', () => openLibrary(button.dataset.libraryOpen)));
   $$('[data-library-close]').forEach((button) => button.addEventListener('click', closeLibrary));
   $$('[data-library-kind]').forEach((button) => button.addEventListener('click', () => openLibrary(button.dataset.libraryKind)));
   $('[data-library-search]')?.addEventListener('input', renderLibrary);
-  $('[data-inspector-back]')?.addEventListener('click', () => activatePanel('sections'));
+  $$('[data-inspector-back]').forEach((button) => button.addEventListener('click', closeInspector));
   $('[data-delete-selected]')?.addEventListener('click', () => {
     if (!state.selected || !confirm('Delete the selected item?')) return;
     snapshot();
     if (state.selected.kind === 'section') state.payload.sections.splice(state.selected.index, 1);
     else state.payload.sections[state.selected.sectionIndex].blocks.splice(state.selected.blockIndex, 1);
+    closeInspector();
     activatePanel('sections');
     renderAll(false);
   });
@@ -1067,10 +1136,14 @@
       event.preventDefault();
       save(false);
     }
-    if (event.key === 'Escape') closeLibrary();
+    if (event.key === 'Escape') { closeLibrary(); closeEditorModal(); closeInspector(); }
   });
 
+  const hydratedDefaultTemplate = ensureDefaultLandingCanvas();
   applyAllTemplateImages(pageTemplate());
   renderAll(false);
-  if (boot.legacyImported) markDirty('Current landing page loaded · save draft');
+  if (hydratedDefaultTemplate || boot.defaultTemplateLoaded || boot.legacyImported) {
+    const count = Array.isArray(state.payload.sections) ? state.payload.sections.length : 0;
+    if (count > 0) markDirty(`Default landing template loaded · ${count} sections · save draft`);
+  }
 })();

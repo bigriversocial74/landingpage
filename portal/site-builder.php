@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-landing-page-builder-v61.2 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.3 */
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
@@ -32,10 +32,31 @@ if (!$page) {
 
 $revisions = site_builder_revisions((int)$page['id']);
 $payload = site_builder_decode((string)$page['draft_json']);
-$legacyImported = false;
-if (site_builder_should_import_landing_settings($page, $revisions)) {
-    $payload = site_builder_landing_payload_from_settings();
-    $page['template_key'] = nmm_landing_template();
+$isLandingPage = ($page['page_type'] ?? '') === 'landing';
+$isHomeLandingPage = $isLandingPage && ($page['slug'] ?? '') === 'home';
+$defaultTemplateLoaded = false;
+$defaultTemplateSource = '';
+
+/*
+ * A Home landing page must never open as an empty canvas. Prefer an existing
+ * draft, then the published Home payload, then the active landing template.
+ * This also repairs older installations that created an empty draft row.
+ */
+if ($isHomeLandingPage && empty($payload['sections'])) {
+    $publishedPayload = site_builder_decode((string)($page['published_json'] ?? ''));
+    if (!empty($publishedPayload['sections'])) {
+        $payload = $publishedPayload;
+        $defaultTemplateSource = 'published Home page';
+    } else {
+        $payload = site_builder_landing_payload_from_settings();
+        $defaultTemplateSource = 'active landing template';
+    }
+
+    if (!empty($payload['sections'])) {
+        $page['template_key'] = (string)($payload['theme']['template'] ?? nmm_landing_template() ?: 'split');
+        $defaultTemplateLoaded = true;
+    }
+
     if (($page['seo_title'] ?? '') === '') {
         $page['seo_title'] = nmm_site_setting('seo_title', setting('site_name', 'North Mountain Media') ?: 'North Mountain Media');
     }
@@ -48,8 +69,10 @@ if (site_builder_should_import_landing_settings($page, $revisions)) {
     if (($page['seo_social_image'] ?? '') === '') {
         $page['seo_social_image'] = nmm_site_media_url('social');
     }
-    $legacyImported = true;
 }
+
+/* Compatibility flag retained for the existing API and older browser state. */
+$legacyImported = $defaultTemplateLoaded;
 
 $savedBlocks = db()->query('SELECT * FROM site_saved_blocks ORDER BY updated_at DESC,id DESC LIMIT 80')->fetchAll();
 $musicTracks = [];
@@ -73,21 +96,29 @@ try {
 }
 
 $publishedHome = site_builder_public_page('home');
-$landingSourcePayload = $publishedHome
-    ? site_builder_decode((string)$publishedHome['published_json'])
-    : site_builder_landing_payload_from_settings();
-$landingSourceLabel = $publishedHome ? 'published Home page' : 'current landing-page settings';
+$publishedHomePayload = $publishedHome ? site_builder_decode((string)$publishedHome['published_json']) : [];
+$landingSettingsPayload = site_builder_landing_payload_from_settings();
+if (!empty($publishedHomePayload['sections'])) {
+    $landingSourcePayload = $publishedHomePayload;
+    $landingSourceLabel = 'published Home page';
+} else {
+    $landingSourcePayload = $landingSettingsPayload;
+    $landingSourceLabel = 'active landing template';
+}
 
 $moduleLinks = [];
 foreach (site_builder_module_links() as $key => [$label, $url]) {
     $moduleLinks[] = ['key' => $key, 'label' => $label, 'url' => app_url($url)];
 }
 
-$isLandingPage = ($page['page_type'] ?? '') === 'landing';
 $bootstrap = [
     'page' => $page,
     'payload' => $payload,
     'legacyImported' => $legacyImported,
+    'defaultTemplateLoaded' => $defaultTemplateLoaded,
+    'defaultTemplateSource' => $defaultTemplateSource,
+    'activeLandingTemplate' => (string)($payload['theme']['template'] ?? nmm_landing_template() ?: 'split'),
+    'payloadSectionCount' => count($payload['sections'] ?? []),
     'landingSourcePayload' => $landingSourcePayload,
     'landingSourceLabel' => $landingSourceLabel,
     'pages' => array_map(static fn(array $item): array => [
@@ -119,18 +150,12 @@ $bootstrap = [
     'preview' => app_url('page-preview.php?id=' . (int)$page['id']),
 ];
 
-$tabs = [
-    'sections' => 'Sections',
-];
-if ($isLandingPage) {
-    $tabs['landing'] = 'Landing settings';
-}
-$tabs += [
-    'layers' => 'Layers',
+$modalLabels = [
+    'landing' => 'Landing settings',
     'styles' => 'Global styles',
-    'responsive' => 'Responsive',
-    'revisions' => 'Revisions',
-    'seo' => 'SEO',
+    'responsive' => 'Responsive preview',
+    'revisions' => 'Revision history',
+    'seo' => 'SEO and sharing',
     'page' => 'Page settings',
 ];
 ?><!doctype html>
@@ -140,8 +165,8 @@ $tabs += [
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="csrf-token" content="<?=e(csrf_token())?>">
 <title>Page Editor — <?=e(setting('site_name','North Mountain Media'))?></title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.2'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.2'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.3'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.3'))?>">
 </head>
 <body class="site-editor-body">
 <div class="site-editor-shell">
@@ -161,98 +186,39 @@ $tabs += [
         </label>
         <button type="button" data-create-page>+ New page</button>
     </div>
-    <nav class="site-editor-nav" aria-label="Editor controls">
-        <?php foreach($tabs as $key=>$label):?>
-        <button type="button" data-editor-tab="<?=e($key)?>" class="<?=$key==='sections'?'active':''?>"><?=e($label)?></button>
-        <?php endforeach;?>
+    <nav class="site-editor-nav" aria-label="Page structure">
+        <button type="button" data-editor-tab="sections" class="active">Sections</button>
+        <button type="button" data-editor-tab="layers">Layers</button>
     </nav>
+    <div class="site-editor-tool-menu">
+        <span>Editor tools</span>
+        <?php if($isLandingPage):?><button type="button" data-editor-modal-open="landing"><strong>Landing settings</strong><small>Template, content, images and CTA</small></button><?php endif;?>
+        <button type="button" data-editor-modal-open="styles"><strong>Global styles</strong><small>Colors, width and corner radius</small></button>
+        <button type="button" data-editor-modal-open="responsive"><strong>Responsive</strong><small>Desktop, tablet and mobile preview</small></button>
+        <button type="button" data-editor-modal-open="seo"><strong>SEO</strong><small>Search and social sharing</small></button>
+        <button type="button" data-editor-modal-open="revisions"><strong>Revisions</strong><small>Restore a saved page version</small></button>
+        <button type="button" data-editor-modal-open="page"><strong>Page settings</strong><small>Title, slug and starter template</small></button>
+    </div>
     <div class="site-editor-panels">
         <section data-editor-panel="sections">
             <div class="editor-panel-heading"><span>Page structure</span><h2>Sections</h2></div>
-            <?php if($legacyImported):?><div class="editor-import-notice"><strong>Current landing page loaded</strong><p>Save the draft to make this the permanent builder version.</p></div><?php endif;?>
+            <?php if($defaultTemplateLoaded && !empty($payload['sections'])):?><div class="editor-import-notice"><strong>Default landing template loaded</strong><p><?=e(ucfirst($defaultTemplateSource ?: 'active landing template'))?> is visible in the canvas. Save the draft to keep this builder version.</p></div><?php endif;?>
             <div class="editor-add-actions">
                 <button class="editor-primary-action" type="button" data-library-open="sections">+ Add section</button>
                 <button type="button" data-library-open="blocks">+ Add block</button>
             </div>
             <div class="editor-section-list" data-section-list></div>
         </section>
-
-        <?php if($isLandingPage):?>
-        <section data-editor-panel="landing" hidden>
-            <div class="editor-panel-heading"><span>Landing page</span><h2>Settings</h2></div>
-            <div data-landing-settings></div>
-        </section>
-        <?php endif;?>
-
         <section data-editor-panel="layers" hidden>
             <div class="editor-panel-heading"><span>Navigator</span><h2>Layers</h2></div>
             <div class="editor-layer-tree" data-layer-tree></div>
-        </section>
-
-        <section data-editor-panel="styles" hidden>
-            <div class="editor-panel-heading"><span>Site design</span><h2>Global styles</h2></div>
-            <label>Content width<input type="number" min="720" max="1600" data-theme-field="contentWidth"></label>
-            <label>Primary color<input type="color" data-theme-field="primary"></label>
-            <label>Accent color<input type="color" data-theme-field="accent"></label>
-            <label>Corner radius<input type="range" min="0" max="48" data-theme-field="radius"></label>
-        </section>
-
-        <section data-editor-panel="responsive" hidden>
-            <div class="editor-panel-heading"><span>Preview</span><h2>Responsive canvas</h2></div>
-            <div class="editor-device-list">
-                <button data-device="desktop">Desktop</button>
-                <button data-device="tablet">Tablet</button>
-                <button data-device="mobile">Mobile</button>
-            </div>
-            <p>Choose the canvas width without leaving the editor.</p>
-        </section>
-
-        <section data-editor-panel="revisions" hidden>
-            <div class="editor-panel-heading"><span>History</span><h2>Revisions</h2></div>
-            <div class="editor-revision-list">
-                <?php foreach($revisions as $revision):?>
-                <article><div><strong>Revision <?=$revision['revision_number']?></strong><span><?=e(status_label($revision['revision_type']))?> · <?=e(format_datetime($revision['created_at']))?></span><small><?=e($revision['display_name']??'Administrator')?></small></div><button type="button" data-restore-revision="<?=$revision['id']?>">Restore</button></article>
-                <?php endforeach;?>
-                <?php if(!$revisions):?><p>No saved revisions yet.</p><?php endif;?>
-            </div>
-        </section>
-
-        <section data-editor-panel="seo" hidden>
-            <div class="editor-panel-heading"><span>Search and sharing</span><h2>Page SEO</h2></div>
-            <label>SEO title<input data-page-field="seo_title" value="<?=e($page['seo_title']??'')?>"></label>
-            <label>Meta description<textarea rows="5" data-page-field="seo_description"><?=e($page['seo_description']??'')?></textarea></label>
-            <label>Keywords<input data-page-field="seo_keywords" value="<?=e($page['seo_keywords']??'')?>" placeholder="design, media, CRM"></label>
-            <label>Canonical URL<input type="url" data-page-field="seo_canonical_url" value="<?=e($page['seo_canonical_url']??'')?>" placeholder="Uses the global site URL when blank"></label>
-            <label>Social image URL<input data-page-field="seo_social_image" value="<?=e($page['seo_social_image']??'')?>" placeholder="Choose the template social image or upload one"><button type="button" data-page-media-upload="seo_social_image">Upload social image</button></label>
-            <label class="editor-check"><input type="checkbox" data-page-field="seo_index_enabled" <?=$page['seo_index_enabled']?'checked':''?>> Allow indexing</label>
-        </section>
-
-        <section data-editor-panel="page" hidden>
-            <div class="editor-panel-heading"><span>Document</span><h2>Page settings</h2></div>
-            <label>Page title<input data-page-field="title" value="<?=e($page['title'])?>"></label>
-            <label>Slug<input data-page-field="slug" value="<?=e($page['slug'])?>"></label>
-            <label>Starter template
-                <select data-page-field="template_key">
-                    <?php foreach(array_keys(site_builder_templates()) as $template):?>
-                    <option value="<?=e($template)?>" <?=$page['template_key']===$template?'selected':''?>><?=e(status_label($template))?></option>
-                    <?php endforeach;?>
-                </select>
-            </label>
-            <button type="button" data-load-template>Load template into canvas</button>
-            <?php if(($page['slug']??'')!=='home'):?><button type="button" class="editor-danger-action" data-archive-page>Archive page</button><?php endif;?>
-        </section>
-
-        <section class="site-editor-inspector" data-inspector hidden>
-            <header><button type="button" data-inspector-back>←</button><div><span>Selected item</span><h2 data-inspector-title>Section</h2></div></header>
-            <div data-inspector-fields></div>
-            <div class="inspector-actions"><button type="button" data-duplicate-selected>Duplicate</button><button type="button" data-save-reusable>Save reusable</button><button type="button" class="danger" data-delete-selected>Delete</button></div>
         </section>
     </div>
 </aside>
 
 <main class="site-editor-main">
     <header class="site-editor-topbar">
-        <div><button type="button" data-sidebar-toggle aria-label="Editor controls">☰</button><strong><?=e($page['title'])?></strong><span data-save-state><?=$legacyImported?'Current landing page loaded':'Draft ready'?></span></div>
+        <div><button type="button" data-sidebar-toggle aria-label="Editor controls">☰</button><strong><?=e($page['title'])?></strong><span data-save-state><?=$defaultTemplateLoaded && !empty($payload['sections'])?'Default landing template loaded':'Draft ready'?></span></div>
         <div class="site-editor-device-tabs"><button data-device="desktop" class="active">Desktop</button><button data-device="tablet">Tablet</button><button data-device="mobile">Mobile</button></div>
         <div><button type="button" data-undo>Undo</button><button type="button" data-redo>Redo</button><a href="<?=e($bootstrap['preview'])?>" target="_blank" data-preview>Preview</a><button type="button" data-save-draft>Save draft</button><button class="publish" type="button" data-publish>Publish</button></div>
     </header>
@@ -263,7 +229,73 @@ $tabs += [
     </div>
 </main>
 
-<aside class="site-library-drawer" data-library-drawer aria-hidden="true">
+<div class="site-editor-modal" data-editor-modal hidden aria-hidden="true">
+    <button type="button" class="site-editor-modal-backdrop" data-editor-modal-close aria-label="Close settings"></button>
+    <section class="site-editor-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="site-editor-modal-title">
+        <header><div><span>Page editor</span><h2 id="site-editor-modal-title" data-editor-modal-title>Settings</h2></div><button type="button" data-editor-modal-close aria-label="Close settings">×</button></header>
+        <div class="site-editor-modal-body">
+            <?php if($isLandingPage):?>
+            <section data-editor-modal-panel="landing" hidden>
+                <div class="editor-panel-heading"><span>Landing page</span><h2>Template and content</h2><p>The active template, page copy, images, feature inventory, CTA and footer are managed here.</p></div>
+                <div data-landing-settings></div>
+            </section>
+            <?php endif;?>
+            <section data-editor-modal-panel="styles" hidden>
+                <div class="editor-panel-heading"><span>Site design</span><h2>Global styles</h2></div>
+                <div class="editor-modal-form-grid">
+                    <label>Content width<input type="number" min="720" max="1600" data-theme-field="contentWidth"></label>
+                    <label>Primary color<input type="color" data-theme-field="primary"></label>
+                    <label>Accent color<input type="color" data-theme-field="accent"></label>
+                    <label>Corner radius<input type="range" min="0" max="48" data-theme-field="radius"></label>
+                </div>
+            </section>
+            <section data-editor-modal-panel="responsive" hidden>
+                <div class="editor-panel-heading"><span>Preview</span><h2>Responsive canvas</h2><p>Change the working canvas without leaving the editor.</p></div>
+                <div class="editor-device-list editor-device-list-modal"><button data-device="desktop">Desktop</button><button data-device="tablet">Tablet</button><button data-device="mobile">Mobile</button></div>
+            </section>
+            <section data-editor-modal-panel="revisions" hidden>
+                <div class="editor-panel-heading"><span>History</span><h2>Revisions</h2></div>
+                <div class="editor-revision-list">
+                    <?php foreach($revisions as $revision):?>
+                    <article><div><strong>Revision <?=$revision['revision_number']?></strong><span><?=e(status_label($revision['revision_type']))?> · <?=e(format_datetime($revision['created_at']))?></span><small><?=e($revision['display_name']??'Administrator')?></small></div><button type="button" data-restore-revision="<?=$revision['id']?>">Restore</button></article>
+                    <?php endforeach;?>
+                    <?php if(!$revisions):?><p>No saved revisions yet.</p><?php endif;?>
+                </div>
+            </section>
+            <section data-editor-modal-panel="seo" hidden>
+                <div class="editor-panel-heading"><span>Search and sharing</span><h2>Page SEO</h2></div>
+                <div class="editor-modal-form-grid">
+                    <label>SEO title<input data-page-field="seo_title" value="<?=e($page['seo_title']??'')?>"></label>
+                    <label class="editor-field-wide">Meta description<textarea rows="5" data-page-field="seo_description"><?=e($page['seo_description']??'')?></textarea></label>
+                    <label>Keywords<input data-page-field="seo_keywords" value="<?=e($page['seo_keywords']??'')?>" placeholder="design, media, CRM"></label>
+                    <label>Canonical URL<input type="url" data-page-field="seo_canonical_url" value="<?=e($page['seo_canonical_url']??'')?>" placeholder="Uses the global site URL when blank"></label>
+                    <label class="editor-field-wide">Social image URL<input data-page-field="seo_social_image" value="<?=e($page['seo_social_image']??'')?>" placeholder="Choose the template social image or upload one"><button type="button" data-page-media-upload="seo_social_image">Upload social image</button></label>
+                    <label class="editor-check"><input type="checkbox" data-page-field="seo_index_enabled" <?=$page['seo_index_enabled']?'checked':''?>> Allow indexing</label>
+                </div>
+            </section>
+            <section data-editor-modal-panel="page" hidden>
+                <div class="editor-panel-heading"><span>Document</span><h2>Page settings</h2></div>
+                <div class="editor-modal-form-grid">
+                    <label>Page title<input data-page-field="title" value="<?=e($page['title'])?>"></label>
+                    <label>Slug<input data-page-field="slug" value="<?=e($page['slug'])?>"></label>
+                    <label>Starter template<select data-page-field="template_key"><?php foreach(array_keys(site_builder_templates()) as $template):?><option value="<?=e($template)?>" <?=$page['template_key']===$template?'selected':''?>><?=e(status_label($template))?></option><?php endforeach;?></select></label>
+                    <div class="editor-modal-actions"><button type="button" data-load-template>Load template into canvas</button><?php if(($page['slug']??'')!=='home'):?><button type="button" class="editor-danger-action" data-archive-page>Archive page</button><?php endif;?></div>
+                </div>
+            </section>
+        </div>
+    </section>
+</div>
+
+<div class="site-editor-inspector-modal" data-inspector hidden aria-hidden="true">
+    <button type="button" class="site-editor-modal-backdrop" data-inspector-back aria-label="Close inspector"></button>
+    <section class="site-editor-inspector-dialog" role="dialog" aria-modal="true">
+        <header><div><span>Selected item</span><h2 data-inspector-title>Section</h2></div><button type="button" data-inspector-back aria-label="Close inspector">×</button></header>
+        <div class="site-editor-inspector-body" data-inspector-fields></div>
+        <footer class="inspector-actions"><button type="button" data-duplicate-selected>Duplicate</button><button type="button" data-save-reusable>Save reusable</button><button type="button" class="danger" data-delete-selected>Delete</button></footer>
+    </section>
+</div>
+
+<aside class="site-library-drawer site-library-modal" data-library-drawer aria-hidden="true">
     <header><div><span>Block and section library</span><h2 data-library-title>Add sections</h2></div><button type="button" data-library-close>×</button></header>
     <div class="site-library-search"><input type="search" placeholder="Search blocks and sections" data-library-search></div>
     <div class="site-library-tabs"><button data-library-kind="sections" class="active">Sections</button><button data-library-kind="blocks">Blocks</button><button data-library-kind="saved">Saved</button></div>
@@ -273,6 +305,6 @@ $tabs += [
 <button class="site-library-backdrop" data-library-close aria-label="Close library"></button>
 </div>
 <script>window.NMM_SITE_BUILDER=<?=json_encode($bootstrap,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;</script>
-<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.2'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.3'))?>"></script>
 </body>
 </html>

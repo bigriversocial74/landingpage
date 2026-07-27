@@ -17,26 +17,40 @@ foreach (compact('core', 'editor', 'script', 'admin', 'adminCss', 'publicCss') a
 }
 
 $checks = [
-    'legacy landing import' => ['site_builder_landing_payload_from_settings', $core],
-    'safe import boundary' => ['site_builder_should_import_landing_settings', $core],
+    'landing payload builder' => ['site_builder_landing_payload_from_settings', $core],
     'template image inventory' => ['site_builder_template_image_inventory', $core],
-    'expanded gallery block' => ["'gallery'=>", $core],
-    'expanded image text block' => ["'image_text'=>", $core],
-    'newsletter block' => ["'newsletter'=>", $core],
-    'landing editor panel' => ['data-editor-panel="landing"', $editor],
-    'upper-left back button' => ['data-editor-back', $editor],
+    'server empty Home fallback' => ['if ($isHomeLandingPage && empty($payload[\'sections\']))', $editor],
+    'published payload preference' => ['$defaultTemplateSource = \'published Home page\'', $editor],
+    'active template fallback' => ['$defaultTemplateSource = \'active landing template\'', $editor],
+    'actual section status boundary' => ['$defaultTemplateLoaded && !empty($payload[\'sections\'])', $editor],
+    'landing settings modal' => ['data-editor-modal-panel="landing"', $editor],
+    'landing settings modal launcher' => ['data-editor-modal-open="landing"', $editor],
+    'modal settings workspace' => ['data-editor-modal', $editor],
+    'modal inspector workspace' => ['site-editor-inspector-modal', $editor],
     'visible category filter' => ['data-library-categories', $editor],
-    'landing settings renderer' => ['renderLandingSettings', $script],
+    'browser empty Home fallback' => ['ensureDefaultLandingCanvas', $script],
+    'fallback requires actual sections' => ['payloadHasSections', $script],
+    'editor modal controller' => ['openEditorModal', $script],
     'block category filtering' => ['renderLibraryCategories', $script],
     'block image uploader' => ['chooseAndUploadImage', $script],
     'template image keys' => ['templateImageKey', $script],
+    'empty canvas library action' => ['data-empty-library-open', $script],
     'preview back button' => ['site-preview-back', $publicCss],
     'visual block cards' => ['site-library-card-preview', $adminCss],
+    'modal block library' => ['site-library-drawer.site-library-modal', $adminCss],
+    'v61.3 cache busting' => ['v=20260727-v61.3', $editor],
 ];
 
 foreach ($checks as $label => [$needle, $haystack]) {
     if (!str_contains($haystack, $needle)) {
         fwrite(STDERR, "Missing {$label}: {$needle}\n");
+        exit(1);
+    }
+}
+
+foreach (['data-editor-panel="landing"', 'data-editor-panel="styles"', 'data-editor-panel="seo"', 'data-editor-panel="page"'] as $needle) {
+    if (str_contains($editor, $needle)) {
+        fwrite(STDERR, "Settings still render as sidebar panels: {$needle}\n");
         exit(1);
     }
 }
@@ -64,4 +78,4 @@ if (str_contains($admin, "'landing' => 'Landing settings'")) {
     exit(1);
 }
 
-echo "Landing Page Builder v61.2 regression checks passed.\n";
+echo "Landing Page Builder v61.3 regression checks passed.\n";
