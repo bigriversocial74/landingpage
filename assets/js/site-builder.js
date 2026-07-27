@@ -1,9 +1,9 @@
-/* North Mountain Media build: 20260727-landing-page-builder-v61.2 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.5 */
 (() => {
   'use strict';
 
   const boot = window.NMM_SITE_BUILDER || {};
-  const clone = (value) => structuredClone(value);
+  const clone = (value) => (typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)));
   const state = {
     page: { ...(boot.page || {}) },
     payload: clone(boot.payload || { version: 2, theme: {}, sections: [] }),
@@ -13,7 +13,7 @@
     libraryKind: 'sections',
     libraryCategory: 'All',
     device: 'desktop',
-    dirty: Boolean(boot.legacyImported),
+    dirty: Boolean(boot.defaultTemplateLoaded || boot.legacyImported),
     activePanel: 'sections',
   };
 
@@ -39,6 +39,8 @@
   const libraryCount = $('[data-library-count]');
   const backButton = $('[data-editor-back]');
   const brandLogo = $('.site-editor-brand-logo');
+  const editorModal = $('[data-editor-modal]');
+  const inspectorModal = $('[data-inspector]');
 
   const markDirty = (message = 'Unsaved changes') => {
     state.dirty = true;
@@ -189,18 +191,60 @@
     return `<figure class="editor-section-image"><img src="${escapeHtml(settings.image)}" alt=""></figure>`;
   };
 
+  const headerLinks = () => {
+    const configured = Array.isArray(boot.site?.headerLinks) && boot.site.headerLinks.length
+      ? boot.site.headerLinks
+      : (boot.site?.moduleLinks || []);
+    return configured.slice(0, 7);
+  };
+
+  const ensureHeaderSettings = () => {
+    state.payload.theme ||= {};
+    const heroButton = state.payload.sections
+      ?.find((section) => section.type === 'hero')
+      ?.blocks?.find((block) => block.type === 'button')?.settings || {};
+    const current = state.payload.theme.header && typeof state.payload.theme.header === 'object'
+      ? state.payload.theme.header
+      : {};
+    state.payload.theme.header = {
+      style: 'light',
+      logo: boot.site?.logo || '',
+      logoAlt: boot.site?.logoAlt || boot.site?.name || 'Site logo',
+      siteName: boot.site?.name || 'North Mountain Media',
+      showNavigation: true,
+      sticky: true,
+      ctaLabel: heroButton.label || 'Start a project',
+      ctaUrl: heroButton.url || 'intake.php',
+      ...current,
+    };
+    return state.payload.theme.header;
+  };
+
   const renderCanvas = () => {
     if (!canvas) return;
     canvas.replaceChildren();
     const pageShell = document.createElement('div');
     pageShell.className = `editor-page-preview template-${escapeHtml(pageTemplate())}`;
-    const links = (boot.site?.moduleLinks || []).slice(0, 7).map((link) => `<span>${escapeHtml(link.label)}</span>`).join('');
-    pageShell.innerHTML = `<header class="editor-page-header"><img src="${escapeHtml(boot.site?.logo || '')}" alt="${escapeHtml(boot.site?.logoAlt || '')}"><nav>${links}</nav></header><main data-preview-main></main><footer class="editor-page-footer"><span>${escapeHtml(state.payload.theme?.footerText || boot.site?.name || 'North Mountain Media')}</span></footer>`;
+    const header = ensureHeaderSettings();
+    const links = header.showNavigation
+      ? headerLinks().map((link) => `<span>${escapeHtml(link.label)}</span>`).join('')
+      : '';
+    const logoMarkup = header.logo
+      ? `<img data-preview-header-logo src="${escapeHtml(header.logo)}" alt="${escapeHtml(header.logoAlt || header.siteName)}">`
+      : '';
+    const ctaMarkup = header.ctaLabel
+      ? `<span class="editor-page-header-cta">${escapeHtml(header.ctaLabel)}</span>`
+      : '';
+    pageShell.innerHTML = `<header class="editor-page-header header-${escapeHtml(header.style || 'light')} ${header.sticky ? 'is-sticky' : ''}" data-preview-header><button type="button" class="editor-header-edit" data-edit-header>Edit header</button><div class="editor-page-brand">${logoMarkup}<strong data-preview-header-name>${escapeHtml(header.siteName || boot.site?.name || 'North Mountain Media')}</strong></div><nav>${links}</nav>${ctaMarkup}</header><main data-preview-main></main><footer class="editor-page-footer"><span>${escapeHtml(state.payload.theme?.footerText || boot.site?.name || 'North Mountain Media')}</span></footer>`;
+    $('[data-edit-header]', pageShell)?.addEventListener('click', () => openEditorModal('header'));
+    const headerLogo = $('[data-preview-header-logo]', pageShell);
+    headerLogo?.addEventListener('error', () => { headerLogo.hidden = true; });
     const main = $('[data-preview-main]', pageShell);
 
     if (!state.payload.sections?.length) {
-      main.innerHTML = '<div class="editor-canvas-empty"><div><strong>Start with a section</strong><p>Open the visible library and click or drag a section onto the canvas.</p></div></div>';
+      main.innerHTML = '<div class="editor-canvas-empty"><div><strong>No page sections are loaded</strong><p>The active landing template should appear here automatically. Open the section library only when you want to add more.</p><button type="button" data-empty-library-open>Open section library</button></div></div>';
       canvas.append(pageShell);
+      $('[data-empty-library-open]', pageShell)?.addEventListener('click', () => openLibrary('sections'));
       return;
     }
 
@@ -285,6 +329,15 @@
     const sectionList = $('[data-section-list]');
     const layerTree = $('[data-layer-tree]');
     [sectionList, layerTree].forEach((target) => target?.replaceChildren());
+    [sectionList, layerTree].forEach((target) => {
+      if (!target) return;
+      const headerRow = document.createElement('button');
+      headerRow.type = 'button';
+      headerRow.className = target === layerTree ? 'editor-layer-row editor-chrome-row' : 'editor-section-row editor-chrome-row';
+      headerRow.innerHTML = '<b>▤</b><span>Header & navigation</span><small>template</small>';
+      headerRow.addEventListener('click', () => openEditorModal('header'));
+      target.append(headerRow);
+    });
     (state.payload.sections || []).forEach((section, index) => {
       const row = document.createElement('button');
       row.type = 'button';
@@ -396,7 +449,7 @@
       return;
     }
     inspector.hidden = false;
-    $$('.site-editor-panels>section:not(.site-editor-inspector)').forEach((panel) => { panel.hidden = true; });
+    inspector.setAttribute('aria-hidden', 'false');
     $('[data-inspector-title]').textContent = item.type.replaceAll('_', ' ');
     fields.replaceChildren();
     fieldDefinitions(item).forEach(([key, label, kind]) => {
@@ -605,12 +658,98 @@
     library?.classList.add('open');
     library?.setAttribute('aria-hidden', 'false');
     $$('[data-library-kind]').forEach((button) => button.classList.toggle('active', button.dataset.libraryKind === kind));
-    $('[data-library-title]').textContent = kind === 'sections' ? 'Add sections' : kind === 'blocks' ? 'Add blocks' : 'Saved items';
+    const libraryTitle = $('[data-library-title]');
+    if (libraryTitle) libraryTitle.textContent = kind === 'sections' ? `Add sections · ${Object.keys(boot.sections || {}).length}` : kind === 'blocks' ? `Add blocks · ${Object.keys(boot.blocks || {}).length}` : 'Saved items';
     renderLibrary();
   };
   const closeLibrary = () => {
     library?.classList.remove('open');
     library?.setAttribute('aria-hidden', 'true');
+  };
+
+  const modalTitles = {
+    header: 'Header & navigation',
+    landing: 'Landing settings',
+    styles: 'Global styles',
+    responsive: 'Responsive preview',
+    revisions: 'Revision history',
+    seo: 'SEO and sharing',
+    page: 'Page settings',
+  };
+
+  const openEditorModal = (key) => {
+    const panel = $(`[data-editor-modal-panel="${key}"]`);
+    if (!editorModal || !panel) return;
+    closeLibrary();
+    closeInspector();
+    $$('[data-editor-modal-panel]').forEach((item) => { item.hidden = item !== panel; });
+    const title = $('[data-editor-modal-title]');
+    if (title) title.textContent = modalTitles[key] || 'Editor settings';
+    if (key === 'header') renderHeaderSettings();
+    if (key === 'landing') renderLandingSettings();
+    if (key === 'styles') renderTheme();
+    editorModal.hidden = false;
+    editorModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('editor-modal-open');
+    panel.querySelector('input,textarea,select,button')?.focus({ preventScroll: true });
+  };
+
+  const closeEditorModal = () => {
+    if (!editorModal) return;
+    editorModal.hidden = true;
+    editorModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('editor-modal-open');
+  };
+
+  const payloadHasSections = (payload) => Array.isArray(payload?.sections) && payload.sections.length > 0;
+  const hardDefaultLandingPayload = () => ({
+    version: 2,
+    theme: { template: 'split', contentWidth: '1180', primary: '#152638', accent: '#0b8588', radius: '18', footerText: 'North Mountain Media' },
+    sections: [sectionDefaults('hero'), sectionDefaults('features'), sectionDefaults('cta')],
+  });
+  const ensureDefaultLandingCanvas = () => {
+    const isHome = String(state.page.slug || '').toLowerCase() === 'home';
+    const isLanding = state.page.page_type === 'landing' || isHome;
+    if (!isLanding || payloadHasSections(state.payload)) return false;
+    if (isHome) state.page.page_type = 'landing';
+    const requested = boot.activeLandingTemplate && boot.activeLandingTemplate !== 'blank'
+      ? boot.activeLandingTemplate
+      : (state.page.template_key && state.page.template_key !== 'blank' ? state.page.template_key : 'split');
+    const candidates = [boot.landingSourcePayload, boot.templates?.[requested], boot.templates?.split, hardDefaultLandingPayload()];
+    const source = candidates.find(payloadHasSections);
+    if (!source) return false;
+    state.payload = clone(source);
+    state.payload.theme ||= {};
+    const template = state.payload.theme.template && state.payload.theme.template !== 'blank'
+      ? state.payload.theme.template
+      : requested;
+    state.payload.theme.template = template;
+    state.page.template_key = template;
+    const templateField = $('[data-page-field="template_key"]');
+    if (templateField) templateField.value = template;
+    ensureHeaderSettings();
+    state.dirty = true;
+    return true;
+  };
+
+  const renderHeaderSettings = () => {
+    const header = ensureHeaderSettings();
+    $$('[data-header-field]').forEach((field) => {
+      const key = field.dataset.headerField;
+      if (!key) return;
+      if (field.type === 'checkbox') field.checked = Boolean(header[key]);
+      else field.value = header[key] ?? '';
+      let captured = false;
+      field.onfocus = () => { captured = false; };
+      field.oninput = () => {
+        if (!captured) { snapshot(); captured = true; }
+        header[key] = field.type === 'checkbox' ? field.checked : field.value;
+        renderCanvas();
+        renderLists();
+        markDirty('Header updated · save draft');
+      };
+      field.onchange = field.oninput;
+    });
   };
 
   const captureLandingContent = () => {
@@ -636,10 +775,11 @@
     if (!boot.templates?.[template]) return;
     const content = preserveContent ? captureLandingContent() : null;
     const imageInventory = Object.fromEntries(Object.entries(state.payload.theme || {}).filter(([key]) => key.startsWith('image_')));
+    const headerInventory = clone(ensureHeaderSettings());
     snapshot();
     state.payload = clone(boot.templates[template]);
     state.payload.theme ||= {};
-    Object.assign(state.payload.theme, imageInventory, { template });
+    Object.assign(state.payload.theme, imageInventory, { template, header: headerInventory });
     if (content) {
       const hero = ensureSection('hero');
       Object.assign(hero.settings, content.hero, { layout: template, alignment: template === 'centered' ? 'center' : content.hero.alignment || 'left' });
@@ -856,18 +996,28 @@
   });
 
   const updateBackButton = () => {
-    const show = Boolean(state.selected) || state.activePanel !== 'sections';
+    const show = Boolean(state.selected);
     if (backButton) backButton.hidden = !show;
     if (brandLogo) brandLogo.hidden = show;
   };
 
-  const activatePanel = (key) => {
-    state.activePanel = key;
+  const closeInspector = () => {
     state.selected = null;
-    $('[data-inspector]').hidden = true;
+    if (inspectorModal) {
+      inspectorModal.hidden = true;
+      inspectorModal.setAttribute('aria-hidden', 'true');
+    }
+    renderCanvas();
+    renderLists();
+    updateBackButton();
+  };
+
+  const activatePanel = (key) => {
+    if (!['sections', 'layers'].includes(key)) return;
+    state.activePanel = key;
+    closeInspector();
     $$('[data-editor-tab]').forEach((button) => button.classList.toggle('active', button.dataset.editorTab === key));
     $$('[data-editor-panel]').forEach((panel) => { panel.hidden = panel.dataset.editorPanel !== key; });
-    if (key === 'landing') renderLandingSettings();
     updateBackButton();
   };
 
@@ -875,7 +1025,6 @@
     renderCanvas();
     renderLists();
     renderTheme();
-    if (state.activePanel === 'landing') renderLandingSettings();
     if (inspector && state.selected) renderInspector();
     if (frame) frame.className = `site-editor-canvas-frame device-${state.device} template-${pageTemplate()}`;
     updateBackButton();
@@ -948,17 +1097,20 @@
   });
 
   $$('[data-editor-tab]').forEach((button) => button.addEventListener('click', () => activatePanel(button.dataset.editorTab)));
-  backButton?.addEventListener('click', () => activatePanel('sections'));
+  $$('[data-editor-modal-open]').forEach((button) => button.addEventListener('click', () => openEditorModal(button.dataset.editorModalOpen)));
+  $$('[data-editor-modal-close]').forEach((button) => button.addEventListener('click', closeEditorModal));
+  backButton?.addEventListener('click', closeInspector);
   $$('[data-library-open]').forEach((button) => button.addEventListener('click', () => openLibrary(button.dataset.libraryOpen)));
   $$('[data-library-close]').forEach((button) => button.addEventListener('click', closeLibrary));
   $$('[data-library-kind]').forEach((button) => button.addEventListener('click', () => openLibrary(button.dataset.libraryKind)));
   $('[data-library-search]')?.addEventListener('input', renderLibrary);
-  $('[data-inspector-back]')?.addEventListener('click', () => activatePanel('sections'));
+  $$('[data-inspector-back]').forEach((button) => button.addEventListener('click', closeInspector));
   $('[data-delete-selected]')?.addEventListener('click', () => {
     if (!state.selected || !confirm('Delete the selected item?')) return;
     snapshot();
     if (state.selected.kind === 'section') state.payload.sections.splice(state.selected.index, 1);
     else state.payload.sections[state.selected.sectionIndex].blocks.splice(state.selected.blockIndex, 1);
+    closeInspector();
     activatePanel('sections');
     renderAll(false);
   });
@@ -1039,6 +1191,17 @@
       location.href = result.redirect;
     } catch (error) { alert(error.message); }
   }));
+  $('[data-header-logo-upload]')?.addEventListener('click', (event) => chooseAndUploadImage(event.currentTarget, (urls) => {
+    const url = urls[0] || '';
+    if (!url) return;
+    snapshot();
+    const header = ensureHeaderSettings();
+    header.logo = url;
+    const field = $('[data-header-field="logo"]');
+    if (field) field.value = url;
+    renderCanvas();
+    markDirty('Header logo uploaded · save draft');
+  }));
   $$('[data-page-media-upload]').forEach((button) => button.addEventListener('click', () => chooseAndUploadImage(button, (urls) => {
     const field = $(`[data-page-field="${button.dataset.pageMediaUpload}"]`);
     if (field) {
@@ -1067,10 +1230,71 @@
       event.preventDefault();
       save(false);
     }
-    if (event.key === 'Escape') closeLibrary();
+    if (event.key === 'Escape') { closeLibrary(); closeEditorModal(); closeInspector(); }
   });
 
-  applyAllTemplateImages(pageTemplate());
-  renderAll(false);
-  if (boot.legacyImported) markDirty('Current landing page loaded · save draft');
+  let editorInitialized = false;
+  const initializeEditor = () => {
+    if (editorInitialized) return;
+    editorInitialized = true;
+    let hydratedDefaultTemplate = false;
+    try {
+      hydratedDefaultTemplate = ensureDefaultLandingCanvas();
+      const isHome = String(state.page.slug || '').toLowerCase() === 'home';
+      if (isHome && !payloadHasSections(state.payload)) {
+        state.payload = hardDefaultLandingPayload();
+        state.page.page_type = 'landing';
+        state.page.template_key = 'split';
+        hydratedDefaultTemplate = true;
+      }
+      ensureHeaderSettings();
+      applyAllTemplateImages(pageTemplate());
+      renderAll(false);
+      renderLibrary();
+      document.body.classList.remove('editor-booting');
+      document.body.classList.add('editor-ready');
+      const count = Array.isArray(state.payload.sections) ? state.payload.sections.length : 0;
+      if (count > 0) {
+        if (hydratedDefaultTemplate || boot.defaultTemplateLoaded || boot.legacyImported) {
+          markDirty(`Template ready · header + ${count} sections · save draft`);
+        } else if (saveState) {
+          saveState.textContent = `Template ready · header + ${count} sections`;
+        }
+      } else if (saveState) {
+        saveState.textContent = 'No sections loaded · choose a starter template';
+      }
+    } catch (error) {
+      console.error('North Mountain Media editor initialization failed.', error);
+      state.payload = hardDefaultLandingPayload();
+      ensureHeaderSettings();
+      renderAll(false);
+      renderLibrary();
+      document.body.classList.remove('editor-booting');
+      document.body.classList.add('editor-ready', 'editor-recovered');
+      if (saveState) saveState.textContent = 'Recovered default template · save draft';
+      state.dirty = true;
+    }
+
+    requestAnimationFrame(() => {
+      const isHome = String(state.page.slug || '').toLowerCase() === 'home';
+      if (isHome && !payloadHasSections(state.payload)) {
+        state.payload = hardDefaultLandingPayload();
+        ensureHeaderSettings();
+        renderAll(false);
+        if (saveState) saveState.textContent = 'Recovered default template · save draft';
+        state.dirty = true;
+      }
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeEditor, { once: true });
+  } else {
+    initializeEditor();
+  }
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    editorInitialized = false;
+    initializeEditor();
+  });
 })();

@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-landing-page-builder-v61.2 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.5 */
 declare(strict_types=1);
 
 function site_builder_schema_available(): bool
@@ -236,15 +236,23 @@ function site_builder_clean_url(mixed $value): string
     return $value;
 }
 
-function site_builder_sanitize_settings(array $settings): array
+function site_builder_sanitize_settings(array $settings,int $depth=0): array
 {
     $clean=[];
     foreach(array_slice($settings,0,120,true) as $key=>$value){
         $key=preg_replace('/[^a-z0-9_-]/i','',substr((string)$key,0,96))??'';
         if($key==='') continue;
         if(is_bool($value)||is_int($value)||is_float($value)){$clean[$key]=$value;continue;}
-        if(is_array($value)){$clean[$key]=array_slice(array_map(static fn($item)=>site_builder_clean_text($item,1000),$value),0,60);continue;}
-        $lowerKey=strtolower($key);$isUrl=str_ends_with($lowerKey,'url')||in_array($lowerKey,['image','video','audio','backgroundimage','poster'],true)||str_starts_with($lowerKey,'image_');
+        if(is_array($value)){
+            if($depth>=3) continue;
+            if(array_is_list($value)){
+                $clean[$key]=array_slice(array_map(static fn($item)=>is_scalar($item)?site_builder_clean_text($item,1000):'', $value),0,60);
+            }else{
+                $clean[$key]=site_builder_sanitize_settings($value,$depth+1);
+            }
+            continue;
+        }
+        $lowerKey=strtolower($key);$isUrl=str_ends_with($lowerKey,'url')||in_array($lowerKey,['image','logo','video','audio','backgroundimage','poster'],true)||str_starts_with($lowerKey,'image_');
         $clean[$key]=$isUrl?site_builder_clean_url($value):site_builder_clean_text($value,12000);
     }
     return $clean;
@@ -416,12 +424,28 @@ function site_builder_render_page(array $page,array $payload,bool $preview=false
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
     }
-    $theme=$payload['theme']??[];$siteName=setting('site_name','North Mountain Media')?:'North Mountain Media';$title=(string)((($page['seo_title']??'')!=='')?$page['seo_title']:($page['title']??'Page'));$description=(string)($page['seo_description']??'');$keywords=(string)($page['seo_keywords']??'');$canonical=(string)($page['seo_canonical_url']??'');$social=(string)($page['seo_social_image']??'');$template=preg_replace('/[^a-z0-9_-]/i','',(string)($page['template_key']??$theme['template']??'split'))?:'split';
+    $theme=is_array($payload['theme']??null)?$payload['theme']:[];
+    $siteName=setting('site_name','North Mountain Media')?:'North Mountain Media';
+    $title=(string)((($page['seo_title']??'')!=='')?$page['seo_title']:($page['title']??'Page'));
+    $description=(string)($page['seo_description']??'');
+    $keywords=(string)($page['seo_keywords']??'');
+    $canonical=(string)($page['seo_canonical_url']??'');
+    $social=(string)($page['seo_social_image']??'');
+    $template=preg_replace('/[^a-z0-9_-]/i','',(string)($page['template_key']??$theme['template']??'split'))?:'split';
     if($canonical===''){ $base=rtrim(nmm_site_setting('seo_site_url'),'/'); if($base!=='')$canonical=$base.'/'.($page['slug']==='home'?'':('page.php?slug='.rawurlencode((string)$page['slug']))); }
     if($social==='')$social=(string)($theme[site_builder_template_image_key($template,'social')]??'');
     if($social==='')$social=nmm_site_media_url('social');
     $footerText=(string)($theme['footerText']??nmm_site_setting('landing_footer_text','North Mountain Media · Phoenix, Arizona'));
-    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="build-version" content="20260727-landing-page-builder-v61.2"><title><?=e($title)?> — <?=e($siteName)?></title><?php if($description!==''):?><meta name="description" content="<?=e($description)?>"><meta property="og:description" content="<?=e($description)?>"><?php endif;?><?php if($keywords!==''):?><meta name="keywords" content="<?=e($keywords)?>"><?php endif;?><meta name="robots" content="<?=$preview||!(bool)($page['seo_index_enabled']??1)?'noindex,nofollow':'index,follow'?>"><meta property="og:title" content="<?=e($title)?>"><meta property="og:type" content="website"><?php if($canonical!==''):?><link rel="canonical" href="<?=e($canonical)?>"><meta property="og:url" content="<?=e($canonical)?>"><?php endif;?><?php if($social!==''):?><meta property="og:image" content="<?=e(nmm_public_link_url($social))?>"><?php endif;?><link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-public.css?v=20260727-v61.2'))?>"><link rel="stylesheet" href="<?=e(app_url('assets/css/music-library.css?v=20260727-v61'))?>"><style>:root{--site-content-width:<?=max(720,min(1600,(int)($theme['contentWidth']??1180)))?>px;--site-primary:<?=e($theme['primary']??'#152638')?>;--site-accent:<?=e($theme['accent']??'#0b8588')?>;--site-radius:<?=max(0,min(48,(int)($theme['radius']??18)))?>px}</style></head><body class="visual-site-page template-<?=e($template)?>"><?php if($preview):?><a class="site-preview-back" href="<?=e(app_url('portal/site-builder.php?page='.(int)$page['id']))?>">← Back to editor</a><?php endif;?><header class="visual-site-header"><a class="visual-site-brand visual-site-brand-desktop" href="<?=e(app_url('index.php'))?>"><img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>"></a><div class="visual-site-brand-mobile"><?php nmm_render_mobile_brand();?></div><button type="button" class="visual-site-menu-button" data-site-menu-toggle aria-expanded="false">Menu</button><nav class="visual-site-navigation visual-site-navigation-desktop"><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?></nav><nav class="visual-site-navigation visual-site-navigation-mobile" data-site-menu><?php if(!site_builder_render_menu_location('mobile','visual-menu')):?><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?><?php endif;?></nav></header><main><?php foreach($payload['sections']??[] as $section) echo site_builder_render_section($section);?></main><footer class="visual-site-footer"><div><?php if(!site_builder_render_menu_location('footer','visual-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div></footer><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.2'))?>"></script><script src="<?=e(app_url('assets/js/music-player.js?v=20260727-v61'))?>"></script></body></html><?php
+    $header=is_array($theme['header']??null)?$theme['header']:[];
+    $headerStyle=in_array((string)($header['style']??'light'),['light','dark','transparent'],true)?(string)$header['style']:'light';
+    $headerLogo=trim((string)($header['logo']??''))!==''?(string)$header['logo']:nmm_site_logo_url();
+    $headerLogoAlt=(string)($header['logoAlt']??nmm_site_logo_alt());
+    $headerName=(string)($header['siteName']??$siteName);
+    $headerShowNavigation=!array_key_exists('showNavigation',$header)||(bool)$header['showNavigation'];
+    $headerSticky=!array_key_exists('sticky',$header)||(bool)$header['sticky'];
+    $headerCtaLabel=trim((string)($header['ctaLabel']??''));
+    $headerCtaUrl=trim((string)($header['ctaUrl']??''));
+    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="build-version" content="20260727-landing-page-builder-v61.5"><title><?=e($title)?> — <?=e($siteName)?></title><?php if($description!==''):?><meta name="description" content="<?=e($description)?>"><meta property="og:description" content="<?=e($description)?>"><?php endif;?><?php if($keywords!==''):?><meta name="keywords" content="<?=e($keywords)?>"><?php endif;?><meta name="robots" content="<?=$preview||!(bool)($page['seo_index_enabled']??1)?'noindex,nofollow':'index,follow'?>"><meta property="og:title" content="<?=e($title)?>"><meta property="og:type" content="website"><?php if($canonical!==''):?><link rel="canonical" href="<?=e($canonical)?>"><meta property="og:url" content="<?=e($canonical)?>"><?php endif;?><?php if($social!==''):?><meta property="og:image" content="<?=e(nmm_public_link_url($social))?>"><?php endif;?><link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-public.css?v=20260727-v61.5'))?>"><link rel="stylesheet" href="<?=e(app_url('assets/css/music-library.css?v=20260727-v61'))?>"><style>:root{--site-content-width:<?=max(720,min(1600,(int)($theme['contentWidth']??1180)))?>px;--site-primary:<?=e($theme['primary']??'#152638')?>;--site-accent:<?=e($theme['accent']??'#0b8588')?>;--site-radius:<?=max(0,min(48,(int)($theme['radius']??18)))?>px}</style></head><body class="visual-site-page template-<?=e($template)?>"><?php if($preview):?><a class="site-preview-back" href="<?=e(app_url('portal/site-builder.php?page='.(int)$page['id']))?>">← Back to editor</a><?php endif;?><header class="visual-site-header header-<?=e($headerStyle)?> <?=$headerSticky?'is-sticky':'not-sticky'?>"><a class="visual-site-brand visual-site-brand-desktop" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a><div class="visual-site-brand-mobile"><a class="visual-site-brand" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a></div><?php if($headerShowNavigation):?><button type="button" class="visual-site-menu-button" data-site-menu-toggle aria-expanded="false">Menu</button><nav class="visual-site-navigation visual-site-navigation-desktop"><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?></nav><nav class="visual-site-navigation visual-site-navigation-mobile" data-site-menu><?php if(!site_builder_render_menu_location('mobile','visual-menu')):?><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?><?php endif;?></nav><?php endif;?><?php if($headerCtaLabel!==''&&$headerCtaUrl!==''):?><a class="visual-site-header-cta" href="<?=e(nmm_public_link_url($headerCtaUrl))?>"><?=e($headerCtaLabel)?></a><?php endif;?></header><main><?php foreach($payload['sections']??[] as $section) echo site_builder_render_section($section);?></main><footer class="visual-site-footer"><div><?php if(!site_builder_render_menu_location('footer','visual-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div></footer><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.5'))?>"></script><script src="<?=e(app_url('assets/js/music-player.js?v=20260727-v61'))?>"></script></body></html><?php
 }
 
 function site_builder_module_links(): array

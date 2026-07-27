@@ -1,0 +1,18 @@
+North Mountain Media Portal v61.3 validation
+Build: 20260727-default-landing-template-modal-editor-v61.3
+
+Validated locally:
+- All PHP files passed syntax validation
+- All JavaScript files passed Node.js syntax validation
+- All CSS files passed structural validation
+- Active landing template payload returns Hero, Features, and CTA sections
+- Empty Home draft server fallback is present
+- Empty Home draft browser fallback is present
+- Loaded status requires an actual non-empty section payload
+- Landing settings are absent from inline sidebar panels
+- Settings open in modal workspaces
+- Section/block inspector opens in a modal workspace
+- Visual library opens as a modal with search and category filters
+- v61.3 asset cache keys are present
+- No SQL migration is required
+- Clean PR source contains no transfer archive or temporary workflow

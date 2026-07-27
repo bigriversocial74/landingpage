@@ -1,0 +1,15 @@
+North Mountain Media Portal v61.4 validation
+Build: 20260727-default-home-and-visible-library-v61.4
+
+Validated:
+- PHP syntax
+- JavaScript syntax
+- CSS structure
+- Home slug is accepted as the landing page regardless of legacy page_type
+- Server fallback includes a built-in Split template
+- Browser fallback contains Hero, Features, and CTA sections
+- Visible library summary reports section and block inventories
+- Top toolbar includes a Library button
+- Library modal contains server-rendered section cards
+- 12 section definitions and 22 block definitions retained
+- No SQL migration required

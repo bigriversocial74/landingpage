@@ -14,7 +14,8 @@ $checks = [
     "'builder' => 'Page Editor'" => $bootstrap,
     'if ($landingPageEditorEnabled)' => $bootstrap,
     'name="module_<?=e($moduleKey)?>_enabled"' => $admin,
-    'data-editor-panel="landing"' => $editor,
+    'data-editor-modal-open="landing"' => $editor,
+    'data-editor-modal-panel="landing"' => $editor,
     'data-editor-back' => $editor,
 ];
 foreach ($checks as $needle => $haystack) {
@@ -29,4 +30,8 @@ foreach (['name="landing_template"','name="landing_headline"','name="landing_her
         exit(1);
     }
 }
-echo "Landing Page editor toggle integration passed.\n";
+if (str_contains($editor, 'data-editor-panel="landing"')) {
+    fwrite(STDERR, "Landing settings must open in the editor modal, not a sidebar panel.\n");
+    exit(1);
+}
+echo "Landing Page editor toggle and modal integration passed.\n";
