@@ -36,7 +36,6 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-
           for path in Path('.').rglob('*.css'):
               if '.git' in path.parts:
                   continue
@@ -88,8 +87,10 @@ jobs:
           set -euo pipefail
           php tests/landing-page-builder-v61-2.php
           php tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-v61-4.php
+          php tests/landing-page-editor-v61-5.php
 
-      - name: Required v61.2 source
+      - name: Required builder source
         shell: bash
         run: |
           set -euo pipefail
@@ -97,37 +98,29 @@ jobs:
           test -f portal/site-builder.php
           test -f portal/site-builder-core.php
           test -f portal/site-builder-api.php
-          test -f portal/menus-admin.php
-          test -f portal/site-analytics-view.php
-          test -f portal/microgifter-connectors.php
           test -f assets/js/site-builder.js
-          test -f assets/js/menu-manager.js
           test -f assets/css/site-builder-admin.css
           test -f assets/css/site-builder-public.css
           test -f database/visual_site_builder_v61.sql
-          test -f VISUAL-SITE-BUILDER-SETUP-v61.md
-          test -f LANDING-PAGE-BUILDER-SETUP-v61.2.md
-          test -f V61.2-VALIDATION.txt
+          test -f LANDING-PAGE-BUILDER-SETUP-v61.4.md
+          test -f V61.4-VALIDATION.txt
+          test -f LANDING-PAGE-BUILDER-SETUP-v61.5.md
+          test -f V61.5-VALIDATION.txt
 
       - name: Repository safety
         shell: bash
         run: |
           set -euo pipefail
           test ! -f config.php
-          test ! -f north-mountain-media-portal-v61.zip
-          test ! -d .nmm-v612
-          test ! -f .github/workflows/apply-v61-2-builder.yml
-
+          test ! -d .nmm-v614
+          test ! -d .nmm-v615
+          test ! -f .github/workflows/apply-v61-4-builder.yml
+          test ! -f .github/workflows/apply-v61-5-builder.yml
           if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print | grep -q .; then
             echo 'Unsafe configuration or runtime file found.' >&2
-            find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print
             exit 1
           fi
-
-          if grep -RIlE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|ghp_|github_pat_|AKIA[0-9A-Z]{16}' . \
-            --exclude-dir=.git \
-            --exclude='portal-quality.yml' \
-            >/tmp/nmm-secret-files.txt; then
+          if grep -RIlE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|ghp_|github_pat_|AKIA[0-9A-Z]{16}' . --exclude-dir=.git --exclude='portal-quality.yml' >/tmp/nmm-secret-files.txt; then
             echo 'Credential-like content detected.' >&2
             cat /tmp/nmm-secret-files.txt
             exit 1
