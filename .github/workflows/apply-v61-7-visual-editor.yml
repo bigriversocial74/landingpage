@@ -35,13 +35,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find . -path './.git' -prune -o -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null || { php -l "$file"; exit 1; }
+          done < <(find . -path './.git' -prune -o -type f -name '*.php' -print0)
+          echo 'PHP syntax passed.'
 
       - name: JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
-          find assets/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find assets/js -type f -name '*.js' -print0)
 
       - name: CSS structure
         shell: bash
@@ -53,6 +59,7 @@ jobs:
               source=path.read_text()
               if source.count('{') != source.count('}'):
                   raise SystemExit(f'Unbalanced CSS braces: {path}')
+          print('CSS structure passed.')
           PY
 
       - name: Visual editor regressions
