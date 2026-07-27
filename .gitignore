@@ -1,0 +1,40 @@
+# Production configuration and secrets
+/config.php
+/.env
+/.env.*
+*.pem
+*.key
+
+# Runtime data
+/storage/*
+!/storage/.htaccess
+!/storage/index.php
+!/storage/**/.gitkeep
+!/storage/**/.htaccess
+!/storage/**/index.php
+/var/
+/logs/
+/cache/
+/tmp/
+*.log
+*.lock
+*.sqlite
+*.sqlite3
+
+# User uploads and generated files
+/uploads/
+/public/uploads/
+*.tmp
+*.bak
+
+# Local tooling
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+node_modules/
+vendor/
+
+# Temporary import archive
+/north-mountain-media-portal-v61.zip
+/.nmm-import/
