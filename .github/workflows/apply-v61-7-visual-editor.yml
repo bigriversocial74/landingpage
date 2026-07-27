@@ -1,0 +1,76 @@
+name: Apply v61.7 Visual Page Editor
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/editor-blocks-visual-controls-v61-7'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply visual editor upgrade
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/v617_sidebar.py
+          python3 tools/v617_editor_js.py
+          python3 tools/v617_core.py
+          python3 tools/v617_styles.py
+          python3 tools/v617_public_js.py
+          python3 tools/v617_tests.py
+          rm -f tools/v617_sidebar.py tools/v617_editor_js.py tools/v617_core.py tools/v617_styles.py tools/v617_public_js.py tools/v617_tests.py
+          rm -f .github/workflows/apply-v61-7-visual-editor.yml
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -path './.git' -prune -o -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find assets/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: CSS structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          for path in Path('assets/css').glob('*.css'):
+              source=path.read_text()
+              if source.count('{') != source.count('}'):
+                  raise SystemExit(f'Unbalanced CSS braces: {path}')
+          PY
+
+      - name: Visual editor regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-v61-4.php
+          php tests/landing-page-editor-v61-5.php
+
+      - name: Commit generated upgrade
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Build visual page editor and responsive templates v61.7'
+          git push origin HEAD:${{ github.head_ref }}
