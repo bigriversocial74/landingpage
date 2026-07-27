@@ -1,0 +1,122 @@
+name: Apply North Mountain Media v61.5 Editor
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-editor:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/default-landing-template-modal-editor-v61-3'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/default-landing-template-modal-editor-v61-3
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Reconstruct, apply and validate v61.5
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat .nmm-v615/chunk-*.txt | base64 -d > /tmp/nmm-v615-package.tgz
+          echo '31924f33dc24ff28bba10083cd9e840ba510d65ad5f655b43646fd54a0b40ac1  /tmp/nmm-v615-package.tgz' | sha256sum -c -
+
+          rm -rf /tmp/nmm-v615
+          mkdir -p /tmp/nmm-v615
+          tar -xzf /tmp/nmm-v615-package.tgz -C /tmp/nmm-v615
+          patch -p1 < /tmp/nmm-v615/update.patch
+          cp -a /tmp/nmm-v615/overlay/. ./
+
+          rm -rf .nmm-v614 .nmm-v615
+          rm -f .github/workflows/apply-v61-5-builder.yml
+
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find . -type f -name '*.php' -not -path './.git/*' -print0)
+          echo 'PHP syntax passed.'
+
+          while IFS= read -r -d '' file; do
+            node --check "$file" >/dev/null
+          done < <(find . -type f -name '*.js' -not -path './.git/*' -print0)
+          echo 'JavaScript syntax passed.'
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          for path in Path('.').rglob('*.css'):
+              if '.git' in path.parts:
+                  continue
+              source = path.read_text(encoding='utf-8')
+              depth = 0
+              quote = None
+              escaped = False
+              comment = False
+              index = 0
+              while index < len(source):
+                  char = source[index]
+                  nxt = source[index + 1] if index + 1 < len(source) else ''
+                  if comment:
+                      if char == '*' and nxt == '/':
+                          comment = False
+                          index += 2
+                          continue
+                      index += 1
+                      continue
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                      index += 1
+                      continue
+                  if char == '/' and nxt == '*':
+                      comment = True
+                      index += 2
+                      continue
+                  if char in ('"', "'"):
+                      quote = char
+                  elif char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                      if depth < 0:
+                          raise SystemExit(f'Unbalanced CSS braces in {path}')
+                  index += 1
+              if depth != 0 or quote or comment:
+                  raise SystemExit(f'Unbalanced CSS structure in {path}')
+          print('CSS structure passed.')
+          PY
+
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-v61-4.php
+          php tests/landing-page-editor-v61-5.php
+
+          test -f portal/site-builder.php
+          test -f portal/site-builder-core.php
+          test -f assets/js/site-builder.js
+          test -f assets/css/site-builder-admin.css
+          test -f assets/css/site-builder-public.css
+          test -f LANDING-PAGE-BUILDER-SETUP-v61.5.md
+          test -f V61.5-VALIDATION.txt
+          test ! -d .nmm-v614
+          test ! -d .nmm-v615
+          test ! -f .github/workflows/apply-v61-5-builder.yml
+
+      - name: Commit clean v61.5 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix deterministic landing editor, header and library v61.5'
+          git push origin HEAD:fix/default-landing-template-modal-editor-v61-3
