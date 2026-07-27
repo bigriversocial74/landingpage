@@ -38,7 +38,7 @@ $checks = [
     'preview back button' => ['site-preview-back', $publicCss],
     'visual block cards' => ['site-library-card-preview', $adminCss],
     'modal block library' => ['site-library-drawer.site-library-modal', $adminCss],
-    'v61.3 cache busting' => ['v=20260727-v61.3', $editor],
+    'current cache busting' => ['v=20260727-v61.5', $editor],
 ];
 
 foreach ($checks as $label => [$needle, $haystack]) {
@@ -78,4 +78,4 @@ if (str_contains($admin, "'landing' => 'Landing settings'")) {
     exit(1);
 }
 
-echo "Landing Page Builder v61.3 regression checks passed.\n";
+echo "Landing Page Builder current regression checks passed.\n";

@@ -1,0 +1,21 @@
+North Mountain Media Portal v61.5 validation
+Build: 20260727-deterministic-editor-header-library-v61.5
+
+Validated:
+- PHP syntax across the complete portal
+- JavaScript syntax across the complete portal
+- CSS structural validation
+- Home is treated as the landing document by slug regardless of legacy page_type
+- Home receives a server-side published/template/Split fallback before the page is sent
+- Browser initialization locks editor interaction until the payload is hydrated
+- A requestAnimationFrame verification repairs an empty Home state before interaction
+- The visible template includes the configured logo, site name, navigation and header CTA
+- Header & navigation opens in a dedicated editor modal
+- Header is present in Sections/Layers as template chrome
+- Header settings persist in the page payload through recursive settings sanitation
+- Public preview and published pages use the saved header style, logo, visibility, sticky setting and CTA
+- Sidebar and toolbar expose 12 section definitions and 22 block definitions
+- Library modal contains server-rendered section and block cards
+- Template changes preserve header settings and template image inventory
+- v61.5 cache keys prevent stale v61.3/v61.4 assets
+- No SQL migration required
