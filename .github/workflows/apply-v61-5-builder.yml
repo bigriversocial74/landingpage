@@ -31,10 +31,10 @@ jobs:
           mkdir -p /tmp/nmm-v615
           tar -xzf /tmp/nmm-v615-package.tgz -C /tmp/nmm-v615
           patch -p1 < /tmp/nmm-v615/update.patch
+          rm -rf /tmp/nmm-v615/overlay/.github
           cp -a /tmp/nmm-v615/overlay/. ./
 
           rm -rf .nmm-v614 .nmm-v615
-          rm -f .github/workflows/apply-v61-5-builder.yml
 
           while IFS= read -r -d '' file; do
             php -l "$file" >/dev/null
@@ -109,14 +109,13 @@ jobs:
           test -f V61.5-VALIDATION.txt
           test ! -d .nmm-v614
           test ! -d .nmm-v615
-          test ! -f .github/workflows/apply-v61-5-builder.yml
 
-      - name: Commit clean v61.5 source
+      - name: Commit clean v61.5 application source
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add -A -- ':!.github/workflows'
           git commit -m 'Fix deterministic landing editor, header and library v61.5'
           git push origin HEAD:fix/default-landing-template-modal-editor-v61-3
