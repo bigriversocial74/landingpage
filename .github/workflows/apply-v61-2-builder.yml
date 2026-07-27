@@ -25,7 +25,7 @@ jobs:
 
           if [[ -f .nmm-v612/chunk-00.txt ]]; then
             cat .nmm-v612/chunk-*.txt | base64 -d > /tmp/v612-changes.tgz
-            echo '688d7966eabd808aea44fbb8f3559c56599d9dedf76a2049a3fb1d887bd9eb49  /tmp/v612-changes.tgz' | sha256sum -c -
+            echo 'fa1fc7bb65dd2092d054adabd18b8dcf16e909e34e8ed65e296d90f96dcf8935  /tmp/v612-changes.tgz' | sha256sum -c -
             tar -xzf /tmp/v612-changes.tgz
             rm -rf .nmm-v612
           fi
