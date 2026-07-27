@@ -1,0 +1,75 @@
+name: Restore North Mountain Media v61.2 Source
+
+on:
+  push:
+    branches:
+      - feature/landing-page-builder-library-v61-2
+
+permissions:
+  contents: write
+
+jobs:
+  restore-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/landing-page-builder-library-v61-2
+          fetch-depth: 0
+
+      - name: Reconstruct validated v61.2 source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat \
+            .nmm-v612/chunk-00.txt \
+            .nmm-v612/chunk-01.txt \
+            .nmm-v612/chunk-02.txt \
+            .nmm-v612/chunk-03a.txt \
+            .nmm-v612/chunk-03b.txt \
+            .nmm-v612/chunk-04.txt \
+            .nmm-v612/chunk-05.txt \
+            | base64 -d > /tmp/v612-source.tgz
+
+          echo 'fa1fc7bb65dd2092d054adabd18b8dcf16e909e34e8ed65e296d90f96dcf8935  /tmp/v612-source.tgz' | sha256sum -c -
+          tar -tzf /tmp/v612-source.tgz >/tmp/v612-source-files.txt
+          tar -xzf /tmp/v612-source.tgz
+
+          rm -rf .nmm-v612
+          rm -f .github/workflows/restore-v61-2-source.yml
+
+      - name: Validate restored source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find . -type f -name '*.php' -not -path './.git/*' -print0)
+
+          while IFS= read -r -d '' file; do
+            node --check "$file" >/dev/null
+          done < <(find . -type f -name '*.js' -not -path './.git/*' -print0)
+
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+
+          test -f portal/site-builder.php
+          test -f portal/site-builder-core.php
+          test -f assets/js/site-builder.js
+          test -f assets/css/site-builder-admin.css
+          test -f assets/css/site-builder-public.css
+          test -f LANDING-PAGE-BUILDER-SETUP-v61.2.md
+          test -f V61.2-VALIDATION.txt
+          test ! -d .nmm-v612
+
+      - name: Commit restored application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Restore validated landing page builder source v61.2'
+          git push origin HEAD:feature/landing-page-builder-library-v61-2
