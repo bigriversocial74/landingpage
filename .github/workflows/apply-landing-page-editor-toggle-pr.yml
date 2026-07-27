@@ -29,38 +29,40 @@ jobs:
           source = bootstrap.read_text()
 
           old_label = "            'builder' => 'Site Builder',"
-          if old_label not in source:
-              raise SystemExit('Site Builder navigation label was not found.')
-          source = source.replace(old_label, "            'builder' => 'Page Editor',", 1)
+          if old_label in source:
+              source = source.replace(old_label, "            'builder' => 'Page Editor',", 1)
 
           nav_point = "    ];\n\n    $script = $isAdmin ? 'admin.php' : 'client.php';\n"
           nav_replacement = "    ];\n\n    $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');\n    if ($isAdmin && !$landingPageEditorEnabled) {\n        unset($adminNavigationGroups['Work']['builder']);\n    }\n\n    $script = $isAdmin ? 'admin.php' : 'client.php';\n"
-          if nav_point not in source:
-              raise SystemExit('Administrator navigation insertion point was not found.')
-          source = source.replace(nav_point, nav_replacement, 1)
+          if nav_point in source:
+              source = source.replace(nav_point, nav_replacement, 1)
 
           old_launcher = "                                <a href=\"<?= e(app_url('portal/site-builder.php')) ?>\"><span>Build</span><strong>Site Builder</strong><small>Visual pages, sections, and blocks</small></a>\n"
           new_launcher = "                                <?php if ($landingPageEditorEnabled): ?>\n                                    <a href=\"<?= e(app_url('portal/admin.php?view=builder')) ?>\"><span>Build</span><strong>Page Editor</strong><small>Visual landing pages, sections, and blocks</small></a>\n                                <?php endif; ?>\n"
-          if old_launcher not in source:
-              raise SystemExit('Dashboard launcher Site Builder link was not found.')
-          bootstrap.write_text(source.replace(old_launcher, new_launcher, 1))
+          if old_launcher in source:
+              source = source.replace(old_launcher, new_launcher, 1)
+
+          required = [
+              "nmm_module_enabled('landing_page')",
+              "unset($adminNavigationGroups['Work']['builder'])",
+              "'builder' => 'Page Editor'",
+              'if ($landingPageEditorEnabled)',
+          ]
+          for needle in required:
+              if needle not in source:
+                  raise SystemExit(f'Missing Page Editor navigation integration: {needle}')
+          bootstrap.write_text(source)
 
           admin = Path('portal/admin.php')
           admin_source = admin.read_text()
           old_settings = '<header class="site-settings-heading"><div><span>Landing page fallback</span><h2>Starter content and legacy templates</h2><p>These settings remain as a safe fallback until a page is published from the v61 Visual Site Builder. The existing resume and portfolio workspace remains available at <code>workspace.php</code>.</p></div><div class="site-settings-heading-actions"><a class="button button-primary" href="<?=e(app_url(\'portal/site-builder.php\'))?>">Open visual editor</a><a class="button" href="<?=e(app_url(\'landing-page.php?preview=1\'))?>" target="_blank" rel="noopener">Preview landing page</a></div></header>'
           new_settings = '<header class="site-settings-heading"><div><span>Landing page workspace</span><h2>Page Editor and starter content</h2><p>Enable the Landing Page module above and save settings to expose the Page Editor in the administrator navigation. These starter settings remain as a safe fallback until a page is published from the visual editor.</p></div><div class="site-settings-heading-actions"><?php if(nmm_module_enabled(\'landing_page\')):?><a class="button button-primary" href="<?=e(app_url(\'portal/site-builder.php\'))?>">Open Page Editor</a><?php else:?><span class="button" aria-disabled="true">Enable Landing Page to open editor</span><?php endif;?><a class="button" href="<?=e(app_url(\'landing-page.php?preview=1\'))?>" target="_blank" rel="noopener">Preview landing page</a></div></header>'
-          if old_settings not in admin_source:
-              raise SystemExit('Landing Page settings header was not found.')
-          admin.write_text(admin_source.replace(old_settings, new_settings, 1))
-
-          quality_file = Path('.github/workflows/portal-quality.yml')
-          quality = quality_file.read_text()
-          if 'name: Landing Page editor toggle' not in quality:
-              anchor = '      - name: Repository safety\n'
-              replacement = '      - name: Landing Page editor toggle\n        run: php tests/landing-page-editor-toggle.php\n\n      - name: Repository safety\n'
-              if anchor not in quality:
-                  raise SystemExit('Portal quality insertion point was not found.')
-              quality_file.write_text(quality.replace(anchor, replacement, 1))
+          if old_settings in admin_source:
+              admin_source = admin_source.replace(old_settings, new_settings, 1)
+          for needle in ['Enable Landing Page to open editor', 'Open Page Editor']:
+              if needle not in admin_source:
+                  raise SystemExit(f'Missing Landing Page settings integration: {needle}')
+          admin.write_text(admin_source)
           PY
 
           mkdir -p tests
@@ -100,15 +102,16 @@ jobs:
           php -l tests/landing-page-editor-toggle.php
           php tests/landing-page-editor-toggle.php
 
-      - name: Remove temporary repair runners
-        run: rm -f .github/workflows/apply-landing-page-editor-toggle.yml .github/workflows/apply-landing-page-editor-toggle-pr.yml
-
-      - name: Commit repair
+      - name: Commit application repair
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add portal/bootstrap.php portal/admin.php tests/landing-page-editor-toggle.php
+          if git diff --cached --quiet; then
+            echo 'Application repair is already committed.'
+            exit 0
+          fi
           git commit -m 'Fix Landing Page Page Editor navigation toggle'
           git push origin HEAD:fix/landing-page-editor-toggle-v61-1
