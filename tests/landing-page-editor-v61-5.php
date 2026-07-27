@@ -6,6 +6,7 @@ $files = [
     'editor' => $root . '/portal/site-builder.php',
     'core' => $root . '/portal/site-builder-core.php',
     'script' => $root . '/assets/js/site-builder.js',
+    'bootstrapScript' => $root . '/assets/js/site-builder-bootstrap.js',
     'adminCss' => $root . '/assets/css/site-builder-admin.css',
     'publicCss' => $root . '/assets/css/site-builder-public.css',
 ];
@@ -20,7 +21,7 @@ foreach ($files as $name => $path) {
 }
 
 $checks = [
-    'v61.5 editor build' => ['20260727-landing-page-builder-v61.5', $sources['editor']],
+    'v61.6 editor build' => ['20260727-landing-page-builder-v61.6', $sources['editor']],
     'home slug landing boundary' => ["\$isLandingPage = ((\$page['page_type'] ?? '') === 'landing') || \$isHomePage;", $sources['editor']],
     'server split fallback' => ["\$payload = site_builder_templates()['split'];", $sources['editor']],
     'boot interaction lock' => ['editor-booting', $sources['editor'] . $sources['adminCss']],
@@ -39,7 +40,12 @@ $checks = [
     'visible library inventory' => ['12 section definitions', $root . '/V61.5-VALIDATION.txt'],
     'visible block server cards' => ['data-library-server-card="blocks"', $sources['editor']],
     'library counts' => ['<?=count($sectionLibrary)?> sections · <?=count($blockLibrary)?> blocks', $sources['editor']],
-    'v61.5 cache key' => ['site-builder.js?v=20260727-v61.5', $sources['editor']],
+    'CSP-safe bootstrap carrier' => ['<textarea id="nmm-site-builder-bootstrap" hidden>', $sources['editor']],
+    'external bootstrap loader' => ['site-builder-bootstrap.js?v=20260727-v61.6', $sources['editor']],
+    'bootstrap JSON failure boundary' => ['JSON_THROW_ON_ERROR', $sources['editor']],
+    'bootstrap payload parser' => ["document.getElementById('nmm-site-builder-bootstrap')", $sources['bootstrapScript']],
+    'bootstrap registry assignment' => ['window.NMM_SITE_BUILDER = payload;', $sources['bootstrapScript']],
+    'v61.6 cache key' => ['site-builder.js?v=20260727-v61.6', $sources['editor']],
 ];
 
 foreach ($checks as $label => [$needle, $haystack]) {
@@ -50,6 +56,11 @@ foreach ($checks as $label => [$needle, $haystack]) {
         fwrite(STDERR, "Missing {$label}: {$needle}\n");
         exit(1);
     }
+}
+
+if (str_contains($sources['editor'], '<script>window.NMM_SITE_BUILDER=')) {
+    fwrite(STDERR, "Executable inline editor bootstrap violates the admin CSP.\n");
+    exit(1);
 }
 
 $core = $sources['core'];
@@ -71,4 +82,4 @@ if (substr_count($blockSource, "'label'=>") !== 22) {
     exit(1);
 }
 
-echo "Landing Page Editor v61.5 regression passed.\n";
+echo "Landing Page Editor v61.6 CSP bootstrap regression passed.\n";
