@@ -1,0 +1,62 @@
+name: Build v61.7 Deploy Artifact
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: github.head_ref == 'build/v61-7-deploy-artifact'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout merged source
+        uses: actions/checkout@v4
+        with:
+          ref: 39a0eea345f30d8a6a98b62a26196c36f60f6a8d
+
+      - name: Build clean deployment package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deploy/assets/css deploy/assets/js deploy/portal
+          cp assets/css/site-builder-admin.css deploy/assets/css/
+          cp assets/css/site-builder-public.css deploy/assets/css/
+          cp assets/js/site-builder.js deploy/assets/js/
+          cp assets/js/site-public.js deploy/assets/js/
+          cp portal/site-builder-core.php deploy/portal/
+          cp portal/site-builder.php deploy/portal/
+          cat > deploy/DEPLOYMENT-v61.7.txt <<'EOF'
+          North Mountain Media Portal v61.7 Deployment
+          ==================================================
+
+          Source merge commit:
+          39a0eea345f30d8a6a98b62a26196c36f60f6a8d
+
+          Upload the contents of this ZIP over the existing portal installation,
+          preserving the included directory structure.
+
+          IMPORTANT:
+          - Preserve the live config.php file.
+          - Preserve the entire storage/ directory.
+          - No SQL migration is required.
+          - Clear browser/server caches after upload if old editor assets remain visible.
+
+          Production files included:
+          - assets/css/site-builder-admin.css
+          - assets/css/site-builder-public.css
+          - assets/js/site-builder.js
+          - assets/js/site-public.js
+          - portal/site-builder-core.php
+          - portal/site-builder.php
+          EOF
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v61.7-deploy
+          path: deploy/
+          if-no-files-found: error
+          retention-days: 30
