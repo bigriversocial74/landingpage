@@ -38,7 +38,7 @@ $checks = [
     'preview back button' => ['site-preview-back', $publicCss],
     'visual block cards' => ['site-library-card-preview', $adminCss],
     'modal block library' => ['site-library-drawer.site-library-modal', $adminCss],
-    'current cache busting' => ['v=20260727-v61.6', $editor],
+    'current cache busting' => ['v=20260727-v61.7', $editor],
 ];
 
 foreach ($checks as $label => [$needle, $haystack]) {

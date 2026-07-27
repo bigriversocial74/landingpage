@@ -1,13 +1,21 @@
-/* North Mountain Media build: 20260727-visual-site-builder-v61 */
+/* North Mountain Media build: 20260727-visual-page-editor-v61.7 */
 (() => {
   'use strict';
   const menuButton = document.querySelector('[data-site-menu-toggle]');
   const menu = document.querySelector('[data-site-menu]');
-  menuButton?.addEventListener('click', () => {
-    const open = menuButton.getAttribute('aria-expanded') === 'true';
-    menuButton.setAttribute('aria-expanded', open ? 'false' : 'true');
-    menu?.classList.toggle('open', !open);
-  });
+  const menuClose = [...document.querySelectorAll('[data-site-menu-close]')];
+  const setMenu = (open) => {
+    menuButton?.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menu?.setAttribute('aria-hidden', open ? 'false' : 'true');
+    menu?.classList.toggle('open', open);
+    document.body.classList.toggle('menu-open', open);
+  };
+  menuButton?.addEventListener('click', () => setMenu(menuButton.getAttribute('aria-expanded') !== 'true'));
+  menuClose.forEach((button) => button.addEventListener('click', () => setMenu(false)));
+  menu?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setMenu(false)));
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setMenu(false); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 800) setMenu(false); });
+
   const eventEndpoint = new URL('api/site-event.php', document.baseURI);
   const record = (eventType, label = '', metadata = {}) => fetch(eventEndpoint, {
     method: 'POST', credentials: 'same-origin', cache: 'no-store',

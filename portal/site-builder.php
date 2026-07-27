@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-landing-page-builder-v61.6 */
+/* North Mountain Media build: 20260727-visual-page-editor-v61.7 */
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
@@ -169,6 +169,7 @@ $bootstrap = [
         'page_type' => $item['page_type'],
     ], $pages),
     'templates' => site_builder_templates(),
+    'templateCatalog' => site_builder_template_catalog(),
     'templateImages' => site_builder_template_image_inventory(),
     'sections' => $sectionLibrary,
     'blocks' => $blockLibrary,
@@ -217,8 +218,8 @@ $modalLabels = [
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="csrf-token" content="<?=e(csrf_token())?>">
 <title>Page Editor — <?=e(setting('site_name','North Mountain Media'))?></title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.6'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.6'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.7'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.7'))?>">
 </head>
 <body class="site-editor-body editor-booting">
 <div class="site-editor-shell">
@@ -228,60 +229,59 @@ $modalLabels = [
         <a class="site-editor-brand-logo" href="<?=e(app_url('portal/admin.php'))?>"><img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>"></a>
         <a class="site-editor-close" href="<?=e(app_url('portal/admin.php'))?>" aria-label="Close editor">×</a>
     </header>
-    <div class="site-editor-page-picker">
-        <label>Editing page
-            <select data-page-select>
-                <?php foreach($pages as $item):?>
-                <option value="<?=$item['id']?>" <?=$item['id']==$page['id']?'selected':''?>><?=e($item['title'])?> · <?=e(status_label($item['status']))?></option>
-                <?php endforeach;?>
-            </select>
-        </label>
-        <button type="button" data-create-page>+ New page</button>
+    <div class="site-editor-page-context">
+        <span>Editing page</span>
+        <strong><?=e($page['title'])?></strong>
+        <small>/<?=e($page['slug'])?></small>
     </div>
-    <nav class="site-editor-nav" aria-label="Page structure">
-        <button type="button" data-editor-tab="sections" class="active">Sections</button>
-        <button type="button" data-editor-tab="layers">Layers</button>
+    <nav class="site-editor-nav" aria-label="Editor workspace">
+        <button type="button" data-editor-tab="pages"><span>Pages</span></button>
+        <button type="button" data-editor-tab="sections" class="active"><span>Sections</span></button>
+        <button type="button" data-editor-tab="blocks"><span>Blocks</span></button>
+        <button type="button" data-editor-tab="design"><span>Design</span></button>
     </nav>
-    <div class="site-editor-tool-menu">
-        <span>Editor tools</span>
-        <button type="button" data-editor-modal-open="header"><strong>Header & navigation</strong><small>Logo, navigation, header style and CTA</small></button>
-        <?php if($isLandingPage):?><button type="button" data-editor-modal-open="landing"><strong>Landing settings</strong><small>Template, content, images and CTA</small></button><?php endif;?>
-        <button type="button" data-editor-modal-open="styles"><strong>Global styles</strong><small>Colors, width and corner radius</small></button>
-        <button type="button" data-editor-modal-open="responsive"><strong>Responsive</strong><small>Desktop, tablet and mobile preview</small></button>
-        <button type="button" data-editor-modal-open="seo"><strong>SEO</strong><small>Search and social sharing</small></button>
-        <button type="button" data-editor-modal-open="revisions"><strong>Revisions</strong><small>Restore a saved page version</small></button>
-        <button type="button" data-editor-modal-open="page"><strong>Page settings</strong><small>Title, slug and starter template</small></button>
-    </div>
     <div class="site-editor-panels">
+        <section data-editor-panel="pages" hidden>
+            <div class="editor-panel-heading"><span>Website</span><h2>Pages</h2><p>Open another page or create a new one.</p></div>
+            <div class="editor-page-list">
+                <?php foreach($pages as $item):?>
+                <a href="<?=e(app_url('portal/site-builder.php?page='.(int)$item['id']))?>" class="<?=$item['id']===$page['id']?'active':''?>"><span><?=e($item['title'])?></span><small>/<?=e($item['slug'])?></small></a>
+                <?php endforeach;?>
+            </div>
+            <button type="button" class="editor-text-action" data-create-page>+ New page</button>
+        </section>
         <section data-editor-panel="sections">
-            <div class="editor-panel-heading"><span>Page structure</span><h2>Sections</h2></div>
+            <div class="editor-panel-heading"><span>Page structure</span><h2>Sections</h2><p>Choose a section to edit it directly on the page.</p></div>
             <?php if($defaultTemplateLoaded && !empty($payload['sections'])):?><div class="editor-import-notice"><strong>Default landing template loaded</strong><p><?=e(ucfirst($defaultTemplateSource ?: 'active landing template'))?> is visible in the canvas. Save the draft to keep this builder version.</p></div><?php endif;?>
-            <div class="editor-add-actions">
-                <button class="editor-primary-action" type="button" data-library-open="sections">+ Add section</button>
-                <button type="button" data-library-open="blocks">+ Add block</button>
-            </div>
-            <div class="editor-library-summary" aria-label="Builder library">
-                <div><span>Builder library</span><strong><?=count($sectionLibrary)?> sections · <?=count($blockLibrary)?> blocks</strong></div>
-                <button type="button" data-library-open="sections"><strong>Sections <em><?=count($sectionLibrary)?></em></strong><small>Hero, content, features, media, portfolio, music, events, forms and CTA</small></button>
-                <button type="button" data-library-open="blocks"><strong>Blocks <em><?=count($blockLibrary)?></em></strong><small>Headings, text, images, cards, buttons, galleries, media, forms and dynamic content</small></button>
-                <div class="editor-library-chips" aria-label="Common blocks">
-                    <?php foreach(array_slice($blockLibrary,0,8,true) as $type=>$info):?><button type="button" data-library-open="blocks" title="Open block library"><?=e((string)($info['label']??$type))?></button><?php endforeach;?>
-                </div>
-            </div>
+            <button class="editor-text-action" type="button" data-library-open="sections">+ Add section</button>
             <div class="editor-section-list" data-section-list></div>
         </section>
-        <section data-editor-panel="layers" hidden>
-            <div class="editor-panel-heading"><span>Navigator</span><h2>Layers</h2></div>
-            <div class="editor-layer-tree" data-layer-tree></div>
+        <section data-editor-panel="blocks" hidden>
+            <div class="editor-panel-heading"><span>Section content</span><h2>Blocks</h2><p>Add, select, and arrange content inside the active section.</p></div>
+            <div class="editor-block-context"><span>Selected section</span><strong data-block-section-name>Select a section</strong></div>
+            <button class="editor-text-action" type="button" data-library-open="blocks">+ Add block</button>
+            <div class="editor-block-list" data-block-list></div>
+        </section>
+        <section data-editor-panel="design" hidden>
+            <div class="editor-panel-heading"><span>Website styles</span><h2>Design</h2><p>Open only the controls you need.</p></div>
+            <div class="editor-design-links">
+                <?php if($isLandingPage):?><button type="button" data-editor-modal-open="landing"><span>Templates & content</span><small>Switch page structures and manage the landing-page inventory</small></button><?php endif;?>
+                <button type="button" data-editor-modal-open="styles"><span>Global styles</span><small>Typography, colors, width, spacing, and corners</small></button>
+                <button type="button" data-editor-modal-open="header"><span>Header & navigation</span><small>Logo, menu, CTA, and mobile drawer</small></button>
+                <button type="button" data-editor-modal-open="responsive"><span>Responsive preview</span><small>Desktop, tablet, and mobile</small></button>
+                <button type="button" data-editor-modal-open="seo"><span>SEO & sharing</span><small>Search metadata and social image</small></button>
+                <button type="button" data-editor-modal-open="revisions"><span>Revision history</span><small>Restore an earlier draft</small></button>
+                <button type="button" data-editor-modal-open="page"><span>Page settings</span><small>Title, slug, and publishing settings</small></button>
+            </div>
         </section>
     </div>
 </aside>
 
 <main class="site-editor-main">
     <header class="site-editor-topbar">
-        <div><button type="button" data-sidebar-toggle aria-label="Editor controls">☰</button><strong><?=e($page['title'])?></strong><span data-save-state>Loading template…</span></div>
-        <div class="site-editor-device-tabs"><button data-device="desktop" class="active">Desktop</button><button data-device="tablet">Tablet</button><button data-device="mobile">Mobile</button></div>
-        <div><button type="button" class="topbar-library" data-library-open="sections" data-topbar-library>Library <span><?=count($sectionLibrary)?> / <?=count($blockLibrary)?></span></button><button type="button" data-undo>Undo</button><button type="button" data-redo>Redo</button><a href="<?=e($bootstrap['preview'])?>" target="_blank" data-preview>Preview</a><button type="button" data-save-draft>Save draft</button><button class="publish" type="button" data-publish>Publish</button></div>
+        <div class="site-editor-topbar-primary"><button type="button" data-sidebar-toggle aria-label="Editor controls">☰</button><strong><?=e($page['title'])?></strong><span data-save-state>Loading template…</span></div>
+        <div class="site-editor-device-tabs"><button data-device="desktop" class="active" aria-label="Desktop preview">Desktop</button><button data-device="tablet" aria-label="Tablet preview">Tablet</button><button data-device="mobile" aria-label="Mobile preview">Mobile</button></div>
+        <div class="site-editor-topbar-actions"><?php if($isLandingPage):?><button type="button" data-editor-modal-open="landing">Templates</button><?php endif;?><button type="button" data-editor-modal-open="styles">Design</button><button type="button" class="topbar-library" data-library-open="sections" data-topbar-library>Library <span><?=count($sectionLibrary)?> / <?=count($blockLibrary)?></span></button><button type="button" data-undo aria-label="Undo">Undo</button><button type="button" data-redo aria-label="Redo">Redo</button><a href="<?=e($bootstrap['preview'])?>" target="_blank" data-preview>Preview</a><button type="button" data-save-draft>Save</button><button class="publish" type="button" data-publish>Publish</button></div>
     </header>
     <div class="site-editor-workspace">
         <div class="site-editor-canvas-frame device-desktop template-<?=e($page['template_key']??'split')?>" data-canvas-frame>
@@ -305,7 +305,7 @@ $modalLabels = [
                     <label>Header CTA label<input data-header-field="ctaLabel" placeholder="Start a project"></label>
                     <label>Header CTA link<input data-header-field="ctaUrl" placeholder="intake.php"></label>
                     <label class="editor-check"><input type="checkbox" data-header-field="showNavigation" checked> Show navigation</label>
-                    <label class="editor-check"><input type="checkbox" data-header-field="sticky" checked> Sticky header</label>
+                    <label class="editor-check"><input type="checkbox" data-header-field="sticky" checked> Sticky header</label><label>Mobile menu<select data-header-field="mobileMenu"><option value="drawer">Sidebar drawer</option><option value="dropdown">Dropdown</option></select></label>
                 </div>
                 <div class="editor-header-menu-preview"><span>Configured navigation</span><div><?php foreach($headerLinks as $link):?><b><?=e((string)$link['label'])?></b><?php endforeach;?><?php if(!$headerLinks):?><b>No active menu links</b><?php endif;?></div><small>Menu items are managed in Navigation. This panel controls how they appear in the page template.</small></div>
             </section>
@@ -321,7 +321,7 @@ $modalLabels = [
                     <label>Content width<input type="number" min="720" max="1600" data-theme-field="contentWidth"></label>
                     <label>Primary color<input type="color" data-theme-field="primary"></label>
                     <label>Accent color<input type="color" data-theme-field="accent"></label>
-                    <label>Corner radius<input type="range" min="0" max="48" data-theme-field="radius"></label>
+                    <label>Corner radius<input type="range" min="0" max="48" data-theme-field="radius"></label><label>Heading font<select data-theme-field="headingFont"><option value="system">System sans</option><option value="editorial">Editorial serif</option><option value="geometric">Geometric sans</option></select></label><label>Body font<select data-theme-field="bodyFont"><option value="system">System sans</option><option value="editorial">Editorial serif</option><option value="geometric">Geometric sans</option></select></label><label>Base font size<input type="range" min="14" max="22" data-theme-field="baseFontSize"></label><label>Section gap<input type="range" min="0" max="80" data-theme-field="sectionGap"></label>
                 </div>
             </section>
             <section data-editor-modal-panel="responsive" hidden>
@@ -393,7 +393,7 @@ $modalLabels = [
 <button class="site-library-backdrop" data-library-close aria-label="Close library"></button>
 </div>
 <textarea id="nmm-site-builder-bootstrap" hidden><?=e($bootstrapJson)?></textarea>
-<script src="<?=e(app_url('assets/js/site-builder-bootstrap.js?v=20260727-v61.6'))?>"></script>
-<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.6'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder-bootstrap.js?v=20260727-v61.7'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.7'))?>"></script>
 </body>
 </html>

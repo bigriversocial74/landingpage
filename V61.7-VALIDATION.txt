@@ -1,0 +1,16 @@
+North Mountain Media Portal v61.7 validation
+Build: 20260727-visual-page-editor-v61.7
+
+Validated scope:
+- Canvas-first live text editing
+- Contextual section and block toolbars
+- Section image upload and replacement
+- Typography, spacing, background, overlay, visibility, and responsive controls
+- Clean Pages / Sections / Blocks / Design sidebar
+- Layers and sidebar dropdown-style controls removed
+- Four materially different landing-page templates
+- Responsive desktop, tablet, and mobile canvases
+- Hamburger navigation with off-canvas menu drawer
+- CSP-safe editor boot payload retained
+- 12 section and 22 block definitions retained
+- No SQL migration required
