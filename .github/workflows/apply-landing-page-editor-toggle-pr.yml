@@ -27,11 +27,11 @@ jobs:
 
           bootstrap = Path('portal/bootstrap.php')
           source = bootstrap.read_text()
-          source = source.replace(
-              "            'builder' => 'Site Builder',",
-              "            'builder' => 'Page Editor',",
-              1,
-          )
+
+          old_label = "            'builder' => 'Site Builder',"
+          if old_label not in source:
+              raise SystemExit('Site Builder navigation label was not found.')
+          source = source.replace(old_label, "            'builder' => 'Page Editor',", 1)
 
           nav_point = "    ];\n\n    $script = $isAdmin ? 'admin.php' : 'client.php';\n"
           nav_replacement = "    ];\n\n    $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');\n    if ($isAdmin && !$landingPageEditorEnabled) {\n        unset($adminNavigationGroups['Work']['builder']);\n    }\n\n    $script = $isAdmin ? 'admin.php' : 'client.php';\n"
@@ -53,43 +53,47 @@ jobs:
               raise SystemExit('Landing Page settings header was not found.')
           admin.write_text(admin_source.replace(old_settings, new_settings, 1))
 
-          Path('tests').mkdir(exist_ok=True)
-          Path('tests/landing-page-editor-toggle.php').write_text("""<?php
+          quality_file = Path('.github/workflows/portal-quality.yml')
+          quality = quality_file.read_text()
+          if 'name: Landing Page editor toggle' not in quality:
+              anchor = '      - name: Repository safety\n'
+              replacement = '      - name: Landing Page editor toggle\n        run: php tests/landing-page-editor-toggle.php\n\n      - name: Repository safety\n'
+              if anchor not in quality:
+                  raise SystemExit('Portal quality insertion point was not found.')
+              quality_file.write_text(quality.replace(anchor, replacement, 1))
+          PY
+
+          mkdir -p tests
+          cat > tests/landing-page-editor-toggle.php <<'PHP'
+          <?php
           declare(strict_types=1);
 
           $bootstrap = file_get_contents(__DIR__ . '/../portal/bootstrap.php');
           $admin = file_get_contents(__DIR__ . '/../portal/admin.php');
+
           if ($bootstrap === false || $admin === false) {
-              fwrite(STDERR, "Unable to read portal source.\\n");
+              fwrite(STDERR, "Unable to read portal source.\n");
               exit(1);
           }
+
           $checks = [
               "nmm_module_enabled('landing_page')" => $bootstrap,
-              "unset($adminNavigationGroups['Work']['builder'])" => $bootstrap,
+              'unset($adminNavigationGroups[\'Work\'][\'builder\'])' => $bootstrap,
               "'builder' => 'Page Editor'" => $bootstrap,
               'if ($landingPageEditorEnabled)' => $bootstrap,
               'Enable Landing Page to open editor' => $admin,
               'Open Page Editor' => $admin,
           ];
+
           foreach ($checks as $needle => $haystack) {
               if (!str_contains($haystack, $needle)) {
-                  fwrite(STDERR, "Missing Landing Page editor integration: {$needle}\\n");
+                  fwrite(STDERR, "Missing Landing Page editor integration: {$needle}\n");
                   exit(1);
               }
           }
-          echo "Landing Page editor toggle integration passed.\\n";
-          """)
 
-          quality_file = Path('.github/workflows/portal-quality.yml')
-          quality = quality_file.read_text()
-          if 'name: Landing Page editor toggle' not in quality:
-              quality = quality.replace(
-                  '      - name: Repository safety\n',
-                  '      - name: Landing Page editor toggle\n        run: php tests/landing-page-editor-toggle.php\n\n      - name: Repository safety\n',
-                  1,
-              )
-              quality_file.write_text(quality)
-          PY
+          echo "Landing Page editor toggle integration passed.\n";
+          PHP
 
           php -l portal/bootstrap.php
           php -l portal/admin.php
