@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-visual-site-builder-v61 */
+/* North Mountain Media build: 20260727-landing-page-builder-v61.2 */
 declare(strict_types=1);
 
 function site_builder_schema_available(): bool
@@ -20,77 +20,202 @@ function site_builder_id(string $prefix='item'): string
     return preg_replace('/[^a-z0-9-]/i','', $prefix) . '-' . bin2hex(random_bytes(5));
 }
 
+function site_builder_template_image_key(string $template,string $slot): string
+{
+    return 'image_'.preg_replace('/[^a-z0-9_]/i','',$template).'_'.preg_replace('/[^a-z0-9_]/i','',$slot);
+}
+
+function site_builder_template_image_inventory(): array
+{
+    $common=[
+        ['slot'=>'hero','label'=>'Hero image','description'=>'Primary visual used in the opening section.','target'=>'hero'],
+        ['slot'=>'supporting','label'=>'Supporting image','description'=>'Secondary image used in the main content or feature section.','target'=>'supporting'],
+        ['slot'=>'feature_background','label'=>'Feature background','description'=>'Optional background image behind the feature inventory.','target'=>'feature_background'],
+        ['slot'=>'cta_background','label'=>'CTA background','description'=>'Optional closing call-to-action background.','target'=>'cta_background'],
+        ['slot'=>'social','label'=>'Social preview','description'=>'Recommended 1200 × 630 image for sharing.','target'=>'social'],
+    ];
+    return [
+        'split'=>array_map(static fn($item)=>$item+['template'=>'split'],$common),
+        'centered'=>array_map(static fn($item)=>$item+['template'=>'centered'],$common),
+        'editorial'=>array_map(static fn($item)=>$item+['template'=>'editorial'],$common),
+        'showcase'=>array_map(static fn($item)=>$item+['template'=>'showcase'],$common),
+    ];
+}
+
 function site_builder_templates(): array
 {
-    $hero = static fn(string $headline,string $text,string $alignment='left'): array => [
+    $theme=static function(string $template,string $primary,string $accent,int $radius,int $width): array {
+        $theme=['template'=>$template,'contentWidth'=>(string)$width,'primary'=>$primary,'accent'=>$accent,'radius'=>(string)$radius,'footerText'=>'North Mountain Media · Phoenix, Arizona'];
+        foreach(site_builder_template_image_inventory()[$template]??[] as $slot){
+            $theme[site_builder_template_image_key($template,(string)$slot['slot'])]='';
+        }
+        return $theme;
+    };
+    $hero=static fn(string $headline,string $text,string $alignment='left'): array => [
         'id'=>site_builder_id('hero'),'type'=>'hero','settings'=>[
-            'eyebrow'=>'North Mountain Media','headline'=>$headline,'text'=>$text,'alignment'=>$alignment,
+            'eyebrow'=>'North Mountain Media','headline'=>$headline,'text'=>$text,'body'=>'','alignment'=>$alignment,'layout'=>$alignment==='center'?'centered':'split','image'=>'','imageAlt'=>'',
         ],'blocks'=>[
             ['id'=>site_builder_id('button'),'type'=>'button','settings'=>['label'=>'Start a project','url'=>'intake.php','style'=>'primary']],
             ['id'=>site_builder_id('button'),'type'=>'button','settings'=>['label'=>'View portfolio','url'=>'workspace.php','style'=>'secondary']],
         ],
     ];
-    $features = [
+    $features=static fn(): array => [
         'id'=>site_builder_id('features'),'type'=>'features','settings'=>[
-            'eyebrow'=>'What we build','headline'=>'A clearer path from concept to working system.','text'=>'Choose a focused starting point and connect the workflows required to deliver it.',
+            'eyebrow'=>'What we build','headline'=>'A clearer path from concept to working system.','text'=>'Choose a focused starting point and connect the workflows required to deliver it.','image'=>'','imageAlt'=>'','layout'=>'grid',
         ],'blocks'=>[
-            ['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>['title'=>'Strategy and planning','text'=>'Translate goals into a clear launch path.']],
-            ['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>['title'=>'Connected execution','text'=>'Bring content, CRM, commerce, and operations together.']],
-            ['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>['title'=>'Measurable progress','text'=>'Track activity, engagement, and conversion.']],
+            ['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>['title'=>'Strategy and planning','text'=>'Translate goals into a clear launch path.','image'=>'','imageAlt'=>'']],
+            ['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>['title'=>'Connected execution','text'=>'Bring content, CRM, commerce, and operations together.','image'=>'','imageAlt'=>'']],
+            ['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>['title'=>'Measurable progress','text'=>'Track activity, engagement, and conversion.','image'=>'','imageAlt'=>'']],
         ],
     ];
-    $cta = ['id'=>site_builder_id('cta'),'type'=>'cta','settings'=>['eyebrow'=>'Ready to build','headline'=>'Turn the next idea into a connected working system.','text'=>'Start with a practical conversation about the goal and next step.'],'blocks'=>[
+    $cta=static fn(): array => ['id'=>site_builder_id('cta'),'type'=>'cta','settings'=>['eyebrow'=>'Ready to build','headline'=>'Turn the next idea into a connected working system.','text'=>'Start with a practical conversation about the goal and next step.','alignment'=>'center'],'blocks'=>[
         ['id'=>site_builder_id('button'),'type'=>'button','settings'=>['label'=>'Start a project','url'=>'intake.php','style'=>'primary']],
     ]];
+    $splitHero=$hero('Connected digital systems for ambitious ideas.','Strategy, design, content, CRM, commerce, and client operations brought together in one practical system.');
+    $centeredHero=$hero('Build a clearer digital future.','A centered, confident presentation for services, products, media, and conversion.','center');
+    $editorialHero=$hero('Ideas deserve a strong point of view.','An editorial layout for storytelling, experience, proof, and perspective.');
+    $showcaseHero=$hero('One platform. Many connected experiences.','A high-contrast product showcase for digital systems, media, and automated commerce.');
     return [
-        'split'=>['version'=>1,'theme'=>['contentWidth'=>'1180','primary'=>'#152638','accent'=>'#0b8588','radius'=>'18'],'sections'=>[$hero('Connected digital systems for ambitious ideas.','Strategy, design, content, CRM, commerce, and client operations brought together in one practical system.'),$features,$cta]],
-        'centered'=>['version'=>1,'theme'=>['contentWidth'=>'1080','primary'=>'#101b2c','accent'=>'#0b8588','radius'=>'24'],'sections'=>[$hero('Build a clearer digital future.','A centered, confident presentation for services, products, media, and conversion.','center'),['id'=>site_builder_id('media'),'type'=>'media','settings'=>['headline'=>'Show the work. Explain the value.','text'=>'Use this section for a wide image, video, or featured project.','image'=>''],'blocks'=>[]],$features,$cta]],
-        'editorial'=>['version'=>1,'theme'=>['contentWidth'=>'1120','primary'=>'#30251f','accent'=>'#a45c32','radius'=>'10'],'sections'=>[$hero('Ideas deserve a strong point of view.','An editorial layout for storytelling, experience, proof, and perspective.'),['id'=>site_builder_id('content'),'type'=>'content','settings'=>['eyebrow'=>'The approach','headline'=>'Useful systems begin with clear thinking.','text'=>'Explain the challenge, the insight, and the practical path forward.'],'blocks'=>[]],$features,$cta]],
-        'showcase'=>['version'=>1,'theme'=>['contentWidth'=>'1240','primary'=>'#0c1118','accent'=>'#55d6be','radius'=>'20'],'sections'=>[$hero('One platform. Many connected experiences.','A high-contrast product showcase for digital systems, media, and automated commerce.'),['id'=>site_builder_id('stats'),'type'=>'columns','settings'=>['headline'=>'Built to connect the full experience.','text'=>'Show measurable outcomes and platform capabilities.'],'blocks'=>[
+        'split'=>['version'=>2,'theme'=>$theme('split','#152638','#0b8588',18,1180),'sections'=>[$splitHero,$features(),$cta()]],
+        'centered'=>['version'=>2,'theme'=>$theme('centered','#101b2c','#0b8588',24,1080),'sections'=>[$centeredHero,['id'=>site_builder_id('media'),'type'=>'media','settings'=>['eyebrow'=>'Featured work','headline'=>'Show the work. Explain the value.','text'=>'Use this section for a wide image, video, or featured project.','image'=>'','imageAlt'=>'','layout'=>'wide'],'blocks'=>[]],$features(),$cta()]],
+        'editorial'=>['version'=>2,'theme'=>$theme('editorial','#30251f','#a45c32',10,1120),'sections'=>[$editorialHero,['id'=>site_builder_id('content'),'type'=>'content','settings'=>['eyebrow'=>'The approach','headline'=>'Useful systems begin with clear thinking.','text'=>'Explain the challenge, the insight, and the practical path forward.','body'=>'','image'=>'','imageAlt'=>'','layout'=>'editorial'],'blocks'=>[]],$features(),$cta()]],
+        'showcase'=>['version'=>2,'theme'=>$theme('showcase','#0c1118','#55d6be',20,1240),'sections'=>[$showcaseHero,['id'=>site_builder_id('columns'),'type'=>'columns','settings'=>['eyebrow'=>'Platform capabilities','headline'=>'Built to connect the full experience.','text'=>'Show measurable outcomes and platform capabilities.','layout'=>'cards'],'blocks'=>[
             ['id'=>site_builder_id('stat'),'type'=>'stat','settings'=>['value'=>'01','label'=>'Unified experience']],
             ['id'=>site_builder_id('stat'),'type'=>'stat','settings'=>['value'=>'02','label'=>'Measurable activity']],
             ['id'=>site_builder_id('stat'),'type'=>'stat','settings'=>['value'=>'03','label'=>'Practical automation']],
-        ]],$cta]],
-        'blank'=>['version'=>1,'theme'=>['contentWidth'=>'1180','primary'=>'#152638','accent'=>'#0b8588','radius'=>'18'],'sections'=>[]],
+        ]],$features(),$cta()]],
+        'blank'=>['version'=>2,'theme'=>['template'=>'blank','contentWidth'=>'1180','primary'=>'#152638','accent'=>'#0b8588','radius'=>'18','footerText'=>'North Mountain Media · Phoenix, Arizona'],'sections'=>[]],
     ];
+}
+
+function site_builder_landing_payload_from_settings(): array
+{
+    $template=nmm_landing_template();
+    $templates=site_builder_templates();
+    $payload=$templates[$template]??$templates['split'];
+    $theme=$payload['theme'];
+    $heroImage=nmm_site_media_url('hero');
+    $supportingImage=nmm_site_media_url('secondary');
+    $socialImage=nmm_site_media_url('social');
+    $theme['footerText']=nmm_site_setting('landing_footer_text','North Mountain Media · Phoenix, Arizona');
+    $theme[site_builder_template_image_key($template,'hero')]=$heroImage;
+    $theme[site_builder_template_image_key($template,'supporting')]=$supportingImage;
+    $theme[site_builder_template_image_key($template,'social')]=$socialImage;
+    $payload['theme']=$theme;
+
+    $features=[];
+    foreach(nmm_landing_features() as $feature){
+        $features[]=['id'=>site_builder_id('feature'),'type'=>'feature','settings'=>[
+            'title'=>(string)($feature['title']??'Feature'),
+            'text'=>(string)($feature['description']??''),
+            'image'=>'','imageAlt'=>'',
+        ]];
+    }
+    if(!$features){
+        $features=site_builder_templates()['split']['sections'][1]['blocks'];
+    }
+    $hero=['id'=>site_builder_id('hero'),'type'=>'hero','settings'=>[
+        'eyebrow'=>nmm_site_setting('landing_eyebrow','North Mountain Media'),
+        'headline'=>nmm_site_setting('landing_headline','Connected digital systems for ambitious ideas.'),
+        'text'=>nmm_site_setting('landing_subheadline','Strategy, design, content, CRM, commerce, and client operations brought together in one practical system.'),
+        'body'=>nmm_site_setting('landing_body','North Mountain Media builds focused digital products and operational platforms that help businesses, creators, and new ventures move from fragmented tools to connected execution.'),
+        'alignment'=>$template==='centered'?'center':'left',
+        'layout'=>$template,
+        'image'=>$heroImage,
+        'imageAlt'=>nmm_site_setting('landing_hero_image_alt','North Mountain Media featured work'),
+    ],'blocks'=>[]];
+    $primaryLabel=nmm_site_setting('landing_primary_button_label','Start a project');
+    $primaryUrl=nmm_site_setting('landing_primary_button_url','intake.php');
+    $secondaryLabel=nmm_site_setting('landing_secondary_button_label','View portfolio');
+    $secondaryUrl=nmm_site_setting('landing_secondary_button_url','workspace.php');
+    if($primaryLabel!==''&&$primaryUrl!=='')$hero['blocks'][]=['id'=>site_builder_id('button'),'type'=>'button','settings'=>['label'=>$primaryLabel,'url'=>$primaryUrl,'style'=>'primary']];
+    if($secondaryLabel!==''&&$secondaryUrl!=='')$hero['blocks'][]=['id'=>site_builder_id('button'),'type'=>'button','settings'=>['label'=>$secondaryLabel,'url'=>$secondaryUrl,'style'=>'secondary']];
+
+    $featureSection=['id'=>site_builder_id('features'),'type'=>'features','settings'=>[
+        'eyebrow'=>nmm_site_setting('landing_section_eyebrow','What we build'),
+        'headline'=>nmm_site_setting('landing_section_title','A clearer path from concept to working system.'),
+        'text'=>nmm_site_setting('landing_section_body','Choose a focused starting point, connect the required workflows, and create a platform that can grow without losing clarity.'),
+        'image'=>$template==='split'?$supportingImage:'',
+        'imageAlt'=>nmm_site_setting('landing_secondary_image_alt','North Mountain Media project detail'),
+        'layout'=>$template==='split'?'split':'grid',
+    ],'blocks'=>$features];
+    $cta=['id'=>site_builder_id('cta'),'type'=>'cta','settings'=>[
+        'eyebrow'=>nmm_site_setting('landing_cta_eyebrow','Ready to build'),
+        'headline'=>nmm_site_setting('landing_cta_title','Turn the next idea into a connected working system.'),
+        'text'=>'','alignment'=>'center',
+    ],'blocks'=>[]];
+    if($primaryLabel!==''&&$primaryUrl!=='')$cta['blocks'][]=['id'=>site_builder_id('button'),'type'=>'button','settings'=>['label'=>$primaryLabel,'url'=>$primaryUrl,'style'=>'primary']];
+
+    $sections=[$hero];
+    if(in_array($template,['centered','editorial'],true)&&$supportingImage!==''){
+        $sections[]=['id'=>site_builder_id('media'),'type'=>$template==='editorial'?'content':'media','settings'=>[
+            'eyebrow'=>$template==='editorial'?'The work':'Featured work',
+            'headline'=>$template==='editorial'?'Experience, context, and practical execution.':'Show the work. Explain the value.',
+            'text'=>'','body'=>'','image'=>$supportingImage,
+            'imageAlt'=>nmm_site_setting('landing_secondary_image_alt','North Mountain Media project detail'),
+            'layout'=>$template,
+        ],'blocks'=>[]];
+    }
+    if($template==='showcase'&&$supportingImage!==''){
+        $sections[]=['id'=>site_builder_id('media'),'type'=>'media','settings'=>['eyebrow'=>'Featured system','headline'=>'A closer look at the experience.','text'=>'','image'=>$supportingImage,'imageAlt'=>nmm_site_setting('landing_secondary_image_alt','North Mountain Media project detail'),'layout'=>'showcase'],'blocks'=>[]];
+    }
+    $sections[]=$featureSection;
+    $sections[]=$cta;
+    $payload['sections']=$sections;
+    return site_builder_sanitize_payload($payload);
+}
+
+function site_builder_should_import_landing_settings(array $page,array $revisions): bool
+{
+    return ($page['slug']??'')==='home'
+        && ($page['page_type']??'')==='landing'
+        && empty($page['published_json'])
+        && count($revisions)===0;
 }
 
 function site_builder_section_library(): array
 {
     return [
-        'hero'=>['label'=>'Hero','category'=>'Layout','description'=>'Headline, copy, image, and actions.'],
-        'content'=>['label'=>'Content','category'=>'Layout','description'=>'Editorial text section.'],
-        'features'=>['label'=>'Feature grid','category'=>'Layout','description'=>'Cards for services or capabilities.'],
-        'columns'=>['label'=>'Columns','category'=>'Layout','description'=>'Flexible cards, statistics, or content.'],
-        'media'=>['label'=>'Media feature','category'=>'Media','description'=>'Wide image, video, or visual story.'],
-        'portfolio'=>['label'=>'Portfolio projects','category'=>'Dynamic','description'=>'Published portfolio content.'],
-        'music'=>['label'=>'Music releases','category'=>'Dynamic','description'=>'Albums, songs, and listening activity.'],
-        'events'=>['label'=>'Upcoming events','category'=>'Dynamic','description'=>'Published upcoming events.'],
-        'contact'=>['label'=>'Contact form','category'=>'Conversion','description'=>'CRM-connected inquiry form.'],
-        'cta'=>['label'=>'Call to action','category'=>'Conversion','description'=>'Focused conversion section.'],
-        'microgifter'=>['label'=>'Microgifter offer','category'=>'Microgifter','description'=>'Adapter-powered offer or campaign.'],
-        'spacer'=>['label'=>'Spacer / divider','category'=>'Utility','description'=>'Visual space between sections.'],
+        'hero'=>['label'=>'Hero','category'=>'Layout','description'=>'Opening headline, supporting copy, image, and actions.','icon'=>'hero','keywords'=>'banner intro image buttons'],
+        'content'=>['label'=>'Content story','category'=>'Layout','description'=>'Editorial copy with an optional supporting image.','icon'=>'content','keywords'=>'text story image'],
+        'features'=>['label'=>'Feature grid','category'=>'Content','description'=>'Visual cards for services, benefits, or capabilities.','icon'=>'features','keywords'=>'cards services benefits image'],
+        'columns'=>['label'=>'Flexible columns','category'=>'Layout','description'=>'Cards, statistics, or mixed content in columns.','icon'=>'columns','keywords'=>'grid stats cards'],
+        'media'=>['label'=>'Media feature','category'=>'Media','description'=>'Wide image, video, or visual story section.','icon'=>'media','keywords'=>'image video showcase'],
+        'portfolio'=>['label'=>'Portfolio projects','category'=>'Dynamic','description'=>'Published portfolio content from the portal.','icon'=>'portfolio','keywords'=>'work case study projects'],
+        'music'=>['label'=>'Music release','category'=>'Dynamic','description'=>'A selected song or release from the Music Library.','icon'=>'music','keywords'=>'audio track album song'],
+        'events'=>['label'=>'Upcoming events','category'=>'Dynamic','description'=>'Published upcoming events from the calendar.','icon'=>'events','keywords'=>'calendar schedule event'],
+        'contact'=>['label'=>'Contact form','category'=>'Conversion','description'=>'CRM-connected inquiry form.','icon'=>'contact','keywords'=>'lead form inquiry crm'],
+        'cta'=>['label'=>'Call to action','category'=>'Conversion','description'=>'Focused conversion statement with one or more buttons.','icon'=>'cta','keywords'=>'button conversion closing'],
+        'microgifter'=>['label'=>'Microgifter offer','category'=>'Microgifter','description'=>'Adapter-powered offer, campaign, or reward.','icon'=>'gift','keywords'=>'gift reward campaign commerce'],
+        'spacer'=>['label'=>'Spacer / divider','category'=>'Utility','description'=>'Controlled visual space between sections.','icon'=>'spacer','keywords'=>'space divider'],
     ];
 }
 
 function site_builder_block_library(): array
 {
     return [
-        'heading'=>['label'=>'Heading','category'=>'Content'],
-        'text'=>['label'=>'Paragraph','category'=>'Content'],
-        'image'=>['label'=>'Image','category'=>'Media'],
-        'button'=>['label'=>'Button','category'=>'Conversion'],
-        'feature'=>['label'=>'Feature card','category'=>'Content'],
-        'stat'=>['label'=>'Statistic','category'=>'Content'],
-        'testimonial'=>['label'=>'Testimonial','category'=>'Content'],
-        'audio'=>['label'=>'Audio / track','category'=>'Music'],
-        'music_track'=>['label'=>'Music track','category'=>'Music'],
-        'portfolio_project'=>['label'=>'Portfolio project','category'=>'Dynamic'],
-        'event_list'=>['label'=>'Event list','category'=>'Dynamic'],
-        'contact_form'=>['label'=>'Contact form','category'=>'Conversion'],
-        'microgifter_offer'=>['label'=>'Microgifter offer','category'=>'Microgifter'],
-        'divider'=>['label'=>'Divider','category'=>'Utility'],
-        'spacer'=>['label'=>'Spacer','category'=>'Utility'],
+        'heading'=>['label'=>'Heading','category'=>'Content','description'=>'Section or card heading.','icon'=>'heading','keywords'=>'title headline'],
+        'text'=>['label'=>'Paragraph','category'=>'Content','description'=>'Supporting paragraph or long-form copy.','icon'=>'text','keywords'=>'copy paragraph'],
+        'image'=>['label'=>'Image','category'=>'Media','description'=>'Responsive image with alt text and optional caption.','icon'=>'image','keywords'=>'photo media upload'],
+        'image_text'=>['label'=>'Image + text','category'=>'Media','description'=>'Image, headline, copy, and optional link in one card.','icon'=>'image-text','keywords'=>'photo card content'],
+        'button'=>['label'=>'Button','category'=>'Conversion','description'=>'Primary, secondary, or text link button.','icon'=>'button','keywords'=>'link action'],
+        'button_group'=>['label'=>'Button group','category'=>'Conversion','description'=>'Two coordinated calls to action.','icon'=>'buttons','keywords'=>'actions links'],
+        'feature'=>['label'=>'Feature card','category'=>'Content','description'=>'Image-ready feature or service card.','icon'=>'feature','keywords'=>'service benefit icon image'],
+        'stat'=>['label'=>'Statistic','category'=>'Content','description'=>'Large value with a supporting label.','icon'=>'stat','keywords'=>'metric number'],
+        'testimonial'=>['label'=>'Testimonial','category'=>'Content','description'=>'Customer quote with optional portrait.','icon'=>'quote','keywords'=>'review portrait'],
+        'quote'=>['label'=>'Pull quote','category'=>'Content','description'=>'Editorial quote or highlighted statement.','icon'=>'quote','keywords'=>'statement citation'],
+        'gallery'=>['label'=>'Image gallery','category'=>'Media','description'=>'Upload and arrange several images.','icon'=>'gallery','keywords'=>'photos grid upload'],
+        'video'=>['label'=>'Video','category'=>'Media','description'=>'Video URL with an optional uploaded poster image.','icon'=>'video','keywords'=>'movie poster media'],
+        'audio'=>['label'=>'Audio player','category'=>'Music','description'=>'Standalone audio URL and title.','icon'=>'audio','keywords'=>'sound player'],
+        'music_track'=>['label'=>'Music track','category'=>'Music','description'=>'Selected published Music Library track.','icon'=>'music','keywords'=>'song album stream'],
+        'portfolio_project'=>['label'=>'Portfolio project','category'=>'Dynamic','description'=>'Selected published portfolio project.','icon'=>'portfolio','keywords'=>'work case study'],
+        'event_list'=>['label'=>'Event list','category'=>'Dynamic','description'=>'Upcoming public events.','icon'=>'events','keywords'=>'calendar schedule'],
+        'contact_form'=>['label'=>'Contact form','category'=>'Conversion','description'=>'Lead form connected to the portal CRM.','icon'=>'contact','keywords'=>'form lead crm'],
+        'newsletter'=>['label'=>'Email signup','category'=>'Conversion','description'=>'Compact email-capture form.','icon'=>'newsletter','keywords'=>'subscribe email'],
+        'social_links'=>['label'=>'Social links','category'=>'Conversion','description'=>'A row of labeled social or external links.','icon'=>'social','keywords'=>'linkedin facebook instagram'],
+        'microgifter_offer'=>['label'=>'Microgifter offer','category'=>'Microgifter','description'=>'Campaign, gift, reward, or offer card.','icon'=>'gift','keywords'=>'commerce reward campaign'],
+        'divider'=>['label'=>'Divider','category'=>'Utility','description'=>'Horizontal visual divider.','icon'=>'divider','keywords'=>'line'],
+        'spacer'=>['label'=>'Spacer','category'=>'Utility','description'=>'Adjustable vertical spacing.','icon'=>'spacer','keywords'=>'space'],
     ];
 }
 
@@ -114,13 +239,13 @@ function site_builder_clean_url(mixed $value): string
 function site_builder_sanitize_settings(array $settings): array
 {
     $clean=[];
-    foreach(array_slice($settings,0,60,true) as $key=>$value){
-        $key=preg_replace('/[^a-z0-9_-]/i','',substr((string)$key,0,64))??'';
+    foreach(array_slice($settings,0,120,true) as $key=>$value){
+        $key=preg_replace('/[^a-z0-9_-]/i','',substr((string)$key,0,96))??'';
         if($key==='') continue;
         if(is_bool($value)||is_int($value)||is_float($value)){$clean[$key]=$value;continue;}
-        if(is_array($value)){$clean[$key]=array_slice(array_map(static fn($item)=>site_builder_clean_text($item,500),$value),0,30);continue;}
-        $lowerKey=strtolower($key);$isUrl=str_ends_with($lowerKey,'url')||in_array($lowerKey,['image','video','audio','backgroundimage'],true);
-        $clean[$key]=$isUrl?site_builder_clean_url($value):site_builder_clean_text($value,5000);
+        if(is_array($value)){$clean[$key]=array_slice(array_map(static fn($item)=>site_builder_clean_text($item,1000),$value),0,60);continue;}
+        $lowerKey=strtolower($key);$isUrl=str_ends_with($lowerKey,'url')||in_array($lowerKey,['image','video','audio','backgroundimage','poster'],true)||str_starts_with($lowerKey,'image_');
+        $clean[$key]=$isUrl?site_builder_clean_url($value):site_builder_clean_text($value,12000);
     }
     return $clean;
 }
@@ -129,13 +254,13 @@ function site_builder_sanitize_payload(array $payload): array
 {
     $sectionTypes=array_keys(site_builder_section_library());
     $blockTypes=array_keys(site_builder_block_library());
-    $clean=['version'=>1,'theme'=>site_builder_sanitize_settings(is_array($payload['theme']??null)?$payload['theme']:[]),'sections'=>[]];
-    foreach(array_slice(is_array($payload['sections']??null)?$payload['sections']:[],0,60) as $section){
+    $clean=['version'=>2,'theme'=>site_builder_sanitize_settings(is_array($payload['theme']??null)?$payload['theme']:[]),'sections'=>[]];
+    foreach(array_slice(is_array($payload['sections']??null)?$payload['sections']:[],0,80) as $section){
         if(!is_array($section)) continue;
         $type=(string)($section['type']??'content');
         if(!in_array($type,$sectionTypes,true)) $type='content';
         $item=['id'=>site_builder_clean_text($section['id']??site_builder_id($type),80),'type'=>$type,'settings'=>site_builder_sanitize_settings(is_array($section['settings']??null)?$section['settings']:[]),'blocks'=>[]];
-        foreach(array_slice(is_array($section['blocks']??null)?$section['blocks']:[],0,80) as $block){
+        foreach(array_slice(is_array($section['blocks']??null)?$section['blocks']:[],0,120) as $block){
             if(!is_array($block)) continue;
             $blockType=(string)($block['type']??'text');
             if(!in_array($blockType,$blockTypes,true)) $blockType='text';
@@ -198,6 +323,11 @@ function site_builder_button(string $label,string $url,string $style='primary'):
     return '<a class="site-block-button site-block-button-'.e(in_array($style,['primary','secondary','text'],true)?$style:'primary').'" href="'.e(nmm_public_link_url($url)).'" data-site-event="builder_button_clicked" data-site-label="'.e($label).'">'.e($label).'</a>';
 }
 
+function site_builder_lines(string $value,int $limit=12): array
+{
+    return array_slice(array_values(array_filter(array_map('trim',preg_split('/[\r\n]+/',$value)?:[]))),0,$limit);
+}
+
 function site_builder_render_block(array $block): string
 {
     $type=(string)($block['type']??'text');$s=is_array($block['settings']??null)?$block['settings']:[];
@@ -205,24 +335,36 @@ function site_builder_render_block(array $block): string
     if($type==='heading'){echo '<h3>'.e($s['text']??$s['title']??'Heading').'</h3>';}
     elseif($type==='text'){echo '<p>'.nl2br(e($s['text']??'Add supporting copy.')).'</p>';}
     elseif($type==='button'){echo site_builder_button((string)($s['label']??'Learn more'),(string)($s['url']??'#'),(string)($s['style']??'primary'));}
-    elseif($type==='image'&&($s['url']??'')!==''){echo '<figure><img loading="lazy" src="'.e(nmm_public_link_url((string)$s['url'])).'" alt="'.e($s['alt']??'').'"></figure>';}
-    elseif($type==='feature'){echo '<article class="site-feature-card"><h3>'.e($s['title']??'Feature').'</h3><p>'.e($s['text']??'').'</p></article>';}
+    elseif($type==='button_group'){echo '<div class="site-button-group">'.site_builder_button((string)($s['primaryLabel']??'Get started'),(string)($s['primaryUrl']??'#'),'primary').site_builder_button((string)($s['secondaryLabel']??'Learn more'),(string)($s['secondaryUrl']??'#'),'secondary').'</div>';}
+    elseif($type==='image'&&($s['url']??'')!==''){echo '<figure class="site-image-block"><img loading="lazy" src="'.e(nmm_public_link_url((string)$s['url'])).'" alt="'.e($s['alt']??'').'">'.(($s['caption']??'')!==''?'<figcaption>'.e($s['caption']).'</figcaption>':'').'</figure>';}
+    elseif($type==='image_text'){echo '<article class="site-image-text-card">';if(($s['image']??'')!=='')echo '<img loading="lazy" src="'.e(nmm_public_link_url((string)$s['image'])).'" alt="'.e($s['imageAlt']??'').'">';echo '<div><h3>'.e($s['title']??'Image and text').'</h3><p>'.nl2br(e($s['text']??'')).'</p>'.site_builder_button((string)($s['buttonLabel']??''),(string)($s['buttonUrl']??''),'text').'</div></article>';}
+    elseif($type==='feature'){echo '<article class="site-feature-card">';if(($s['image']??'')!=='')echo '<img loading="lazy" src="'.e(nmm_public_link_url((string)$s['image'])).'" alt="'.e($s['imageAlt']??'').'">';echo '<h3>'.e($s['title']??'Feature').'</h3><p>'.e($s['text']??'').'</p></article>';}
     elseif($type==='stat'){echo '<article class="site-stat-card"><strong>'.e($s['value']??'0').'</strong><span>'.e($s['label']??'Metric').'</span></article>';}
-    elseif($type==='testimonial'){echo '<blockquote><p>'.e($s['quote']??'Add a customer quote.').'</p><cite>'.e($s['name']??'Customer').'</cite></blockquote>';}
+    elseif($type==='testimonial'){echo '<blockquote class="site-testimonial">';if(($s['image']??'')!=='')echo '<img loading="lazy" src="'.e(nmm_public_link_url((string)$s['image'])).'" alt="'.e($s['imageAlt']??'').'">';echo '<p>'.e($s['quote']??'Add a customer quote.').'</p><cite>'.e($s['name']??'Customer').(($s['role']??'')!==''?' · '.e($s['role']):'').'</cite></blockquote>';}
+    elseif($type==='quote'){echo '<blockquote class="site-pull-quote"><p>'.e($s['quote']??'Add a highlighted statement.').'</p>'.(($s['citation']??'')!==''?'<cite>'.e($s['citation']).'</cite>':'').'</blockquote>';}
+    elseif($type==='gallery'){$images=site_builder_lines((string)($s['images']??''),8);if($images){echo '<div class="site-image-gallery">';foreach($images as $image)echo '<img loading="lazy" src="'.e(nmm_public_link_url($image)).'" alt="'.e($s['alt']??'Gallery image').'">';echo '</div>';}}
+    elseif($type==='video'&&($s['url']??'')!==''){echo '<video class="site-video-block" controls preload="metadata"'.(($s['poster']??'')!==''?' poster="'.e(nmm_public_link_url((string)$s['poster'])).'"':'').'><source src="'.e(nmm_public_link_url((string)$s['url'])).'"></video>';}
     elseif($type==='divider'){echo '<hr>';}
     elseif($type==='spacer'){echo '<div class="site-block-spacer" style="height:'.max(12,min(240,(int)($s['height']??48))).'px"></div>';}
     elseif($type==='contact_form'){echo site_builder_contact_form($s);}
+    elseif($type==='newsletter'){echo site_builder_newsletter_form($s);}
+    elseif($type==='social_links'){$links=site_builder_lines((string)($s['links']??''),12);echo '<div class="site-social-links">';foreach($links as $line){[$label,$url]=array_pad(array_map('trim',explode('|',$line,2)),2,'');if($label!==''&&$url!=='')echo site_builder_button($label,$url,'secondary');}echo '</div>';}
     elseif($type==='music_track'){echo site_builder_music_track($s);}
     elseif($type==='portfolio_project'){echo site_builder_portfolio_project($s);}
     elseif($type==='event_list'){echo site_builder_event_list($s);}
     elseif($type==='microgifter_offer'){require_once __DIR__.'/microgifter-connectors.php';echo microgifter_render_offer_block($s);}
-    elseif($type==='audio'&&($s['url']??'')!==''){echo '<audio controls preload="metadata" src="'.e(nmm_public_link_url((string)$s['url'])).'"></audio>';}
+    elseif($type==='audio'&&($s['url']??'')!==''){echo '<div class="site-audio-block">'.(($s['title']??'')!==''?'<strong>'.e($s['title']).'</strong>':'').'<audio controls preload="metadata" src="'.e(nmm_public_link_url((string)$s['url'])).'"></audio></div>';}
     return (string)ob_get_clean();
 }
 
 function site_builder_contact_form(array $s=[]): string
 {
     ob_start();?><form class="site-contact-form" data-site-contact-form><div class="site-form-grid"><label><span>Name</span><input name="name" required maxlength="160"></label><label><span>Email</span><input type="email" name="email" required maxlength="190"></label><label><span>Phone</span><input name="phone" maxlength="60"></label><label><span>Company</span><input name="company" maxlength="190"></label><label class="full"><span>How can we help?</span><textarea name="message" required maxlength="8000" rows="5"></textarea></label><input class="site-honeypot" name="website" tabindex="-1" autocomplete="off"><input type="hidden" name="opportunity" value="<?=e($s['opportunity']??'Website inquiry')?>"></div><button class="site-block-button site-block-button-primary" type="submit"><?=e($s['buttonLabel']??'Send inquiry')?></button><p class="site-form-status" data-site-form-status></p></form><?php return (string)ob_get_clean();
+}
+
+function site_builder_newsletter_form(array $s=[]): string
+{
+    ob_start();?><form class="site-newsletter-form" data-site-contact-form><label><span><?=e($s['label']??'Email address')?></span><input type="email" name="email" required maxlength="190" placeholder="<?=e($s['placeholder']??'you@example.com')?>"></label><input type="hidden" name="name" value="Newsletter subscriber"><input type="hidden" name="message" value="Website email signup"><input type="hidden" name="opportunity" value="<?=e($s['opportunity']??'Newsletter signup')?>"><button class="site-block-button site-block-button-primary" type="submit"><?=e($s['buttonLabel']??'Subscribe')?></button><p class="site-form-status" data-site-form-status></p></form><?php return (string)ob_get_clean();
 }
 
 function site_builder_music_track(array $s): string
@@ -235,9 +377,9 @@ function site_builder_music_track(array $s): string
 function site_builder_portfolio_project(array $s): string
 {
     $id=max(0,(int)($s['projectId']??0));
-    try{$q=$id>0?db()->prepare('SELECT id,title,slug,summary FROM portfolio_projects WHERE id=:id AND status="active" LIMIT 1'):null;if($q){$q->execute(['id'=>$id]);$p=$q->fetch();}else{$p=db()->query('SELECT id,title,slug,summary FROM portfolio_projects WHERE status="active" ORDER BY featured DESC,sort_order,id LIMIT 1')->fetch();}}catch(Throwable){$p=false;}
-    if(!$p)return '<div class="site-dynamic-placeholder">Choose a published portfolio project.</div>';
-    return '<article class="site-project-card"><span>Featured project</span><h3>'.e($p['title']).'</h3><p>'.e($p['summary']??'').'</p><a href="'.e(app_url('workspace.php#'.($p['slug']??'featured-project'))).'">View project</a></article>';
+    try{$q=$id>0?db()->prepare('SELECT id,title,slug,summary FROM portfolio_projects WHERE id=:id AND status="active" LIMIT 1'):null;if($q){$q->execute(['id'=>$id]);$project=$q->fetch();}else{$project=db()->query('SELECT id,title,slug,summary FROM portfolio_projects WHERE status="active" ORDER BY featured DESC,sort_order,id LIMIT 1')->fetch();}}catch(Throwable){$project=false;}
+    if(!$project)return '<div class="site-dynamic-placeholder">Choose a published portfolio project.</div>';
+    return '<article class="site-project-card"><span>Featured project</span><h3>'.e($project['title']).'</h3><p>'.e($project['summary']??'').'</p><a href="'.e(app_url('workspace.php#'.($project['slug']??'featured-project'))).'">View project</a></article>';
 }
 
 function site_builder_event_list(array $s): string
@@ -249,18 +391,20 @@ function site_builder_event_list(array $s): string
 
 function site_builder_render_section(array $section): string
 {
-    $type=(string)($section['type']??'content');$s=is_array($section['settings']??null)?$section['settings']:[];$blocks=is_array($section['blocks']??null)?$section['blocks']:[];
-    if(!empty($s['hidden'])) return '';
-    $alignCandidate=(string)($s['alignment']??'left');$align=in_array($alignCandidate,['left','center','right'],true)?$alignCandidate:'left';
-    $classes=['site-builder-section','site-section-'.$type,'align-'.$align];
-    foreach(['desktop','tablet','mobile'] as $device){if(!empty($s['hideOn'.ucfirst($device)]))$classes[]='hide-'.$device;}
+    $type=(string)($section['type']??'content');$settings=is_array($section['settings']??null)?$section['settings']:[];$blocks=is_array($section['blocks']??null)?$section['blocks']:[];
+    if(!empty($settings['hidden'])) return '';
+    $alignment=in_array((string)($settings['alignment']??'left'),['left','center','right'],true)?(string)$settings['alignment']:'left';
+    $layout=preg_replace('/[^a-z0-9_-]/i','',(string)($settings['layout']??'default'))?:'default';
+    $classes=['site-builder-section','site-section-'.$type,'align-'.$alignment,'layout-'.$layout];
+    if(($settings['image']??'')!=='')$classes[]='has-section-image';
+    foreach(['desktop','tablet','mobile'] as $device){if(!empty($settings['hideOn'.ucfirst($device)]))$classes[]='hide-'.$device;}
     $styles=[];
-    if(($s['backgroundColor']??'')!==''&&preg_match('/^#[0-9a-f]{3,8}$/i',(string)$s['backgroundColor']))$styles[]='background-color:'.$s['backgroundColor'];
-    if(($s['backgroundImage']??'')!=='')$styles[]='background-image:linear-gradient(rgba(7,18,30,.30),rgba(7,18,30,.30)),url("'.e(nmm_public_link_url((string)$s['backgroundImage'])).'")';
-    $paddingTop=max(0,min(240,(int)($s['paddingTop']??0)));$paddingBottom=max(0,min(240,(int)($s['paddingBottom']??0)));
+    if(($settings['backgroundColor']??'')!==''&&preg_match('/^#[0-9a-f]{3,8}$/i',(string)$settings['backgroundColor']))$styles[]='background-color:'.$settings['backgroundColor'];
+    if(($settings['backgroundImage']??'')!=='')$styles[]='background-image:linear-gradient(rgba(7,18,30,.34),rgba(7,18,30,.34)),url("'.e(nmm_public_link_url((string)$settings['backgroundImage'])).'")';
+    $paddingTop=max(0,min(240,(int)($settings['paddingTop']??0)));$paddingBottom=max(0,min(240,(int)($settings['paddingBottom']??0)));
     if($paddingTop>0)$styles[]='padding-top:'.$paddingTop.'px';if($paddingBottom>0)$styles[]='padding-bottom:'.$paddingBottom.'px';
     $style=$styles?' style="'.implode(';',$styles).'"':'';
-    ob_start();?><section class="<?=e(implode(' ',$classes))?>" data-section-type="<?=e($type)?>"<?=$style?>><div class="site-section-inner"><?php if(($s['eyebrow']??'')!==''):?><p class="site-section-eyebrow"><?=e($s['eyebrow'])?></p><?php endif;?><?php if(($s['headline']??'')!==''):?><h2><?=e($s['headline'])?></h2><?php endif;?><?php if(($s['text']??'')!==''):?><p class="site-section-copy"><?=nl2br(e($s['text']))?></p><?php endif;?><?php if($type==='media'&&($s['image']??'')!==''):?><figure class="site-section-media"><img src="<?=e(nmm_public_link_url((string)$s['image']))?>" alt="<?=e($s['imageAlt']??'')?>"></figure><?php endif;?><?php if($type==='contact'&&(!$blocks)):?><?=site_builder_contact_form($s)?><?php elseif($type==='portfolio'&&(!$blocks)):?><?=site_builder_portfolio_project($s)?><?php elseif($type==='music'&&(!$blocks)):?><?=site_builder_music_track($s)?><?php elseif($type==='events'&&(!$blocks)):?><?=site_builder_event_list($s)?><?php elseif($type==='microgifter'&&(!$blocks)):?><?php require_once __DIR__.'/microgifter-connectors.php';echo microgifter_render_offer_block($s);?><?php endif;?><div class="site-section-blocks"><?php foreach($blocks as $block):?><div class="site-builder-block site-block-<?=e($block['type']??'text')?>"><?=site_builder_render_block($block)?></div><?php endforeach;?></div></div></section><?php return (string)ob_get_clean();
+    ob_start();?><section class="<?=e(implode(' ',$classes))?>" data-section-type="<?=e($type)?>"<?=$style?>><div class="site-section-inner"><div class="site-section-head"><div class="site-section-copy-column"><?php if(($settings['eyebrow']??'')!==''):?><p class="site-section-eyebrow"><?=e($settings['eyebrow'])?></p><?php endif;?><?php if(($settings['headline']??'')!==''):?><h2><?=e($settings['headline'])?></h2><?php endif;?><?php if(($settings['text']??'')!==''):?><p class="site-section-copy"><?=nl2br(e($settings['text']))?></p><?php endif;?><?php if(($settings['body']??'')!==''):?><p class="site-section-body"><?=nl2br(e($settings['body']))?></p><?php endif;?></div><?php if(($settings['image']??'')!==''):?><figure class="site-section-media"><img src="<?=e(nmm_public_link_url((string)$settings['image']))?>" alt="<?=e($settings['imageAlt']??'')?>"></figure><?php endif;?></div><?php if($type==='contact'&&(!$blocks)):?><?=site_builder_contact_form($settings)?><?php elseif($type==='portfolio'&&(!$blocks)):?><?=site_builder_portfolio_project($settings)?><?php elseif($type==='music'&&(!$blocks)):?><?=site_builder_music_track($settings)?><?php elseif($type==='events'&&(!$blocks)):?><?=site_builder_event_list($settings)?><?php elseif($type==='microgifter'&&(!$blocks)):?><?php require_once __DIR__.'/microgifter-connectors.php';echo microgifter_render_offer_block($settings);?><?php endif;?><div class="site-section-blocks"><?php foreach($blocks as $block):?><div class="site-builder-block site-block-<?=e($block['type']??'text')?>"><?=site_builder_render_block($block)?></div><?php endforeach;?></div></div></section><?php return (string)ob_get_clean();
 }
 
 function site_builder_render_page(array $page,array $payload,bool $preview=false): void
@@ -272,10 +416,12 @@ function site_builder_render_page(array $page,array $payload,bool $preview=false
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
     }
-    $theme=$payload['theme']??[];$siteName=setting('site_name','North Mountain Media')?:'North Mountain Media';$title=(string)((($page['seo_title']??'')!=='')?$page['seo_title']:($page['title']??'Page'));$description=(string)($page['seo_description']??'');$keywords=(string)($page['seo_keywords']??'');$canonical=(string)($page['seo_canonical_url']??'');$social=(string)($page['seo_social_image']??'');
+    $theme=$payload['theme']??[];$siteName=setting('site_name','North Mountain Media')?:'North Mountain Media';$title=(string)((($page['seo_title']??'')!=='')?$page['seo_title']:($page['title']??'Page'));$description=(string)($page['seo_description']??'');$keywords=(string)($page['seo_keywords']??'');$canonical=(string)($page['seo_canonical_url']??'');$social=(string)($page['seo_social_image']??'');$template=preg_replace('/[^a-z0-9_-]/i','',(string)($page['template_key']??$theme['template']??'split'))?:'split';
     if($canonical===''){ $base=rtrim(nmm_site_setting('seo_site_url'),'/'); if($base!=='')$canonical=$base.'/'.($page['slug']==='home'?'':('page.php?slug='.rawurlencode((string)$page['slug']))); }
+    if($social==='')$social=(string)($theme[site_builder_template_image_key($template,'social')]??'');
     if($social==='')$social=nmm_site_media_url('social');
-    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="build-version" content="20260727-visual-site-builder-v61"><title><?=e($title)?> — <?=e($siteName)?></title><?php if($description!==''):?><meta name="description" content="<?=e($description)?>"><meta property="og:description" content="<?=e($description)?>"><?php endif;?><?php if($keywords!==''):?><meta name="keywords" content="<?=e($keywords)?>"><?php endif;?><meta name="robots" content="<?=$preview||!(bool)($page['seo_index_enabled']??1)?'noindex,nofollow':'index,follow'?>"><meta property="og:title" content="<?=e($title)?>"><meta property="og:type" content="website"><?php if($canonical!==''):?><link rel="canonical" href="<?=e($canonical)?>"><meta property="og:url" content="<?=e($canonical)?>"><?php endif;?><?php if($social!==''):?><meta property="og:image" content="<?=e(nmm_public_link_url($social))?>"><?php endif;?><link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-public.css?v=20260727-v61'))?>"><link rel="stylesheet" href="<?=e(app_url('assets/css/music-library.css?v=20260727-v61'))?>"><style>:root{--site-content-width:<?=max(720,min(1600,(int)($theme['contentWidth']??1180)))?>px;--site-primary:<?=e($theme['primary']??'#152638')?>;--site-accent:<?=e($theme['accent']??'#0b8588')?>;--site-radius:<?=max(0,min(48,(int)($theme['radius']??18)))?>px}</style></head><body class="visual-site-page"><header class="visual-site-header"><a class="visual-site-brand visual-site-brand-desktop" href="<?=e(app_url('index.php'))?>"><img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>"></a><div class="visual-site-brand-mobile"><?php nmm_render_mobile_brand();?></div><button type="button" class="visual-site-menu-button" data-site-menu-toggle aria-expanded="false">Menu</button><nav class="visual-site-navigation visual-site-navigation-desktop"><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?></nav><nav class="visual-site-navigation visual-site-navigation-mobile" data-site-menu><?php if(!site_builder_render_menu_location('mobile','visual-menu')):?><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?><?php endif;?></nav></header><?php if($preview):?><div class="site-preview-banner">Draft preview · <a href="<?=e(app_url('portal/site-builder.php?page='.(int)$page['id']))?>">Return to editor</a></div><?php endif;?><main><?php foreach($payload['sections']??[] as $section) echo site_builder_render_section($section);?></main><footer class="visual-site-footer"><div><?php if(!site_builder_render_menu_location('footer','visual-footer-menu')):?><span><?=e(nmm_site_setting('landing_footer_text','North Mountain Media · Phoenix, Arizona'))?></span><?php endif;?></div></footer><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61'))?>"></script><script src="<?=e(app_url('assets/js/music-player.js?v=20260727-v61'))?>"></script></body></html><?php
+    $footerText=(string)($theme['footerText']??nmm_site_setting('landing_footer_text','North Mountain Media · Phoenix, Arizona'));
+    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="build-version" content="20260727-landing-page-builder-v61.2"><title><?=e($title)?> — <?=e($siteName)?></title><?php if($description!==''):?><meta name="description" content="<?=e($description)?>"><meta property="og:description" content="<?=e($description)?>"><?php endif;?><?php if($keywords!==''):?><meta name="keywords" content="<?=e($keywords)?>"><?php endif;?><meta name="robots" content="<?=$preview||!(bool)($page['seo_index_enabled']??1)?'noindex,nofollow':'index,follow'?>"><meta property="og:title" content="<?=e($title)?>"><meta property="og:type" content="website"><?php if($canonical!==''):?><link rel="canonical" href="<?=e($canonical)?>"><meta property="og:url" content="<?=e($canonical)?>"><?php endif;?><?php if($social!==''):?><meta property="og:image" content="<?=e(nmm_public_link_url($social))?>"><?php endif;?><link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-public.css?v=20260727-v61.2'))?>"><link rel="stylesheet" href="<?=e(app_url('assets/css/music-library.css?v=20260727-v61'))?>"><style>:root{--site-content-width:<?=max(720,min(1600,(int)($theme['contentWidth']??1180)))?>px;--site-primary:<?=e($theme['primary']??'#152638')?>;--site-accent:<?=e($theme['accent']??'#0b8588')?>;--site-radius:<?=max(0,min(48,(int)($theme['radius']??18)))?>px}</style></head><body class="visual-site-page template-<?=e($template)?>"><?php if($preview):?><a class="site-preview-back" href="<?=e(app_url('portal/site-builder.php?page='.(int)$page['id']))?>">← Back to editor</a><?php endif;?><header class="visual-site-header"><a class="visual-site-brand visual-site-brand-desktop" href="<?=e(app_url('index.php'))?>"><img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>"></a><div class="visual-site-brand-mobile"><?php nmm_render_mobile_brand();?></div><button type="button" class="visual-site-menu-button" data-site-menu-toggle aria-expanded="false">Menu</button><nav class="visual-site-navigation visual-site-navigation-desktop"><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?></nav><nav class="visual-site-navigation visual-site-navigation-mobile" data-site-menu><?php if(!site_builder_render_menu_location('mobile','visual-menu')):?><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?><?php endif;?></nav></header><main><?php foreach($payload['sections']??[] as $section) echo site_builder_render_section($section);?></main><footer class="visual-site-footer"><div><?php if(!site_builder_render_menu_location('footer','visual-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div></footer><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.2'))?>"></script><script src="<?=e(app_url('assets/js/music-player.js?v=20260727-v61'))?>"></script></body></html><?php
 }
 
 function site_builder_module_links(): array

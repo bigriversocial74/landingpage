@@ -1,0 +1,24 @@
+North Mountain Media Portal v61.2 validation
+Build: 20260727-landing-page-builder-v61.2
+
+Validated locally:
+- All PHP source files passed syntax validation
+- All JavaScript source files passed Node.js syntax validation
+- All stylesheets passed structural brace validation
+- Landing Page Builder v61.2 regression checks passed
+- Landing Page Page Editor toggle integration checks passed
+- Template, image-inventory, section-library, block-library, and sanitizer checks passed
+- System Settings retains all module toggles
+- Landing template/content/image/CTA/footer fields are absent from System Settings
+- Landing Settings exists only inside the Page Editor
+- Upper-left Back to editor control is present
+- Visual library category filtering and image upload controls are present
+- No SQL migration is required
+
+Deployment verification required:
+- Current live landing page imports into the Home canvas
+- Landing template switching preserves copy and per-template image inventories
+- Image uploads persist in storage/site-builder-media
+- Section and block click/drag insertion
+- Draft, preview, publish, revision, restore, undo, and redo
+- Public rendering for all new image-aware block types
