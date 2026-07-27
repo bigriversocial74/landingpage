@@ -1,0 +1,2 @@
+<?php
+declare(strict_types=1);define('NMM_PUBLIC_PAGE',true);require __DIR__.'/portal/bootstrap.php';require_once __DIR__.'/portal/site-builder-core.php';require_once __DIR__.'/portal/music-library.php';$slug=preg_replace('/[^a-z0-9-]/','',strtolower((string)($_GET['slug']??'')))??'';$page=$slug!==''?site_builder_public_page($slug):null;if(!$page){http_response_code(404);echo '<!doctype html><title>Page not found</title><h1>Page not found.</h1>';exit;}site_builder_render_page($page,site_builder_decode((string)$page['published_json']),false);
