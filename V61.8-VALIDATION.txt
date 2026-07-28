@@ -9,3 +9,9 @@ Validation targets:
 - New v61.8 layout-system regression
 - No config.php or runtime storage included
 - Existing 12 section and 22 block registries retained
+
+Generated-source validation:
+- One-time production generator completed successfully
+- PHP, JavaScript, CSS, and focused editor regressions passed on generated source
+- Temporary generator workflow and payload files removed before commit
+- Permanent repository-quality workflow is required on the final review head
