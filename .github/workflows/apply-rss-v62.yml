@@ -36,6 +36,7 @@ jobs:
             echo 'Patch must not modify GitHub workflow files.' >&2
             exit 1
           fi
+          git show fc754ffc7e20779ecfee914cea310822361d9b22:V62-SCORECARD-DRAFT.md > V62-SCORECARD-DRAFT.md
           git apply --check /tmp/v62.patch
           git apply /tmp/v62.patch
           git diff --check
