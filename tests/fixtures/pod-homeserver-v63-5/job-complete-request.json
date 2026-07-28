@@ -1,0 +1,11 @@
+{
+  "job_uuid": "11111111-2222-4333-8444-555555555555",
+  "lease_token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "result": {
+    "transcript": "Example locally processed receptionist transcript.",
+    "language": "en-US",
+    "confidence": 0.94,
+    "model": "local-speech-model",
+    "processing_ms": 1275
+  }
+}
