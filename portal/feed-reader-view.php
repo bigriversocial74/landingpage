@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260728-rss-feed-reader-v62 */
+/* North Mountain Media build: 20260728-social-feed-reader-v62.2 */
 
 require_once __DIR__ . '/feed-reader-core.php';
 
@@ -12,6 +12,12 @@ function feed_reader_portal_url(array $user, array $query = []): string
     return app_url('portal/' . $script . '?' . http_build_query($query));
 }
 
+function feed_reader_dashboard_url(array $user): string
+{
+    $script = ($user['role'] ?? '') === 'admin' ? 'admin.php' : 'client.php';
+    return app_url('portal/' . $script);
+}
+
 function feed_reader_redirect(array $user, array $query = []): never
 {
     redirect(feed_reader_portal_url($user, $query));
@@ -19,7 +25,7 @@ function feed_reader_redirect(array $user, array $query = []): never
 
 function feed_reader_return_query(): array
 {
-    $allowed = ['state','source','folder','q','item'];
+    $allowed = ['state', 'source', 'folder', 'q', 'item'];
     $query = [];
     foreach ($allowed as $key) {
         $value = trim((string)($_POST['return_' . $key] ?? ''));
@@ -195,6 +201,7 @@ function feed_reader_filter_url(array $user, array $changes = []): string
         'source' => max(0, (int)($_GET['source'] ?? 0)),
         'folder' => max(0, (int)($_GET['folder'] ?? 0)),
         'q' => trim((string)($_GET['q'] ?? '')),
+        'item' => max(0, (int)($_GET['item'] ?? 0)),
     ];
     foreach ($changes as $key => $value) {
         if ($value === null || $value === '' || $value === 0) {
@@ -223,15 +230,185 @@ function feed_reader_state_button(
         . '</button>';
 }
 
+function feed_reader_source_avatar(array $source, string $class = ''): string
+{
+    $title = (string)($source['display_title'] ?? $source['subscription_title'] ?? $source['title'] ?? $source['source_title'] ?? 'Feed');
+    $image = trim((string)($source['image_url'] ?? ''));
+    $className = 'feed-reader-source-avatar' . ($class !== '' ? ' ' . $class : '');
+    if ($image !== '') {
+        return '<span class="' . e($className) . '"><img src="' . e($image) . '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>';
+    }
+    $letter = mb_strtoupper(mb_substr($title !== '' ? $title : 'F', 0, 1));
+    return '<span class="' . e($className) . '" aria-hidden="true">' . e($letter) . '</span>';
+}
+
+function feed_reader_render_navigation(
+    array $user,
+    string $state,
+    int $sourceId,
+    int $folderId,
+    array $folders,
+    array $subscriptions,
+    array $counts
+): void {
+    ?>
+    <aside class="feed-reader-navigation" data-feed-sidebar aria-label="Feed Reader navigation">
+        <header class="feed-reader-navigation-header">
+            <a href="<?=e(feed_reader_dashboard_url($user))?>">← Back to portal</a>
+            <span>Personal reader</span>
+            <strong>Feed Reader</strong>
+        </header>
+
+        <nav class="feed-reader-smart-folders" aria-label="Feed filters">
+            <a class="<?=$state==='all'&&$sourceId===0&&$folderId===0?'active':''?>" href="<?=e(feed_reader_portal_url($user))?>"><span>All items</span><strong><?=(int)($counts['total']??0)?></strong></a>
+            <a class="<?=$state==='unread'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'unread','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Unread</span><strong><?=(int)($counts['unread']??0)?></strong></a>
+            <a class="<?=$state==='starred'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'starred','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Starred</span><strong><?=(int)($counts['starred']??0)?></strong></a>
+            <a class="<?=$state==='saved'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'saved','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Saved</span><strong><?=(int)($counts['saved']??0)?></strong></a>
+            <a class="<?=$state==='archived'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'archived','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Archived</span><strong><?=(int)($counts['archived']??0)?></strong></a>
+        </nav>
+
+        <section class="feed-reader-source-section">
+            <header><span>Folders</span><button type="button" data-feed-folder-toggle aria-label="Create folder">＋</button></header>
+            <form method="post" class="feed-reader-inline-form" data-feed-folder-form hidden>
+                <?=csrf_field()?>
+                <input type="hidden" name="action" value="save_feed_folder">
+                <input name="folder_name" maxlength="190" placeholder="Folder name" required>
+                <button type="submit">Save</button>
+            </form>
+            <nav>
+                <?php foreach($folders as $folder):?>
+                <a class="<?=$folderId===(int)$folder['id']?'active':''?>" href="<?=e(feed_reader_filter_url($user,['folder'=>(int)$folder['id'],'source'=>null,'item'=>null]))?>">
+                    <span><?=e($folder['name'])?></span><strong><?=(int)$folder['unread_count']?></strong>
+                </a>
+                <?php endforeach;?>
+                <?php if(!$folders):?><small>No folders yet.</small><?php endif;?>
+            </nav>
+        </section>
+
+        <section class="feed-reader-source-section feed-reader-subscription-nav">
+            <header><span>Subscriptions</span><strong><?=count($subscriptions)?></strong></header>
+            <nav>
+                <?php foreach($subscriptions as $subscription):?>
+                <a
+                    class="<?=$sourceId===(int)$subscription['source_id']?'active':''?> <?=e($subscription['source_status'])?>"
+                    href="<?=e(feed_reader_filter_url($user,['source'=>(int)$subscription['source_id'],'folder'=>null,'item'=>null]))?>"
+                    title="<?=e($subscription['last_error']?:$subscription['feed_url'])?>"
+                >
+                    <?=feed_reader_source_avatar($subscription)?>
+                    <span><strong><?=e($subscription['display_title']?:$subscription['title'])?></strong><small><?=e($subscription['source_status']==='error'?'Refresh error':($subscription['folder_name']?:strtoupper($subscription['feed_format'])))?></small></span>
+                    <em><?=(int)$subscription['unread_count']?></em>
+                </a>
+                <?php endforeach;?>
+                <?php if(!$subscriptions):?><small>Add an RSS or Atom source to begin.</small><?php endif;?>
+            </nav>
+        </section>
+
+        <footer class="feed-reader-navigation-footer">
+            <button type="button" data-feed-settings-open>Settings</button>
+            <button type="button" data-feed-dialog-open>Add feed</button>
+        </footer>
+    </aside>
+    <?php
+}
+
+function feed_reader_render_settings_dialog(
+    array $folders,
+    array $subscriptions,
+    array $recentRefreshes,
+    array $config,
+    string $opmlUrl
+): void {
+    $healthy = count(array_filter($subscriptions, static fn(array $source): bool => ($source['source_status'] ?? '') === 'active'));
+    $errors = count(array_filter($subscriptions, static fn(array $source): bool => ($source['source_status'] ?? '') === 'error'));
+    ?>
+    <dialog class="feed-reader-dialog feed-reader-settings-dialog" data-feed-settings-dialog>
+        <div class="feed-reader-settings-card">
+            <header class="feed-reader-settings-header">
+                <div><span>Reader controls</span><h2>Feed Reader settings</h2><p>Manage subscriptions, OPML portability, source health, and refresh evidence.</p></div>
+                <button type="button" data-feed-settings-close aria-label="Close settings">×</button>
+            </header>
+
+            <div class="feed-reader-settings-body">
+                <div class="feed-reader-management-grid">
+                    <section class="feed-reader-settings-panel">
+                        <span class="eyebrow">OPML</span>
+                        <h3>Import or export subscriptions</h3>
+                        <p>Move folders and feed URLs between compatible readers. Every imported source is validated before it is saved.</p>
+                        <form method="post" enctype="multipart/form-data" class="form-grid">
+                            <?=csrf_field()?>
+                            <input type="hidden" name="action" value="import_feed_opml">
+                            <label class="field full"><span>OPML file</span><input type="file" name="opml_file" accept=".opml,.xml,text/xml,application/xml" required><small>Maximum 2 MB and up to <?=$config['max_sources_per_user']?> feeds.</small></label>
+                            <div class="form-footer full"><button class="button button-primary" type="submit">Import OPML</button><a class="button" href="<?=e($opmlUrl)?>">Export OPML</a></div>
+                        </form>
+                    </section>
+
+                    <section class="feed-reader-settings-panel">
+                        <span class="eyebrow">Refresh service</span>
+                        <h3>Health and scheduling</h3>
+                        <p>Feeds use conditional requests, retry backoff, response limits, redirect validation, and refresh locks. Scheduled refresh interval: <?=$config['refresh_minutes']?> minutes.</p>
+                        <div class="feed-reader-health-summary">
+                            <span><strong><?=$healthy?></strong> healthy</span>
+                            <span><strong><?=$errors?></strong> errors</span>
+                            <span><strong><?=$config['max_response_bytes']/1048576?></strong> MB limit</span>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="feed-reader-settings-section">
+                    <header><div><span>Sources</span><h3>Manage subscriptions</h3></div><strong><?=count($subscriptions)?> total</strong></header>
+                    <div class="feed-reader-subscription-cards">
+                        <?php foreach($subscriptions as $subscription):?>
+                        <article class="feed-reader-subscription-card">
+                            <header>
+                                <?=feed_reader_source_avatar($subscription)?>
+                                <div><span class="status status-<?=e($subscription['source_status'])?>"><?=e(status_label($subscription['source_status']))?></span><h4><?=e($subscription['display_title']?:$subscription['title'])?></h4><small><?=e($subscription['feed_url'])?></small></div>
+                                <strong><?=(int)$subscription['unread_count']?> unread</strong>
+                            </header>
+                            <?php if($subscription['last_error']):?><p class="feed-reader-source-error"><?=e($subscription['last_error'])?></p><?php endif;?>
+                            <p>Last success: <?=e(format_datetime($subscription['last_success_at']))?> · Next refresh: <?=e(format_datetime($subscription['next_refresh_at']))?></p>
+                            <form method="post" class="form-grid">
+                                <?=csrf_field()?>
+                                <input type="hidden" name="action" value="update_feed_subscription">
+                                <input type="hidden" name="source_id" value="<?=(int)$subscription['source_id']?>">
+                                <label class="field"><span>Display title</span><input name="display_title" maxlength="255" value="<?=e($subscription['display_title']??'')?>" placeholder="<?=e($subscription['title'])?>"></label>
+                                <label class="field"><span>Folder</span><select name="folder_id"><option value="0">No folder</option><?php foreach($folders as $folder):?><option value="<?=(int)$folder['id']?>" <?=(int)$subscription['folder_id']===(int)$folder['id']?'selected':''?>><?=e($folder['name'])?></option><?php endforeach;?></select></label>
+                                <label class="field"><span>Subscription</span><select name="subscription_status"><option value="active" <?=$subscription['subscription_status']==='active'?'selected':''?>>Active</option><option value="paused" <?=$subscription['subscription_status']==='paused'?'selected':''?>>Paused</option></select></label>
+                                <div class="form-footer full"><button class="button" type="submit">Save changes</button></div>
+                            </form>
+                            <div class="feed-reader-card-actions">
+                                <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="refresh_feed_source"><input type="hidden" name="source_id" value="<?=(int)$subscription['source_id']?>"><button class="button" type="submit">Refresh now</button></form>
+                                <form method="post" data-confirm="Remove this feed subscription?"><?=csrf_field()?><input type="hidden" name="action" value="delete_feed_subscription"><input type="hidden" name="source_id" value="<?=(int)$subscription['source_id']?>"><button class="button button-danger" type="submit">Unsubscribe</button></form>
+                            </div>
+                        </article>
+                        <?php endforeach;?>
+                        <?php if(!$subscriptions):?><div class="feed-reader-settings-empty">No subscriptions yet. Close settings and use Add feed to subscribe.</div><?php endif;?>
+                    </div>
+                </section>
+
+                <section class="feed-reader-settings-section feed-reader-refresh-history">
+                    <header><div><span>Evidence</span><h3>Recent refresh history</h3></div></header>
+                    <?php if($recentRefreshes):?>
+                    <div class="feed-reader-refresh-table">
+                        <div class="feed-reader-refresh-head"><span>Source</span><span>Trigger</span><span>Status</span><span>Items</span><span>Started</span></div>
+                        <?php foreach($recentRefreshes as $run):?><div><strong><?=e($run['source_title'])?></strong><span><?=e(status_label($run['trigger_type']))?></span><span class="status status-<?=e($run['status'])?>"><?=e(status_label($run['status']))?></span><span><?=(int)$run['new_item_count']?> new / <?=(int)$run['item_count']?></span><time><?=e(format_datetime($run['started_at']))?></time><?php if($run['error_message']):?><small><?=e($run['error_message'])?></small><?php endif;?></div><?php endforeach;?>
+                    </div>
+                    <?php else:?><div class="feed-reader-settings-empty">No refresh history yet.</div><?php endif;?>
+                </section>
+            </div>
+
+            <footer class="feed-reader-settings-footer"><button class="button button-primary" type="button" data-feed-settings-close>Done</button></footer>
+        </div>
+    </dialog>
+    <?php
+}
+
 function feed_reader_render(array $user): void
 {
     $userId = (int)$user['id'];
     $config = feed_reader_config();
 
     if (!$config['enabled']) {
-        ?>
-        <section class="panel"><div class="empty-state">Feed Reader is disabled in the deployment configuration.</div></section>
-        <?php
+        ?><section class="panel"><div class="empty-state">Feed Reader is disabled in the deployment configuration.</div></section><?php
         return;
     }
 
@@ -248,7 +425,7 @@ function feed_reader_render(array $user): void
         return;
     }
 
-    $state = in_array((string)($_GET['state'] ?? ''), ['unread','starred','saved','archived'], true)
+    $state = in_array((string)($_GET['state'] ?? ''), ['unread', 'starred', 'saved', 'archived'], true)
         ? (string)$_GET['state']
         : 'all';
     $sourceId = max(0, (int)($_GET['source'] ?? 0));
@@ -265,13 +442,10 @@ function feed_reader_render(array $user): void
     $folders = feed_reader_folders($userId);
     $subscriptions = feed_reader_subscriptions($userId);
     $counts = feed_reader_counts($userId);
-    $items = feed_reader_items($userId, $filters, 250);
-    $selected = $selectedItemId > 0
-        ? feed_reader_item_for_user($userId, $selectedItemId)
-        : ($items[0] ?? null);
+    $items = feed_reader_items($userId, $filters, 150);
+    $selected = $selectedItemId > 0 ? feed_reader_item_for_user($userId, $selectedItemId) : null;
     $recentRefreshes = feed_reader_recent_refreshes($userId, 20);
     $selectedId = (int)($selected['id'] ?? 0);
-    $explicitSelectedId = $selectedItemId > 0 ? $selectedId : 0;
     $csrf = csrf_token();
     $apiUrl = app_url('portal/feed-reader-api.php');
     $opmlUrl = app_url('portal/feed-reader-opml.php');
@@ -282,21 +456,36 @@ function feed_reader_render(array $user): void
         'q' => $search,
         'item' => $selectedId > 0 ? (string)$selectedId : '',
     ];
+    $backUrl = feed_reader_filter_url($user, ['item' => null]);
+    $matchingSource = array_values(array_filter($subscriptions, static fn(array $subscription): bool => (int)$subscription['source_id'] === $sourceId));
+    $matchingFolder = array_values(array_filter($folders, static fn(array $folder): bool => (int)$folder['id'] === $folderId));
+    $activeLabel = $sourceId > 0
+        ? (string)($matchingSource[0]['display_title'] ?? $matchingSource[0]['title'] ?? '')
+        : ($folderId > 0 ? (string)($matchingFolder[0]['name'] ?? '') : status_label($state));
+    if ($activeLabel === '') {
+        $activeLabel = status_label($state);
+    }
     ?>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/feed-reader-social.css?v=20260728-social-feed-reader-v62-2'))?>">
 <div
-    class="feed-reader-shell <?= $explicitSelectedId > 0 ? 'has-selected-item' : '' ?>"
-    data-feed-reader
+    class="feed-reader-shell feed-reader-social-shell <?=$selectedId>0?'has-selected-item':''?>"
+    data-social-feed-reader
     data-feed-api="<?=e($apiUrl)?>"
     data-feed-csrf="<?=e($csrf)?>"
-    data-selected-item="<?=$explicitSelectedId?>"
+    data-selected-item="<?=$selectedId?>"
 >
+    <?php feed_reader_render_navigation($user, $state, $sourceId, $folderId, $folders, $subscriptions, $counts); ?>
+
     <header class="feed-reader-toolbar">
         <div>
             <span>Personal information stream</span>
-            <h2>Feed Reader</h2>
-            <p>Subscribe to external RSS and Atom sources, organize them into folders, and keep read, saved, starred, and archived states private to your account.</p>
+            <h2><?=$selectedId>0?'Article reader':'Feed Reader'?></h2>
+            <p><?=$selectedId>0?'Read the full sanitized article, manage its private status, or return to your feed.':'A private, social-style stream built from the RSS and Atom sources you choose.'?></p>
         </div>
         <div class="feed-reader-toolbar-actions">
+            <button class="feed-reader-icon-button" type="button" data-feed-settings-open aria-label="Open Feed Reader settings" title="Feed Reader settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.03H5.3v-3h.14A1.7 1.7 0 0 0 7 9.94a1.7 1.7 0 0 0-.34-1.88L6.6 8l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.7 4.7v-.08h3v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"></path></svg>
+            </button>
             <form method="post">
                 <?=csrf_field()?>
                 <input type="hidden" name="action" value="refresh_all_feeds">
@@ -307,84 +496,57 @@ function feed_reader_render(array $user): void
         </div>
     </header>
 
-    <section class="feed-reader-stat-grid" aria-label="Feed Reader totals">
-        <article><span>Subscriptions</span><strong><?=count($subscriptions)?></strong><small><?=count($folders)?> folder(s)</small></article>
-        <article><span>Unread</span><strong><?=(int)($counts['unread']??0)?></strong><small>Ready to review</small></article>
-        <article><span>Starred</span><strong><?=(int)($counts['starred']??0)?></strong><small>Priority items</small></article>
-        <article><span>Saved</span><strong><?=(int)($counts['saved']??0)?></strong><small>Reference library</small></article>
-        <article><span>Archived</span><strong><?=(int)($counts['archived']??0)?></strong><small>Cleared from inbox</small></article>
-    </section>
-
+    <?php if($selectedId>0 && $selected):?>
+    <article class="feed-reader-article-page" data-feed-article>
+        <header class="feed-reader-article-header">
+            <a class="feed-reader-back-link" href="<?=e($backUrl)?>" data-feed-back>← Back to feed</a>
+            <div class="feed-reader-article-source">
+                <?=feed_reader_source_avatar($selected,'large')?>
+                <span><a href="<?=e($selected['site_url']?:$selected['feed_url'])?>" target="_blank" rel="noopener noreferrer nofollow"><?=e($selected['subscription_title'])?></a><small><?=e(format_datetime($selected['published_at']?:$selected['discovered_at']))?></small></span>
+            </div>
+            <div class="feed-reader-reading-actions" data-item-id="<?=$selectedId?>">
+                <?=feed_reader_state_button('read',(bool)$selected['is_read'],'Mark read','Mark unread','✓')?>
+                <?=feed_reader_state_button('starred',(bool)$selected['is_starred'],'Star','Unstar','★')?>
+                <?=feed_reader_state_button('saved',(bool)$selected['is_saved'],'Save','Unsave','◆')?>
+                <?=feed_reader_state_button('archived',(bool)$selected['is_archived'],'Archive','Restore','▣')?>
+            </div>
+        </header>
+        <div class="feed-reader-article-content">
+            <?php if($selected['image_url']):?><img class="feed-reader-hero-image" src="<?=e($selected['image_url'])?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php endif;?>
+            <span class="feed-reader-reading-source"><?=e($selected['source_title'])?></span>
+            <h1><?=e($selected['title'])?></h1>
+            <?php if($selected['author_name']):?><p class="feed-reader-byline">By <?=e($selected['author_name'])?></p><?php endif;?>
+            <div class="feed-reader-article-body">
+                <?=$selected['content_html']?:('<p>'.e($selected['summary']?:'This feed item does not provide article content.').'</p>')?>
+            </div>
+            <?php if($selected['enclosure_url']):?>
+                <?php if(str_starts_with((string)$selected['enclosure_type'],'audio/')):?>
+                    <audio controls preload="metadata" src="<?=e($selected['enclosure_url'])?>"></audio>
+                <?php else:?>
+                    <a class="button" href="<?=e($selected['enclosure_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Open attachment</a>
+                <?php endif;?>
+            <?php endif;?>
+            <footer class="feed-reader-article-footer">
+                <a class="button" href="<?=e($backUrl)?>">← Back to feed</a>
+                <?php if($selected['canonical_url']):?><a class="button button-primary" href="<?=e($selected['canonical_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Read original article ↗</a><?php endif;?>
+            </footer>
+        </div>
+    </article>
+    <?php else:?>
     <form class="feed-reader-search" method="get" role="search">
         <input type="hidden" name="view" value="feeds">
         <?php if($state!=='all'):?><input type="hidden" name="state" value="<?=e($state)?>"><?php endif;?>
         <?php if($sourceId>0):?><input type="hidden" name="source" value="<?=$sourceId?>"><?php endif;?>
         <?php if($folderId>0):?><input type="hidden" name="folder" value="<?=$folderId?>"><?php endif;?>
-        <label>
-            <span class="sr-only">Search feed items</span>
-            <input name="q" value="<?=e($search)?>" placeholder="Search titles, summaries, authors, and sources" data-feed-search-input>
-        </label>
+        <label><span class="sr-only">Search feed items</span><input name="q" value="<?=e($search)?>" placeholder="Search titles, summaries, authors, and sources" data-feed-search-input></label>
         <button class="button" type="submit">Search</button>
-        <?php if($search!==''):?><a class="button" href="<?=e(feed_reader_filter_url($user,['q'=>null]))?>">Clear</a><?php endif;?>
+        <?php if($search!==''):?><a class="button" href="<?=e(feed_reader_filter_url($user,['q'=>null,'item'=>null]))?>">Clear</a><?php endif;?>
     </form>
 
-    <div class="feed-reader-layout">
-        <aside class="feed-reader-sources" aria-label="Feed sources and folders">
-            <nav class="feed-reader-smart-folders" aria-label="Feed filters">
-                <a class="<?=$state==='all'&&$sourceId===0&&$folderId===0?'active':''?>" href="<?=e(feed_reader_portal_url($user))?>"><span>All items</span><strong><?=(int)($counts['total']??0)?></strong></a>
-                <a class="<?=$state==='unread'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'unread','source'=>null,'folder'=>null]))?>"><span>Unread</span><strong><?=(int)($counts['unread']??0)?></strong></a>
-                <a class="<?=$state==='starred'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'starred','source'=>null,'folder'=>null]))?>"><span>Starred</span><strong><?=(int)($counts['starred']??0)?></strong></a>
-                <a class="<?=$state==='saved'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'saved','source'=>null,'folder'=>null]))?>"><span>Saved</span><strong><?=(int)($counts['saved']??0)?></strong></a>
-                <a class="<?=$state==='archived'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'archived','source'=>null,'folder'=>null]))?>"><span>Archived</span><strong><?=(int)($counts['archived']??0)?></strong></a>
-            </nav>
-
-            <section class="feed-reader-source-section">
-                <header><span>Folders</span><button type="button" data-feed-folder-toggle aria-label="Create folder">＋</button></header>
-                <form method="post" class="feed-reader-inline-form" data-feed-folder-form hidden>
-                    <?=csrf_field()?>
-                    <input type="hidden" name="action" value="save_feed_folder">
-                    <input name="folder_name" maxlength="190" placeholder="Folder name" required>
-                    <button type="submit">Save</button>
-                </form>
-                <nav>
-                    <?php foreach($folders as $folder):?>
-                    <a class="<?=$folderId===(int)$folder['id']?'active':''?>" href="<?=e(feed_reader_filter_url($user,['folder'=>(int)$folder['id'],'source'=>null]))?>">
-                        <span><?=e($folder['name'])?></span><strong><?=(int)$folder['unread_count']?></strong>
-                    </a>
-                    <?php endforeach;?>
-                    <?php if(!$folders):?><small>No folders yet.</small><?php endif;?>
-                </nav>
-            </section>
-
-            <section class="feed-reader-source-section">
-                <header><span>Subscriptions</span><strong><?=count($subscriptions)?></strong></header>
-                <nav>
-                    <?php foreach($subscriptions as $subscription):?>
-                    <a
-                        class="<?=$sourceId===(int)$subscription['source_id']?'active':''?> <?=e($subscription['source_status'])?>"
-                        href="<?=e(feed_reader_filter_url($user,['source'=>(int)$subscription['source_id'],'folder'=>null]))?>"
-                        title="<?=e($subscription['last_error']?:$subscription['feed_url'])?>"
-                    >
-                        <span class="feed-reader-source-icon">
-                            <?php if($subscription['image_url']):?><img src="<?=e($subscription['image_url'])?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php else:?><?=e(mb_strtoupper(mb_substr((string)($subscription['display_title']?:$subscription['title']),0,1)))?><?php endif;?>
-                        </span>
-                        <span><strong><?=e($subscription['display_title']?:$subscription['title'])?></strong><small><?=e($subscription['source_status']==='error'?'Refresh error':($subscription['folder_name']?:strtoupper($subscription['feed_format'])))?></small></span>
-                        <em><?=(int)$subscription['unread_count']?></em>
-                    </a>
-                    <?php endforeach;?>
-                    <?php if(!$subscriptions):?><small>Add an RSS or Atom URL to begin.</small><?php endif;?>
-                </nav>
-            </section>
-
-            <footer class="feed-reader-source-footer">
-                <a href="<?=e($opmlUrl)?>">Export OPML</a>
-                <button type="button" data-feed-manage-toggle>Manage feeds</button>
-            </footer>
-        </aside>
-
-        <section class="feed-reader-item-list" aria-label="Feed items">
-            <header>
-                <div><span><?=e(status_label($state))?></span><strong><?=count($items)?> item(s)</strong></div>
+    <div class="feed-reader-layout feed-reader-social-layout">
+        <main class="feed-reader-social-feed" aria-label="Feed items">
+            <header class="feed-reader-stream-header">
+                <div><span><?=e($activeLabel)?></span><h3><?=count($items)?> story<?=count($items)===1?'':'ies'?></h3></div>
                 <form method="post">
                     <?=csrf_field()?>
                     <input type="hidden" name="action" value="mark_all_feed_items_read">
@@ -394,148 +556,63 @@ function feed_reader_render(array $user): void
                     <button type="submit">Mark all read</button>
                 </form>
             </header>
-            <div class="feed-reader-items" data-feed-items tabindex="-1">
+
+            <div class="feed-reader-social-items" data-feed-items tabindex="-1">
                 <?php foreach($items as $item):?>
-                <?php
-                $itemUrl=feed_reader_filter_url($user,['item'=>(int)$item['id']]);
-                $published=$item['published_at']?:$item['discovered_at'];
-                ?>
-                <article
-                    class="feed-reader-item-row <?=$selectedId===(int)$item['id']?'active':''?> <?=!(int)$item['is_read']?'unread':''?>"
-                    data-feed-item-row
-                    data-item-id="<?=(int)$item['id']?>"
-                >
-                    <a href="<?=e($itemUrl)?>" data-feed-item-link>
+                <?php $itemUrl=feed_reader_filter_url($user,['item'=>(int)$item['id']]); $published=$item['published_at']?:$item['discovered_at']; ?>
+                <article class="feed-reader-social-card <?=!(int)$item['is_read']?'unread':''?>" data-feed-item-row data-item-id="<?=(int)$item['id']?>">
+                    <header>
+                        <?=feed_reader_source_avatar($item)?>
+                        <div><strong><?=e($item['subscription_title'])?></strong><span><?=e($item['author_name']?:'Published feed')?> · <time><?=e(format_date($published,'M j, Y'))?></time></span></div>
+                        <?php if(!(int)$item['is_read']):?><i title="Unread"></i><?php endif;?>
+                    </header>
+                    <a class="feed-reader-social-story" href="<?=e($itemUrl)?>" data-feed-item-link>
+                        <h3><?=e($item['title'])?></h3>
+                        <p><?=e($item['summary']?:'Open the article to continue reading.')?></p>
                         <?php if($item['image_url']):?><img src="<?=e($item['image_url'])?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php endif;?>
-                        <span class="feed-reader-item-copy">
-                            <small><strong><?=e($item['subscription_title'])?></strong><time><?=e(format_date($published,'M j'))?></time></small>
-                            <h3><?=e($item['title'])?></h3>
-                            <p><?=e($item['summary']?:'Open the original article to continue reading.')?></p>
-                            <span><?=e($item['author_name']?:'')?></span>
-                        </span>
                     </a>
-                    <div class="feed-reader-row-flags" aria-label="Item status">
-                        <?php if((int)$item['is_starred']):?><span title="Starred">★</span><?php endif;?>
-                        <?php if((int)$item['is_saved']):?><span title="Saved">◆</span><?php endif;?>
-                    </div>
+                    <footer data-item-id="<?=(int)$item['id']?>">
+                        <a href="<?=e($itemUrl)?>" data-feed-item-link>Read article</a>
+                        <div>
+                            <?=feed_reader_state_button('starred',(bool)$item['is_starred'],'Star','Unstar','★')?>
+                            <?=feed_reader_state_button('saved',(bool)$item['is_saved'],'Save','Unsave','◆')?>
+                            <?=feed_reader_state_button('archived',(bool)$item['is_archived'],'Archive','Restore','▣')?>
+                        </div>
+                    </footer>
                 </article>
                 <?php endforeach;?>
-                <?php if(!$items):?><div class="feed-reader-empty"><strong>No matching feed items</strong><span>Try another folder, source, state, or search.</span></div><?php endif;?>
+                <?php if(!$items):?><div class="feed-reader-empty"><strong>No matching stories</strong><span>Try another source, folder, state, or search—or add a new RSS feed.</span><button class="button button-primary" type="button" data-feed-dialog-open>Add feed</button></div><?php endif;?>
             </div>
-        </section>
+        </main>
 
-        <article class="feed-reader-reading-pane" aria-label="Selected feed item" data-feed-reading-pane>
-            <?php if($selected):?>
-            <header class="feed-reader-reading-header">
-                <button type="button" class="feed-reader-mobile-back" data-feed-mobile-back>← Items</button>
-                <div>
-                    <a href="<?=e($selected['site_url']?:$selected['feed_url'])?>" target="_blank" rel="noopener noreferrer nofollow"><?=e($selected['subscription_title'])?></a>
-                    <span><?=e(format_datetime($selected['published_at']?:$selected['discovered_at']))?></span>
-                </div>
-                <div class="feed-reader-reading-actions" data-item-id="<?=$selectedId?>">
-                    <?=feed_reader_state_button('read',(bool)$selected['is_read'],'Mark read','Mark unread','✓')?>
-                    <?=feed_reader_state_button('starred',(bool)$selected['is_starred'],'Star','Unstar','★')?>
-                    <?=feed_reader_state_button('saved',(bool)$selected['is_saved'],'Save','Unsave','◆')?>
-                    <?=feed_reader_state_button('archived',(bool)$selected['is_archived'],'Archive','Restore','▣')?>
-                </div>
-            </header>
-            <div class="feed-reader-reading-content">
-                <?php if($selected['image_url']):?><img class="feed-reader-hero-image" src="<?=e($selected['image_url'])?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php endif;?>
-                <span class="feed-reader-reading-source"><?=e($selected['source_title'])?></span>
-                <h1><?=e($selected['title'])?></h1>
-                <?php if($selected['author_name']):?><p class="feed-reader-byline">By <?=e($selected['author_name'])?></p><?php endif;?>
-                <div class="feed-reader-article-body">
-                    <?=$selected['content_html']?:('<p>'.e($selected['summary']?:'This feed item does not provide article content.').'</p>')?>
-                </div>
-                <?php if($selected['enclosure_url']):?>
-                    <?php if(str_starts_with((string)$selected['enclosure_type'],'audio/')):?>
-                        <audio controls preload="metadata" src="<?=e($selected['enclosure_url'])?>"></audio>
-                    <?php else:?>
-                        <a class="button" href="<?=e($selected['enclosure_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Open attachment</a>
-                    <?php endif;?>
-                <?php endif;?>
-                <?php if($selected['canonical_url']):?><p class="feed-reader-original-link"><a class="button button-primary" href="<?=e($selected['canonical_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Read original article ↗</a></p><?php endif;?>
+        <aside class="feed-reader-stream-summary" aria-label="Reader snapshot">
+            <section><span>Your reader</span><h3>Private by design</h3><p>Your subscriptions and reading states stay attached to your portal account.</p></section>
+            <div class="feed-reader-summary-grid">
+                <article><strong><?=(int)($counts['unread']??0)?></strong><span>Unread</span></article>
+                <article><strong><?=(int)($counts['saved']??0)?></strong><span>Saved</span></article>
+                <article><strong><?=(int)($counts['starred']??0)?></strong><span>Starred</span></article>
+                <article><strong><?=count($subscriptions)?></strong><span>Sources</span></article>
             </div>
-            <?php else:?>
-                <div class="feed-reader-reading-empty"><strong>Select an item</strong><span>The full sanitized article, source details, and private reading controls will appear here.</span></div>
-            <?php endif;?>
-        </article>
+            <section><span>Reader shortcuts</span><p><kbd>/</kbd> Search · <kbd>J</kbd>/<kbd>K</kbd> move through stories</p></section>
+        </aside>
     </div>
+    <?php endif;?>
 
-    <section class="feed-reader-management" data-feed-management hidden>
-        <header class="panel-header"><div><span>Subscriptions and interoperability</span><h2>Manage feeds</h2></div><button type="button" class="button" data-feed-manage-close>Close</button></header>
-        <div class="feed-reader-management-grid">
-            <section class="panel">
-                <div class="panel-body">
-                    <span class="eyebrow">OPML</span>
-                    <h3>Import subscriptions</h3>
-                    <p>Import folders and feed URLs from another reader. Each URL is securely validated before subscription.</p>
-                    <form method="post" enctype="multipart/form-data" class="form-grid">
-                        <?=csrf_field()?>
-                        <input type="hidden" name="action" value="import_feed_opml">
-                        <label class="field full"><span>OPML file</span><input type="file" name="opml_file" accept=".opml,.xml,text/xml,application/xml" required><small>Maximum 2 MB and up to <?=$config['max_sources_per_user']?> feeds.</small></label>
-                        <div class="form-footer full"><button class="button button-primary" type="submit">Import OPML</button><a class="button" href="<?=e($opmlUrl)?>">Export OPML</a></div>
-                    </form>
-                </div>
-            </section>
+    <?php feed_reader_render_settings_dialog($folders, $subscriptions, $recentRefreshes, $config, $opmlUrl); ?>
 
-            <section class="panel">
-                <div class="panel-body">
-                    <span class="eyebrow">Refresh service</span>
-                    <h3>Health and scheduling</h3>
-                    <p>Feeds use ETag and Last-Modified headers, retry backoff, response limits, redirect validation, and refresh locks. Scheduled refresh interval: <?=$config['refresh_minutes']?> minutes.</p>
-                    <div class="feed-reader-health-summary">
-                        <span><strong><?=count(array_filter($subscriptions,fn($s)=>$s['source_status']==='active'))?></strong> healthy</span>
-                        <span><strong><?=count(array_filter($subscriptions,fn($s)=>$s['source_status']==='error'))?></strong> errors</span>
-                        <span><strong><?=$config['max_response_bytes']/1048576?></strong> MB limit</span>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div class="feed-reader-subscription-cards">
-            <?php foreach($subscriptions as $subscription):?>
-            <article class="panel feed-reader-subscription-card">
-                <div class="panel-body">
-                    <header><div><span class="status status-<?=e($subscription['source_status'])?>"><?=e(status_label($subscription['source_status']))?></span><h3><?=e($subscription['display_title']?:$subscription['title'])?></h3><small><?=e($subscription['feed_url'])?></small></div><strong><?=(int)$subscription['unread_count']?> unread</strong></header>
-                    <?php if($subscription['last_error']):?><p class="feed-reader-source-error"><?=e($subscription['last_error'])?></p><?php endif;?>
-                    <p>Last success: <?=e(format_datetime($subscription['last_success_at']))?> · Next refresh: <?=e(format_datetime($subscription['next_refresh_at']))?></p>
-                    <form method="post" class="form-grid">
-                        <?=csrf_field()?>
-                        <input type="hidden" name="action" value="update_feed_subscription">
-                        <input type="hidden" name="source_id" value="<?=(int)$subscription['source_id']?>">
-                        <label class="field"><span>Display title</span><input name="display_title" maxlength="255" value="<?=e($subscription['display_title']??'')?>" placeholder="<?=e($subscription['title'])?>"></label>
-                        <label class="field"><span>Folder</span><select name="folder_id"><option value="0">No folder</option><?php foreach($folders as $folder):?><option value="<?=(int)$folder['id']?>" <?=(int)$subscription['folder_id']===(int)$folder['id']?'selected':''?>><?=e($folder['name'])?></option><?php endforeach;?></select></label>
-                        <label class="field"><span>Subscription</span><select name="subscription_status"><option value="active" <?=$subscription['subscription_status']==='active'?'selected':''?>>Active</option><option value="paused" <?=$subscription['subscription_status']==='paused'?'selected':''?>>Paused</option></select></label>
-                        <div class="form-footer full"><button class="button" type="submit">Save</button></div>
-                    </form>
-                    <div class="feed-reader-card-actions">
-                        <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="refresh_feed_source"><input type="hidden" name="source_id" value="<?=(int)$subscription['source_id']?>"><button class="button" type="submit">Refresh now</button></form>
-                        <form method="post" data-confirm="Remove this feed subscription?"><?=csrf_field()?><input type="hidden" name="action" value="delete_feed_subscription"><input type="hidden" name="source_id" value="<?=(int)$subscription['source_id']?>"><button class="button button-danger" type="submit">Unsubscribe</button></form>
-                    </div>
-                </div>
-            </article>
-            <?php endforeach;?>
-        </div>
-
-        <section class="panel feed-reader-refresh-history">
-            <header class="panel-header"><div><span>Evidence</span><h2>Recent refresh history</h2></div></header>
-            <?php if($recentRefreshes):?><div class="feed-reader-refresh-table"><div class="feed-reader-refresh-head"><span>Source</span><span>Trigger</span><span>Status</span><span>Items</span><span>Started</span></div><?php foreach($recentRefreshes as $run):?><div><strong><?=e($run['source_title'])?></strong><span><?=e(status_label($run['trigger_type']))?></span><span class="status status-<?=e($run['status'])?>"><?=e(status_label($run['status']))?></span><span><?=(int)$run['new_item_count']?> new / <?=(int)$run['item_count']?></span><time><?=e(format_datetime($run['started_at']))?></time><?php if($run['error_message']):?><small><?=e($run['error_message'])?></small><?php endif;?></div><?php endforeach;?></div><?php else:?><div class="empty-state">No refresh history yet.</div><?php endif;?>
-        </section>
-    </section>
-
-    <dialog class="feed-reader-dialog" data-feed-dialog>
+    <dialog class="feed-reader-dialog feed-reader-add-dialog" data-feed-dialog>
         <form method="post" class="feed-reader-dialog-card">
             <?=csrf_field()?>
             <input type="hidden" name="action" value="add_feed_subscription">
             <header><div><span>New subscription</span><h2>Add RSS or Atom feed</h2></div><button type="button" data-feed-dialog-close aria-label="Close">×</button></header>
             <p>Paste a public HTTP or HTTPS feed URL. The server validates DNS, redirects, response size, XML structure, and imported HTML before saving anything.</p>
-            <label class="field full"><span>Feed URL</span><input type="url" name="feed_url" maxlength="2000" placeholder="https://example.com/feed.xml" required autofocus></label>
+            <label class="field full"><span>Feed URL</span><input type="url" name="feed_url" maxlength="2000" placeholder="https://example.com/feed.xml" required></label>
             <label class="field full"><span>Display title <small>optional</small></span><input name="display_title" maxlength="255"></label>
             <label class="field full"><span>Folder</span><select name="folder_id"><option value="0">No folder</option><?php foreach($folders as $folder):?><option value="<?=(int)$folder['id']?>"><?=e($folder['name'])?></option><?php endforeach;?></select></label>
             <footer><button class="button" type="button" data-feed-dialog-close>Cancel</button><button class="button button-primary" type="submit">Validate and subscribe</button></footer>
         </form>
     </dialog>
 </div>
+<script src="<?=e(app_url('assets/js/feed-reader-social.js?v=20260728-social-feed-reader-v62-2'))?>"></script>
     <?php
 }
