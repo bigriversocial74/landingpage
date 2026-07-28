@@ -1,24 +1,24 @@
 name: Apply Content Controls v62.1
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches:
+      - build/content-controls-v62-1
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.head_ref == 'feature/content-delete-controls-v62-1'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout staging branch
+      - name: Checkout isolated build branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
-      - name: Reconstruct and verify certified patch
+      - name: Reconstruct and verify certified source
         shell: bash
         run: |
           set -euo pipefail
@@ -36,6 +36,9 @@ jobs:
           echo 'c20b20efa8979b2a191f17ff1a5eed97308bfd6558e86897730ec848071c73fa  /tmp/v621.patch.gz' | sha256sum -c -
           gzip -dc /tmp/v621.patch.gz > /tmp/v621.patch
           echo 'eb2fdd7f90e6db5cdafec3b32e0cd9c1d6a51c66d74c862e06a27f73b6790f98  /tmp/v621.patch' | sha256sum -c -
+          echo 'f57f84467082627ddccfd1080f010f0405d698072fbc4cbb661c806537c51e6e  tools/content-delete-controls-v62-1.php.b64' | sha256sum -c -
+          base64 -d tools/content-delete-controls-v62-1.php.b64 > /tmp/content-delete-controls-v62-1.php
+          echo 'e0327135e3e4bc4707beef358f39e7fcfd914ca1f6ce7a2181aab462e3283285  /tmp/content-delete-controls-v62-1.php' | sha256sum -c -
 
       - name: Apply production source to merged v62 baseline
         shell: bash
@@ -45,6 +48,7 @@ jobs:
           git clean -fdx
           git apply --check /tmp/v621.patch
           git apply /tmp/v621.patch
+          install -m 0644 /tmp/content-delete-controls-v62-1.php tests/content-delete-controls-v62-1.php
           git diff --check
 
       - name: PHP syntax
