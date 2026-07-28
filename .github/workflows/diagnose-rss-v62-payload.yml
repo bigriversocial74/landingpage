@@ -1,0 +1,46 @@
+name: Diagnose RSS v62 Payload
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'feature/rss-reader-platform-v62'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Record payload checksums
+        shell: bash
+        run: |
+          set -u
+          {
+            wc -c tools/v62.patch.b64.part*
+            sha256sum tools/v62.patch.b64.part*
+            cat tools/v62.patch.b64.part* > /tmp/v62.patch.b64
+            wc -c /tmp/v62.patch.b64
+            sha256sum /tmp/v62.patch.b64
+            if base64 -d /tmp/v62.patch.b64 > /tmp/v62.patch.gz; then
+              echo 'base64=valid'
+              wc -c /tmp/v62.patch.gz
+              sha256sum /tmp/v62.patch.gz
+              if gzip -dc /tmp/v62.patch.gz > /tmp/v62.patch; then
+                echo 'gzip=valid'
+                wc -c /tmp/v62.patch
+                sha256sum /tmp/v62.patch
+              else
+                echo 'gzip=invalid'
+              fi
+            else
+              echo 'base64=invalid'
+            fi
+          } > payload-diagnostics.txt 2>&1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rss-v62-payload-diagnostics
+          path: payload-diagnostics.txt
