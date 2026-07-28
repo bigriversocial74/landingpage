@@ -95,6 +95,7 @@ jobs:
           php tests/social-feed-reader-v62-2.php
           php tests/public-sidebar-rss-v62-2-1.php
           php tests/pod-identity-relationships-v63.php
+          php tests/pod-connected-calling-v63-1.php
 
       - name: Required source
         shell: bash
@@ -142,6 +143,19 @@ jobs:
           test -f POD-IDENTITY-RELATIONSHIPS-SETUP-v63.md
           test -f V63-SCORECARD.md
           test -f V63-VALIDATION.txt
+          test -f database/pod_connected_calling_v63_1.sql
+          test -f portal/pod-connected-calling.php
+          test -f portal/pod-contacts.php
+          test -f portal/pod-contacts-v63-1.php
+          test -f portal/pod-call-launch.php
+          test -f pod-call.php
+          test -f connected-call.php
+          test -f assets/css/pod-connected-call-v63-1.css
+          test -f assets/js/pod-contacts-v63-1.js
+          test -f tests/pod-connected-calling-v63-1.php
+          test -f POD-CONNECTED-CALLING-SETUP-v63.1.md
+          test -f V63.1-SCORECARD.md
+          test -f V63.1-VALIDATION.txt
 
       - name: Repository safety
         shell: bash
