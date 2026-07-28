@@ -1,0 +1,69 @@
+name: Finalize Site Analytics v61.9
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.head_ref == 'fix/site-analytics-listening-sidebar-v61-9'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Finalize live assets and permanent regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          old = "'assets/js/music-player.js'\n        . '?v=20260727-site-controls-landing-v60'"
+          new = "'assets/js/music-player.js'\n        . '?v=20260728-site-analytics-v61.9'"
+          for name in ('music-library.php', 'music-collection.php'):
+              path = Path(name)
+              source = path.read_text(encoding='utf-8')
+              if source.count(old) != 1:
+                  raise SystemExit(f'Expected one live Music Player cache reference in {name}.')
+              path.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          workflow = Path('.github/workflows/portal-quality.yml')
+          source = workflow.read_text(encoding='utf-8')
+          test_line = '          php tests/site-analytics-listening-v61-9.php\n'
+          if test_line not in source:
+              needle = '          php tests/landing-page-editor-v61-5.php\n'
+              if source.count(needle) != 1:
+                  raise SystemExit('Unable to locate permanent regression insertion point.')
+              source = source.replace(needle, needle + test_line, 1)
+              workflow.write_text(source, encoding='utf-8')
+          PY
+          rm -f .github/workflows/finalize-site-analytics-v61-9.yml
+
+      - name: Validate finalized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l music-library.php >/dev/null
+          php -l music-collection.php >/dev/null
+          php tests/site-analytics-listening-v61-9.php
+          node --check assets/js/music-player.js >/dev/null
+          grep -q '20260728-site-analytics-v61.9' music-library.php
+          grep -q '20260728-site-analytics-v61.9' music-collection.php
+          grep -q 'tests/site-analytics-listening-v61-9.php' .github/workflows/portal-quality.yml
+          git diff --check
+
+      - name: Commit final production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Finalize live listening assets and analytics regression v61.9'
+          git push origin HEAD:${{ github.head_ref }}
