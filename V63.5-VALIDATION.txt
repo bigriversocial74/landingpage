@@ -1,0 +1,77 @@
+POD HomeServer Voice Provider Foundation v63.5 validation
+
+Required automated validation:
+- PHP syntax for every PHP file
+- JavaScript syntax for every JavaScript file
+- CSS structure for every stylesheet
+- All retained portal regressions through v63.4
+- tests/pod-homeserver-voice-provider-v63-5.php
+- Required-source inventory
+- Repository safety checks
+
+Migration validation:
+- Import v63 through v63.5 in order
+- Repeat v63.5 safely
+- Confirm no standalone non-idempotent ALTER TABLE
+- Confirm pairing-code, connection, nonce, job, artifact, and receipt tables
+- Confirm request ID, connection UUID, device UUID, bearer hash, nonce hash, job UUID, lease hash, and receipt UUID uniqueness
+- Confirm connection deletion cascades provider jobs/artifacts/receipts/nonces
+- Confirm receptionist and browser-voice links become null without deleting provider history
+
+Pairing validation:
+- Provider disabled by default
+- Sync Code cannot be issued while disabled
+- Sync Code is random, short-lived, revocable, and stored only as SHA-256 hash
+- Invalid, expired, used, and revoked codes fail
+- Pairing requires provider_key=pod
+- Pairing requires bounded request ID, installation ID, device name, version, and Ed25519 public key
+- Same request ID and same device values return the same connection and bearer token
+- Same request ID with changed device values fails
+- Database stores only bearer-token hash and hint
+- Capability grant is an allowlisted intersection
+
+Signed-request validation:
+- Bearer token is required
+- Device and connection IDs must match
+- Timestamp must be within configured skew
+- Nonce is bounded and unique
+- Signature verifies Ed25519 canonical METHOD/PATH/TIMESTAMP/NONCE/SHA256(body)
+- Reused nonce fails
+- Revoked connection fails
+- Unsupported capability fails
+- Request body is bounded and JSON only
+- No query-string credential is accepted
+
+Job validation:
+- Admin can queue capability, STT, and TTS contract jobs
+- Payload JSON is bounded, encrypted, and hash-bound
+- Poll atomically leases one job
+- Lease token is returned once and stored only as a hash
+- Wrong, expired, or cross-connection lease fails
+- Expired leases retry only while attempts and job TTL remain
+- STT result requires bounded transcript metadata
+- TTS result requires bounded supported audio
+- Successful result is encrypted and hash-bound
+- Retryable failure returns to queue; terminal failure remains failed
+- Owner can cancel active job
+- Connection revocation cancels active jobs
+
+Artifact validation:
+- Uploaded contract-test audio is MIME and size bounded
+- Artifact bytes are AES-256-GCM encrypted before storage
+- Storage path remains beneath protected storage/pod-homeserver-voice
+- Artifact read requires signed connection plus active matching job lease
+- Decrypted bytes must match stored hash and size
+- Read marks input artifact consumed
+- Expired artifacts are deleted and receipted
+- Raw audio is not stored in database
+
+Compatibility validation:
+- Existing browser voice remains operational without HomeServer
+- Existing receptionist text, citations, actions, and summaries remain operational
+- Existing public Call Us remains unchanged
+- Existing connected human WebRTC remains unchanged
+- Existing voicemail, POD Messages, local Communications, RSS, and feed reader remain operational
+- HomeServer provider remains described as provider foundation until coordinated adapter exists
+
+Expected certified score: 10/10
