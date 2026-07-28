@@ -1,0 +1,98 @@
+name: Package North Mountain Media Portal v61.9
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: github.head_ref == 'build/v61-9-deploy-artifact'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Validate production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            api/music-play.php
+            assets/css/portal.css
+            assets/js/music-player.js
+            music-collection.php
+            music-library.php
+            portal/admin.php
+            portal/bootstrap.php
+            portal/site-analytics-view.php
+            portal/visitor-intelligence.php
+          )
+          for file in "${files[@]}"; do
+            test -f "$file"
+          done
+          php -l api/music-play.php >/dev/null
+          php -l music-collection.php >/dev/null
+          php -l music-library.php >/dev/null
+          php -l portal/admin.php >/dev/null
+          php -l portal/bootstrap.php >/dev/null
+          php -l portal/site-analytics-view.php >/dev/null
+          php -l portal/visitor-intelligence.php >/dev/null
+          node --check assets/js/music-player.js >/dev/null
+
+      - name: Build clean deploy package
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='north-mountain-media-portal-v61.9-deploy'
+          mkdir -p "$root/api" "$root/assets/css" "$root/assets/js" "$root/portal"
+          cp api/music-play.php "$root/api/"
+          cp assets/css/portal.css "$root/assets/css/"
+          cp assets/js/music-player.js "$root/assets/js/"
+          cp music-collection.php "$root/"
+          cp music-library.php "$root/"
+          cp portal/admin.php "$root/portal/"
+          cp portal/bootstrap.php "$root/portal/"
+          cp portal/site-analytics-view.php "$root/portal/"
+          cp portal/visitor-intelligence.php "$root/portal/"
+          cat > "$root/DEPLOY-v61.9.txt" <<'EOF'
+          NORTH MOUNTAIN MEDIA PORTAL v61.9 DEPLOYMENT
+
+          Source merge commit:
+          a5f93536dd94769b9fa0ed03acb5864f6af5493f
+
+          Upload this package over the matching production paths.
+
+          IMPORTANT:
+          - Preserve the live config.php file.
+          - Preserve the complete storage/ directory.
+          - No SQL migration is required.
+          - Clear browser, CDN, and server caches after upload.
+          - Accurate listening lifecycle reporting begins after these files are deployed.
+          - Historical missing completion events cannot be reconstructed.
+
+          Included production files:
+          api/music-play.php
+          assets/css/portal.css
+          assets/js/music-player.js
+          music-collection.php
+          music-library.php
+          portal/admin.php
+          portal/bootstrap.php
+          portal/site-analytics-view.php
+          portal/visitor-intelligence.php
+          EOF
+          find "$root" -type f ! -name SHA256SUMS.txt -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | sed "s#  $root/#  #" > "$root/SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v61.9-deploy
+          path: north-mountain-media-portal-v61.9-deploy
+          if-no-files-found: error
+          retention-days: 7
