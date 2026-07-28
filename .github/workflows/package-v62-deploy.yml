@@ -1,0 +1,129 @@
+name: Package North Mountain Media v62 Deploy
+
+on:
+  push:
+    branches:
+      - build/v62-deploy-artifact
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact merged v62 commit
+        uses: actions/checkout@v4
+        with:
+          ref: ad8c16a186c436821a25579d3419f6421dd0142b
+
+      - name: Assemble deployment package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="deploy-package"
+          rm -rf "$package"
+          mkdir -p "$package"
+
+          files=(
+            "assets/css/feed-reader.css"
+            "assets/js/feed-reader.js"
+            "blog-atom.php"
+            "blog-feed.php"
+            "blog-post.php"
+            "blog.php"
+            "config-example.php"
+            "cron/feed-refresh.php"
+            "database/rss_feed_reader_v62.sql"
+            "portal/admin.php"
+            "portal/blog-feed-output.php"
+            "portal/bootstrap.php"
+            "portal/client.php"
+            "portal/feed-reader-api.php"
+            "portal/feed-reader-core.php"
+            "portal/feed-reader-opml.php"
+            "portal/feed-reader-view.php"
+            "portal/publishing-admin.php"
+            "portal/publishing-workflow-view.php"
+            "portal/publishing-workflow.php"
+            "portal/site-settings.php"
+            "RSS-FEED-READER-SETUP-v62.md"
+            "V62-VALIDATION.txt"
+          )
+
+          for file in "${files[@]}"; do
+            test -f "$file"
+            mkdir -p "$package/$(dirname "$file")"
+            cp "$file" "$package/$file"
+          done
+
+          cat > "$package/DEPLOYMENT-v62.txt" <<'TXT'
+          North Mountain Media Portal v62 — RSS & Feed Reader Platform
+
+          Built from merged main commit:
+          ad8c16a186c436821a25579d3419f6421dd0142b
+
+          DEPLOYMENT STATUS
+          - database/rss_feed_reader_v62.sql was already imported successfully.
+          - DO NOT import the v62 SQL again.
+
+          DEPLOYMENT STEPS
+          1. Back up the live application and database.
+          2. Upload this package and overwrite matching application files.
+          3. Preserve the live config.php file. Do not replace it with config-example.php.
+          4. Preserve the complete storage/ directory.
+          5. Copy the feed_reader configuration block from config-example.php into the live config.php.
+          6. Replace feed_reader.cron_token with a long, unique random secret.
+          7. Confirm PHP cURL, DOM/XML/libxml, mbstring, PDO MySQL, and JSON are enabled.
+          8. Configure cron/feed-refresh.php. CLI cron every five minutes is recommended.
+          9. Clear PHP opcode, server, CDN, and browser caches.
+
+          RECOMMENDED CRON
+          */5 * * * * /usr/bin/php /absolute/path/to/cron/feed-refresh.php 20 >/dev/null 2>&1
+
+          POST-DEPLOY CHECKS
+          - Open the administrator Feed Reader.
+          - Open the client Feed Reader.
+          - Add a public RSS or Atom source.
+          - Verify private/local URLs are rejected.
+          - Verify RSS output at blog-feed.php.
+          - Verify Atom output at blog-atom.php.
+          - Confirm source refresh history and feed health.
+          - Test read, star, save, archive, search, folders, and OPML export.
+
+          The included SQL file is reference-only for this deployment because it has already been imported.
+          TXT
+
+          {
+            printf 'North Mountain Media Portal v62 deployment manifest\n'
+            printf 'Source commit: ad8c16a186c436821a25579d3419f6421dd0142b\n\n'
+            find "$package" -type f ! -name 'FILE-MANIFEST.txt' ! -name 'SHA256SUMS.txt' -printf '%P\n' | sort
+          } > "$package/FILE-MANIFEST.txt"
+
+          (
+            cd "$package"
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+
+      - name: Validate package
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find deploy-package -type f -name '*.php' -print0)
+          node --check deploy-package/assets/js/feed-reader.js >/dev/null
+          php tests/rss-feed-reader-v62.php
+          test -f deploy-package/DEPLOYMENT-v62.txt
+          test -f deploy-package/SHA256SUMS.txt
+          test ! -f deploy-package/config.php
+          test ! -d deploy-package/storage
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v62-deploy
+          path: deploy-package
+          if-no-files-found: error
+          retention-days: 30
