@@ -19,12 +19,33 @@ jobs:
           fetch-depth: 0
 
       - name: Generate v61.8 production source
+        id: generate
         shell: bash
         run: |
-          set -euo pipefail
-          python3 tools/v618_apply.py
-          rm -f tools/v618_apply.py tools/v618_chunk_1.txt tools/v618_chunk_2.txt tools/v618_chunk_3.txt tools/v618_chunk_4.txt tools/v618_chunk_5.txt
-          rm -f .github/workflows/apply-v61-8-visual-layout.yml
+          set +e
+          python3 tools/v618_apply.py >v618-generator.log 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            rm -f v618-generator.log
+            rm -f tools/v618_apply.py tools/v618_chunk_1.txt tools/v618_chunk_2.txt tools/v618_chunk_3.txt tools/v618_chunk_4.txt tools/v618_chunk_5.txt
+            rm -f .github/workflows/apply-v61-8-visual-layout.yml
+          fi
+          exit 0
+
+      - name: Upload generator diagnostic
+        if: steps.generate.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: v61-8-generator-diagnostic
+          path: v618-generator.log
+
+      - name: Require successful generation
+        if: steps.generate.outputs.exit_code != '0'
+        shell: bash
+        run: |
+          cat v618-generator.log
+          exit 1
 
       - name: PHP syntax
         shell: bash
