@@ -28,6 +28,9 @@ return [
         // Encrypts remote relationship call links stored by this POD.
         // Keep this private and stable. Rotating it invalidates stored remote links.
         'pod_call_link_secret' => 'replace-with-a-long-random-pod-call-link-secret',
+        // Encrypts remote POD messaging credentials stored by this POD.
+        // Keep this separate when possible and rotate only after replacing stored links.
+        'pod_message_link_secret' => 'replace-with-a-long-random-pod-message-link-secret',
 
         'session_idle_seconds' => 30 * 60,
         'session_absolute_seconds' => 12 * 60 * 60,
