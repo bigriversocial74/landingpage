@@ -94,6 +94,7 @@ jobs:
           php tests/rss-feed-reader-v62.php
           php tests/social-feed-reader-v62-2.php
           php tests/public-sidebar-rss-v62-2-1.php
+          php tests/pod-identity-relationships-v63.php
 
       - name: Required source
         shell: bash
@@ -133,6 +134,14 @@ jobs:
           test -f tests/fixtures/atom-v62.xml
           test -f tests/social-feed-reader-v62-2.php
           test -f tests/public-sidebar-rss-v62-2-1.php
+          test -f database/pod_identity_relationships_v63.sql
+          test -f portal/pod-identity.php
+          test -f portal/pod-connections.php
+          test -f pod-discovery.php
+          test -f tests/pod-identity-relationships-v63.php
+          test -f POD-IDENTITY-RELATIONSHIPS-SETUP-v63.md
+          test -f V63-SCORECARD.md
+          test -f V63-VALIDATION.txt
 
       - name: Repository safety
         shell: bash
