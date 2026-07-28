@@ -1,0 +1,28 @@
+name: Build v62.2 Full Deploy ZIP
+
+on:
+  push:
+    branches:
+      - build/v62-2-deploy-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build complete archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --output=north-mountain-media-portal-v62.2-deploy.zip b99fb5ea8b1ea4a124628c29f761c0ca1db6953e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v62.2-deploy
+          path: north-mountain-media-portal-v62.2-deploy.zip
+          if-no-files-found: error
+          retention-days: 7
