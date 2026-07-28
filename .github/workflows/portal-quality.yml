@@ -96,6 +96,7 @@ jobs:
           php tests/public-sidebar-rss-v62-2-1.php
           php tests/pod-identity-relationships-v63.php
           php tests/pod-connected-calling-v63-1.php
+          php tests/pod-connected-messaging-v63-2.php
 
       - name: Required source
         shell: bash
@@ -156,6 +157,14 @@ jobs:
           test -f POD-CONNECTED-CALLING-SETUP-v63.1.md
           test -f V63.1-SCORECARD.md
           test -f V63.1-VALIDATION.txt
+          test -f database/pod_connected_messaging_v63_2.sql
+          test -f portal/pod-messaging.php
+          test -f portal/pod-messages.php
+          test -f api/pod-message.php
+          test -f tests/pod-connected-messaging-v63-2.php
+          test -f POD-CONNECTED-MESSAGING-SETUP-v63.2.md
+          test -f V63.2-SCORECARD.md
+          test -f V63.2-VALIDATION.txt
 
       - name: Repository safety
         shell: bash

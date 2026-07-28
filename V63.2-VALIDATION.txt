@@ -1,0 +1,67 @@
+POD Connected Messaging v63.2 validation
+
+Required automated validation:
+- PHP syntax for every PHP file
+- JavaScript syntax for every JavaScript file
+- CSS structure for every stylesheet
+- All existing portal regressions
+- tests/pod-identity-relationships-v63.php
+- tests/pod-connected-calling-v63-1.php
+- tests/pod-connected-messaging-v63-2.php
+- Required-source inventory
+- Repository safety checks
+
+Database validation:
+- Import v63, v63.1, and v63.2 migrations in order
+- Repeat v63.2 migration safely
+- Confirm one inbound and one outbound message link per relationship
+- Confirm inbound token hash uniqueness
+- Confirm message UUID and conversation UUID uniqueness
+- Confirm message/read/delivery indexes
+- Confirm relationship deletion cascades message transport records
+- Confirm CRM deletion preserves threads with a null contact link
+
+Credential validation:
+- Raw inbound token is displayed once and never stored
+- Remote endpoint/token bundle is AES-256-GCM encrypted
+- Revoked and expired credentials are rejected
+- Credential origin must equal remote POD canonical origin
+- Query-string credentials are not accepted by the receive endpoint
+
+Transport validation:
+- Outbound JSON includes protocol, message UUID, conversation UUID, POD IDs, subject, body, and sent timestamp
+- X-POD-Timestamp is within five minutes
+- X-POD-Signature validates HMAC-SHA256 over timestamp plus raw body
+- Sender and recipient POD IDs match the connected relationship
+- Duplicate message UUID returns success without duplicate content
+- Response includes a receipt UUID and receive timestamp
+- Redirects are disabled
+- Only standard web ports are allowed
+- Private, reserved, loopback, and link-local destinations are rejected
+- DNS resolution is pinned for cURL delivery
+- Response size is bounded
+
+Functional validation:
+- Connected relationship with Messaging=Message can issue a message link
+- Remote credential can be encrypted and saved
+- Contact list shows a Message action
+- New POD conversation can be created
+- Message is delivered to a second POD installation
+- Inbound message creates a thread when required
+- Inbound message appears unread
+- Opening the thread marks it read
+- Inbound message creates an administrator notification
+- Inbound and outbound messages create CRM activity
+- Failed outbound message displays the failure
+- Retry uses the same message UUID
+- Thread can be archived
+- Discovery advertises relationship_messaging=true
+
+Compatibility validation:
+- Existing local client/admin communication threads still work
+- Existing local attachments, voice messages, calls, and transcripts still work
+- Existing public Call Us page still works
+- Existing connected contact calling still works
+- Existing RSS/feed reader remains operational
+
+Expected certified score: 10/10
