@@ -25,6 +25,9 @@ return [
         'force_https' => false, // Enable only after HTTPS and proxy settings are confirmed.
         'trusted_proxies' => [],
         'booking_slot_secret' => 'replace-with-a-long-random-booking-slot-secret',
+        // Encrypts remote relationship call links stored by this POD.
+        // Keep this private and stable. Rotating it invalidates stored remote links.
+        'pod_call_link_secret' => 'replace-with-a-long-random-pod-call-link-secret',
 
         'session_idle_seconds' => 30 * 60,
         'session_absolute_seconds' => 12 * 60 * 60,
@@ -48,21 +51,11 @@ return [
     'communications' => [
         'enabled' => true,
 
-        // Calling and signaling are self-hosted. Add your own STUN/TURN
-        // services for reliable calls across mobile carriers and restrictive NAT.
+        // Calling and signaling are self-hosted. An empty list keeps the
+        // existing direct-only browser calling behavior used by POD calling.
         'ice_servers' => [
-            // [
-            //     'urls' => ['stun:turn.your-domain.com:3478'],
-            // ],
-            // [
-            //     'urls' => [
-            //         'turn:turn.your-domain.com:3478?transport=udp',
-            //         'turn:turn.your-domain.com:3478?transport=tcp',
-            //         'turns:turn.your-domain.com:5349?transport=tcp',
-            //     ],
-            //     'username' => 'replace-with-turn-username',
-            //     'credential' => 'replace-with-turn-password',
-            // ],
+            // Optional network traversal services can be configured by an
+            // administrator later without changing the POD calling workflow.
         ],
 
         'poll_interval_ms' => 2500,
