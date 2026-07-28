@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 define('NMM_PUBLIC_PAGE', true);
 require __DIR__ . '/../portal/bootstrap.php';
+require_once __DIR__ . '/../portal/pod-messaging.php';
 require_once __DIR__ . '/../portal/pod-agent-receptionist.php';
 
 header('Cache-Control: no-store, private, max-age=0');
