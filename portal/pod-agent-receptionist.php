@@ -59,9 +59,12 @@ function pod_receptionist_settings(bool $create = true): ?array
         'INSERT INTO pod_agent_receptionist_settings
             (pod_identity_id,enabled,agent_name,greeting)
          VALUES
-            (:pod_identity_id,1,"POD Receptionist",
-             "Hello. I am the owner''s POD receptionist. I can answer approved public questions, take a message, request a callback, or help connect your call.")'
-    )->execute(['pod_identity_id' => (int)$identity['id']]);
+            (:pod_identity_id,1,:agent_name,:greeting)'
+    )->execute([
+        'pod_identity_id' => (int)$identity['id'],
+        'agent_name' => 'POD Receptionist',
+        'greeting' => "Hello. I am the owner's POD receptionist. I can answer approved public questions, take a message, request a callback, or help connect your call.",
+    ]);
 
     $statement->execute(['identity_id' => (int)$identity['id']]);
     return $statement->fetch() ?: null;
