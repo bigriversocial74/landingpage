@@ -89,6 +89,7 @@ jobs:
           php tests/landing-page-editor-toggle.php
           php tests/landing-page-editor-v61-4.php
           php tests/landing-page-editor-v61-5.php
+          php tests/site-analytics-listening-v61-9.php
 
       - name: Required builder source
         shell: bash
