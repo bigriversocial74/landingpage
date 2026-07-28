@@ -1158,7 +1158,7 @@ function portal_header(string $title, string $active, array $user): void
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title) ?> — <?= e(setting('site_name', 'North Mountain Media')) ?></title>
-    <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260727-visual-site-builder-v61')) ?>">
+    <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260728-site-analytics-v61.9')) ?>">
 </head>
 <body
     class="portal-body"
@@ -1200,7 +1200,7 @@ function portal_header(string $title, string $active, array $user): void
                     $groupActive = array_key_exists($active, $groupItems);
                     ?>
                     <section
-                        class="portal-nav-group <?= $groupActive ? 'is-current' : '' ?>"
+                        class="portal-nav-group"
                         data-nav-group
                     >
                         <button
@@ -1558,7 +1558,7 @@ function portal_footer(): void
         <?php endif; ?>
     </main>
 </div>
-<script src="<?= e(app_url('assets/js/portal.js?v=20260727-visual-site-builder-v61')) ?>"></script>
+<script src="<?= e(app_url('assets/js/portal.js?v=20260728-site-analytics-v61.9')) ?>"></script>
 </body>
 </html>
     <?php
