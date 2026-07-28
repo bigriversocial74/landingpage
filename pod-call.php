@@ -26,7 +26,7 @@ try {
     }
 
     pod_authorize_connected_call_token($token);
-    redirect('call-dave.php?connected=1');
+    redirect('connected-call.php');
 } catch (Throwable $exception) {
     if (http_response_code() < 400) http_response_code(403);
     pod_clear_connected_call_context();
