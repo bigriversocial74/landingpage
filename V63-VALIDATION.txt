@@ -1,0 +1,26 @@
+POD Identity and Relationships v63 validation
+
+Required validation:
+- PHP syntax: all PHP files
+- JavaScript syntax: all JavaScript files
+- CSS structure: all stylesheets
+- tests/pod-identity-relationships-v63.php
+- Existing portal regressions
+- Repository safety checks
+
+Deployment verification:
+- Import database/pod_identity_relationships_v63.sql
+- Open /portal/pod-connections.php
+- Save canonical identity
+- Open /.well-known/pod.json
+- Confirm stable pod_id after repeated requests
+- Add a remote POD and relationship
+- Link a CRM contact
+- Set relationship calling permission to call
+- Block and restore the relationship
+- Confirm relationship events
+- Confirm /call-dave.php live call form remains present
+- Confirm voicemail remains present
+- Confirm existing call signaling and WebRTC remain unchanged
+
+Expected final score: 10/10
