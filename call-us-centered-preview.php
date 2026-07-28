@@ -32,12 +32,12 @@ $previewSidebarContext = [
 >
 <meta
     name="build-version"
-    content="20260727-site-controls-landing-v60"
+    content="20260728-content-controls-v62.1"
 >
 <title>Centered Call Us Preview — North Mountain Media</title>
 <link
     rel="stylesheet"
-    href="assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60"
+    href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1"
 >
 <style>
 :root{
@@ -276,6 +276,6 @@ body{
 </div>
 </section>
 
-<script src="assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60"></script>
+<script src="assets/js/public-sidebar.js?v=20260728-content-controls-v62.1"></script>
 </body>
 </html>

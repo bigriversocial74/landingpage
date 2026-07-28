@@ -9,6 +9,7 @@ function events_handle_admin_action(string $action, array $user): bool
         'save_event',
         'duplicate_event',
         'archive_event',
+        'delete_event',
         'delete_event_cover',
         'save_event_settings',
         'update_event_registration',
@@ -408,6 +409,34 @@ function events_handle_admin_action(string $action, array $user): bool
         redirect('portal/admin.php?view=events');
     }
 
+
+    if ($action === 'delete_event') {
+        $eventId = int_input('id');
+        $event = events_admin_event($eventId);
+
+        if (!$event) {
+            throw new RuntimeException('Event not found.');
+        }
+
+        db()->prepare(
+            'DELETE FROM calendar_events
+             WHERE id=:event_id'
+        )->execute(['event_id' => $eventId]);
+
+        events_delete_cover_file($event);
+        log_activity(
+            'event_deleted',
+            'calendar_event',
+            $eventId,
+            ['title' => (string)$event['title']]
+        );
+        flash(
+            'success',
+            'Event, registrations, reminders, and cover artwork were permanently deleted.'
+        );
+        redirect('portal/admin.php?view=events');
+    }
+
     if ($action === 'delete_event_cover') {
         $eventId = int_input('id');
         $event = events_admin_event($eventId);
@@ -791,6 +820,18 @@ function events_render_admin(array $user): void
 <footer>
 <a class="button button-small button-primary" href="?view=events&edit=<?=(int)$event['id']?>">Manage</a>
 <a class="button button-small" href="<?=e(app_url('event.php?preview=1&id='.(int)$event['id']))?>" target="_blank" rel="noopener">Preview</a>
+<form
+    method="post"
+    data-confirm="Permanently delete this event, its registrations, reminder records, and cover image?"
+    data-confirm-title="Delete event?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete event"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_event">
+<input type="hidden" name="id" value="<?=(int)$event['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </footer>
 </article>
 <?php endforeach;?>
@@ -982,7 +1023,14 @@ function events_render_admin(array $user): void
 <?php if($event['cover_stored_name']):?>
 <section class="panel">
 <header class="panel-header"><div><span>Event artwork</span><h2>Cover image</h2></div></header>
-<form class="panel-body" method="post">
+<form
+    class="panel-body"
+    method="post"
+    data-confirm="Remove the event cover image? The event record will remain."
+    data-confirm-title="Remove event cover?"
+    data-confirm-eyebrow="Event artwork"
+    data-confirm-action="Remove cover"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="delete_event_cover">
 <input type="hidden" name="id" value="<?=(int)$event['id']?>">
@@ -1010,7 +1058,13 @@ function events_render_admin(array $user): void
 <label class="field"><span>Notes</span><textarea name="registration_notes" rows="2"><?=e($registration['notes'])?></textarea></label>
 <button class="button button-small" type="submit">Update</button>
 </form>
-<form method="post">
+<form
+    method="post"
+    data-confirm="Permanently delete this event registration and its reminder records?"
+    data-confirm-title="Delete registration?"
+    data-confirm-eyebrow="Attendance"
+    data-confirm-action="Delete registration"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="delete_event_registration">
 <input type="hidden" name="event_id" value="<?=(int)$event['id']?>">
@@ -1051,12 +1105,36 @@ function events_render_admin(array $user): void
 
 <section class="panel">
 <header class="panel-header"><div><span>Archive</span><h2>Remove from active schedules</h2></div></header>
-<form class="panel-body" method="post">
+<div class="panel-body">
+<form
+    method="post"
+    data-confirm="Archive this event? It will leave active schedules but remain available to edit."
+    data-confirm-title="Archive event?"
+    data-confirm-eyebrow="Event publishing"
+    data-confirm-action="Archive event"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="archive_event">
 <input type="hidden" name="id" value="<?=(int)$event['id']?>">
 <button class="button button-danger" type="submit">Archive event</button>
 </form>
+<div class="content-danger-zone">
+<strong>Delete permanently</strong>
+<p>Delete this event, its registrations, reminder queue, and uploaded cover artwork.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the event, all registrations, all reminder records, and the cover image. This action cannot be undone."
+    data-confirm-title="Delete event?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete event"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_event">
+<input type="hidden" name="id" value="<?=(int)$event['id']?>">
+<button class="button button-danger" type="submit">Delete event</button>
+</form>
+</div>
+</div>
 </section>
 <?php else:?>
 <section class="panel"><div class="empty-state">Save the event once to manage registrations, reminders, exports, and previews.</div></section>

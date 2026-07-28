@@ -4,11 +4,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="build-version" content="20260727-site-controls-landing-v60">
+<meta name="build-version" content="20260728-content-controls-v62.1">
 <title>Appointments &amp; Booking Preview — North Mountain Media</title>
-<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/bookings.css?v=20260727-site-controls-landing-v60">
+<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/bookings.css?v=20260728-content-controls-v62.1">
 </head>
 <body class="bookings-body">
 <div class="music-public-shell">

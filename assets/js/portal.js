@@ -4,8 +4,115 @@
   const close=()=>{sidebar?.classList.remove('is-open');backdrop?.classList.remove('is-open')};
   document.querySelector('[data-sidebar-open]')?.addEventListener('click',()=>{sidebar?.classList.add('is-open');backdrop?.classList.add('is-open')});
   document.querySelectorAll('[data-sidebar-close]').forEach(b=>b.addEventListener('click',close));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
-  document.querySelectorAll('[data-confirm]').forEach(el=>el.addEventListener('click',e=>{if(!confirm(el.dataset.confirm||'Continue?'))e.preventDefault()}));
+
+  const confirmationModal = document.querySelector('[data-confirm-modal]');
+  const confirmationTitle = confirmationModal?.querySelector('[data-confirm-title]');
+  const confirmationMessage = confirmationModal?.querySelector('[data-confirm-message]');
+  const confirmationEyebrow = confirmationModal?.querySelector('[data-confirm-eyebrow]');
+  const confirmationAccept = confirmationModal?.querySelector('[data-confirm-accept]');
+  const confirmationCancel = confirmationModal?.querySelectorAll('[data-confirm-cancel]') || [];
+  let pendingConfirmation = null;
+  let confirmationReturnFocus = null;
+
+  const closeConfirmation = ({ restoreFocus = true } = {}) => {
+    if (!confirmationModal) return;
+    confirmationModal.hidden = true;
+    confirmationModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('portal-confirm-open');
+    pendingConfirmation = null;
+    if (restoreFocus && confirmationReturnFocus instanceof HTMLElement) {
+      confirmationReturnFocus.focus({ preventScroll: true });
+    }
+    confirmationReturnFocus = null;
+  };
+
+  const openConfirmation = (target, submitter = null, contentTarget = target) => {
+    if (!confirmationModal) return false;
+
+    confirmationReturnFocus = submitter || target;
+    pendingConfirmation = {
+      target,
+      submitter,
+      href: target instanceof HTMLAnchorElement ? target.href : '',
+    };
+
+    const dataset = contentTarget?.dataset || target.dataset || {};
+    if (confirmationEyebrow) confirmationEyebrow.textContent = dataset.confirmEyebrow || 'Confirm action';
+    if (confirmationTitle) confirmationTitle.textContent = dataset.confirmTitle || 'Are you sure?';
+    if (confirmationMessage) confirmationMessage.textContent = dataset.confirm || 'This action cannot be undone.';
+    if (confirmationAccept) confirmationAccept.textContent = dataset.confirmAction || 'Continue';
+
+    confirmationModal.hidden = false;
+    confirmationModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('portal-confirm-open');
+    window.requestAnimationFrame(() => confirmationAccept?.focus());
+    return true;
+  };
+
+  document.addEventListener('submit', (event) => {
+    const form = event.target.closest('form[data-confirm]');
+    if (!form) return;
+
+    if (form.dataset.confirmed === '1') {
+      delete form.dataset.confirmed;
+      return;
+    }
+
+    event.preventDefault();
+    openConfirmation(form, event.submitter || null);
+  });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('a[data-confirm], button[data-confirm]');
+    if (!target || target.closest('form[data-confirm]')) return;
+    event.preventDefault();
+
+    if (target instanceof HTMLButtonElement && target.form) {
+      openConfirmation(target.form, target, target);
+      return;
+    }
+
+    openConfirmation(target, target, target);
+  });
+
+  confirmationAccept?.addEventListener('click', () => {
+    const pending = pendingConfirmation;
+    if (!pending) return;
+
+    const target = pending.target;
+    closeConfirmation({ restoreFocus: false });
+
+    if (target instanceof HTMLFormElement) {
+      target.dataset.confirmed = '1';
+      if (typeof target.requestSubmit === 'function') {
+        target.requestSubmit(pending.submitter || undefined);
+      } else {
+        target.submit();
+      }
+      return;
+    }
+
+    if (pending.href) {
+      window.location.assign(pending.href);
+      return;
+    }
+
+    target?.click?.();
+  });
+
+  confirmationCancel.forEach((button) => {
+    button.addEventListener('click', () => closeConfirmation());
+  });
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      if (confirmationModal && !confirmationModal.hidden) {
+        closeConfirmation();
+        return;
+      }
+      close();
+    }
+  });
 
   const transcriptionStatusNode = document.querySelector(
     '[data-transcription-status][data-job-id]'

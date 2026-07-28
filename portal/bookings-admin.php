@@ -951,7 +951,7 @@ function booking_render_availability(
 </div>
 <footer>
 <a class="button button-small" href="?view=bookings&amp;rule=<?=(int)$rule['id']?>#availability">Edit</a>
-<form method="post" onsubmit="return confirm('Delete this availability rule?')">
+<form method="post" data-confirm="Delete this availability rule?" data-confirm-title="Delete availability rule?" data-confirm-eyebrow="Working hours" data-confirm-action="Delete rule">
 <?=csrf_field()?>
 <input type="hidden" name="action" value="delete_booking_rule">
 <input type="hidden" name="id" value="<?=(int)$rule['id']?>">
@@ -1015,7 +1015,7 @@ function booking_render_blackouts(
 </div>
 <footer>
 <a class="button button-small" href="?view=bookings&amp;blackout=<?=(int)$blackout['id']?>#blackouts">Edit</a>
-<form method="post" onsubmit="return confirm('Delete this blocked period?')">
+<form method="post" data-confirm="Delete this blocked period?" data-confirm-title="Delete blocked period?" data-confirm-eyebrow="Unavailable time" data-confirm-action="Delete period">
 <?=csrf_field()?>
 <input type="hidden" name="action" value="delete_booking_blackout">
 <input type="hidden" name="id" value="<?=(int)$blackout['id']?>">

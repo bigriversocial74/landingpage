@@ -1077,6 +1077,7 @@ function enforce_authenticated_action_limit(array $user): void
 
 function portal_header(string $title, string $active, array $user): void
 {
+    $GLOBALS['nmm_portal_active_view'] = $active;
     $isAdmin = $user['role'] === 'admin';
 
     $navigation = $isAdmin
@@ -1168,8 +1169,8 @@ function portal_header(string $title, string $active, array $user): void
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title) ?> — <?= e(setting('site_name', 'North Mountain Media')) ?></title>
-    <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260728-site-analytics-v61.9')) ?>">
-    <?php if($active==='feeds'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/feed-reader.css?v=20260728-rss-feed-reader-v62')) ?>"><?php endif;?>
+    <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260728-content-controls-v62.1')) ?>">
+    <?php if($active==='feeds'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/feed-reader.css?v=20260728-content-controls-v62.1')) ?>"><?php endif;?>
 </head>
 <body
     class="portal-body"
@@ -1391,6 +1392,7 @@ function portal_footer(): void
 {
     $footerUser = current_user();
     $isAdmin = $footerUser && $footerUser['role'] === 'admin';
+    $active = (string)($GLOBALS['nmm_portal_active_view'] ?? '');
     ?>
         </div>
 
@@ -1569,8 +1571,41 @@ function portal_footer(): void
         <?php endif; ?>
     </main>
 </div>
-<script src="<?= e(app_url('assets/js/portal.js?v=20260728-site-analytics-v61.9')) ?>"></script>
-<?php if($active==='feeds'):?><script src="<?= e(app_url('assets/js/feed-reader.js?v=20260728-rss-feed-reader-v62')) ?>"></script><?php endif;?>
+
+<section
+    class="portal-confirm-modal"
+    data-confirm-modal
+    aria-hidden="true"
+    hidden
+>
+    <button
+        class="portal-confirm-backdrop"
+        type="button"
+        data-confirm-cancel
+        aria-label="Cancel confirmation"
+    ></button>
+    <div
+        class="portal-confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="portal-confirm-title"
+        aria-describedby="portal-confirm-message"
+    >
+        <div class="portal-confirm-icon" aria-hidden="true">!</div>
+        <div class="portal-confirm-copy">
+            <span data-confirm-eyebrow>Confirm action</span>
+            <h2 id="portal-confirm-title" data-confirm-title>Are you sure?</h2>
+            <p id="portal-confirm-message" data-confirm-message>This action cannot be undone.</p>
+        </div>
+        <div class="portal-confirm-actions">
+            <button class="button" type="button" data-confirm-cancel>Cancel</button>
+            <button class="button button-danger" type="button" data-confirm-accept>Continue</button>
+        </div>
+    </div>
+</section>
+
+<script src="<?= e(app_url('assets/js/portal.js?v=20260728-content-controls-v62.1')) ?>"></script>
+<?php if($active==='feeds'):?><script src="<?= e(app_url('assets/js/feed-reader.js?v=20260728-content-controls-v62.1')) ?>"></script><?php endif;?>
 </body>
 </html>
     <?php

@@ -84,7 +84,7 @@ header(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="<?=e($settings['description'])?>">
-<meta name="build-version" content="20260727-site-controls-landing-v60">
+<meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
 <?php if($settings['ics_enabled']):?>
 <link
@@ -100,9 +100,9 @@ header(
 <meta property="og:url" content="<?=e($canonicalUrl)?>">
 <meta property="og:site_name" content="North Mountain Media">
 <title><?=e($settings['title'])?> — North Mountain Media</title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/events.css?v=20260727-site-controls-landing-v60'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/events.css?v=20260728-content-controls-v62.1'))?>">
 </head>
 <body class="events-body">
 <div class="music-public-shell">
@@ -216,10 +216,10 @@ header(
 </section>
 </div>
 
-<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/events-calendar.js?v=20260727-site-controls-landing-v60'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/events-calendar.js?v=20260728-content-controls-v62.1'))?>"></script>
 <script>
 window.NMMVisitorActivity?.track(
   'events_calendar_view',

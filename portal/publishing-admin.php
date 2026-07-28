@@ -10,6 +10,7 @@ function publishing_handle_admin_action(
     $blogActions = [
         'save_blog_post',
         'archive_blog_post',
+        'delete_blog_post',
         'update_blog_media',
         'delete_blog_media',
         'save_blog_settings',
@@ -19,6 +20,7 @@ function publishing_handle_admin_action(
     $resumeActions = [
         'save_resume_post',
         'archive_resume_post',
+        'delete_resume_post',
         'duplicate_resume_post',
         'restore_resume_revision',
     ];
@@ -378,6 +380,49 @@ function publishing_handle_admin_action(
             $id
         );
         flash('success', 'Blog post archived.');
+        redirect('portal/admin.php?view=blog');
+    }
+
+
+    if ($action === 'delete_blog_post') {
+        $id = int_input('id');
+        $postStatement = db()->prepare(
+            'SELECT id,title
+             FROM blog_posts
+             WHERE id=:id
+             LIMIT 1'
+        );
+        $postStatement->execute(['id' => $id]);
+        $post = $postStatement->fetch();
+
+        if (!$post) {
+            throw new RuntimeException('Blog post not found.');
+        }
+
+        $mediaStatement = db()->prepare(
+            'SELECT *
+             FROM blog_media
+             WHERE post_id=:post_id'
+        );
+        $mediaStatement->execute(['post_id' => $id]);
+        $media = $mediaStatement->fetchAll();
+
+        db()->prepare(
+            'DELETE FROM blog_posts
+             WHERE id=:id'
+        )->execute(['id' => $id]);
+
+        foreach ($media as $item) {
+            blog_delete_media_file($item);
+        }
+
+        log_activity(
+            'blog_post_deleted',
+            'blog_post',
+            $id,
+            ['title' => (string)$post['title']]
+        );
+        flash('success', 'Blog post and its media were permanently deleted.');
         redirect('portal/admin.php?view=blog');
     }
 
@@ -764,6 +809,37 @@ function publishing_handle_admin_action(
         redirect('portal/admin.php?view=resume');
     }
 
+
+    if ($action === 'delete_resume_post') {
+        $id = int_input('id');
+        $statement = db()->prepare(
+            'SELECT id,title
+             FROM resume_posts
+             WHERE id=:id
+             LIMIT 1'
+        );
+        $statement->execute(['id' => $id]);
+        $post = $statement->fetch();
+
+        if (!$post) {
+            throw new RuntimeException('Resume post not found.');
+        }
+
+        db()->prepare(
+            'DELETE FROM resume_posts
+             WHERE id=:id'
+        )->execute(['id' => $id]);
+
+        log_activity(
+            'resume_post_deleted',
+            'resume_post',
+            $id,
+            ['title' => (string)$post['title']]
+        );
+        flash('success', 'Resume post was permanently deleted.');
+        redirect('portal/admin.php?view=resume');
+    }
+
     return true;
 }
 
@@ -948,6 +1024,18 @@ function publishing_render_blog_admin(
     target="_blank"
     rel="noopener"
 >Preview</a>
+<form
+    method="post"
+    data-confirm="Permanently delete this blog post, all revisions, and every uploaded image?"
+    data-confirm-title="Delete blog post?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete post"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_blog_post">
+<input type="hidden" name="id" value="<?=(int)$post['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </footer>
 </article>
 <?php endforeach;?>
@@ -1246,7 +1334,14 @@ Published posts appear on the public Blog archive when their
 publication date is reached.
 </p>
 <?php if($selected):?>
-<form method="post" class="inline-form">
+<form
+    method="post"
+    class="inline-form"
+    data-confirm="Archive this blog post? It will be removed from the public Blog but can still be edited later."
+    data-confirm-title="Archive blog post?"
+    data-confirm-eyebrow="Publishing"
+    data-confirm-action="Archive post"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="archive_blog_post">
 <input type="hidden" name="id" value="<?=(int)$selected['id']?>">
@@ -1254,6 +1349,22 @@ publication date is reached.
 Archive post
 </button>
 </form>
+<div class="content-danger-zone">
+<strong>Delete permanently</strong>
+<p>Delete this post, its revision history, and every uploaded image. This cannot be undone.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the blog post, all revisions, and all uploaded images. This action cannot be undone."
+    data-confirm-title="Delete blog post?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete post"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_blog_post">
+<input type="hidden" name="id" value="<?=(int)$selected['id']?>">
+<button class="button button-danger" type="submit">Delete post</button>
+</form>
+</div>
 <?php endif;?>
 </div>
 </section>
@@ -1364,7 +1475,13 @@ Vertical focal point
 Update image
 </button>
 </form>
-<form method="post">
+<form
+    method="post"
+    data-confirm="Permanently delete this blog image from the post and storage?"
+    data-confirm-title="Delete blog image?"
+    data-confirm-eyebrow="Blog media"
+    data-confirm-action="Delete image"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="delete_blog_media">
 <input type="hidden" name="post_id" value="<?=(int)$selected['id']?>">
@@ -1798,7 +1915,13 @@ Save resume post
 <div><span>Publishing</span><h2>Entry controls</h2></div>
 </header>
 <div class="panel-body">
-<form method="post">
+<form
+    method="post"
+    data-confirm="Archive this resume post? It will be removed from the public resume but can still be edited later."
+    data-confirm-title="Archive resume post?"
+    data-confirm-eyebrow="Publishing"
+    data-confirm-action="Archive post"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="archive_resume_post">
 <input type="hidden" name="id" value="<?=(int)$selected['id']?>">
@@ -1806,6 +1929,22 @@ Save resume post
 Archive resume post
 </button>
 </form>
+<div class="content-danger-zone">
+<strong>Delete permanently</strong>
+<p>Delete this resume entry and its complete revision history. This cannot be undone.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the resume post and all of its revisions. This action cannot be undone."
+    data-confirm-title="Delete resume post?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete post"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_resume_post">
+<input type="hidden" name="id" value="<?=(int)$selected['id']?>">
+<button class="button button-danger" type="submit">Delete resume post</button>
+</form>
+</div>
 </div>
 </section>
 <?php if($selected):?>

@@ -26,10 +26,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Music Dashboard Preview — North Mountain Media</title>
-<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/music-library.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/music-dashboard.css?v=20260727-site-controls-landing-v60">
+<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/music-library.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/music-dashboard.css?v=20260728-content-controls-v62.1">
 </head>
 <body class="music-dashboard-body">
 <div class="music-public-shell">
@@ -348,9 +348,9 @@ nmm_render_public_sidebar($previewSidebarContext);
 </div>
 
 <button type="button" hidden data-music-initial-track data-music-play data-track-id="900006" data-track-title="Golden Hour" data-track-artist="Luna Shores" data-track-album="Golden Horizon" data-track-stream="demo-music.php?id=900006" data-track-cover="assets/demo-music/covers/golden-horizon.svg" data-track-duration="18" data-track-demo="1">Initial</button>
-<script src="assets/js/public-music-shell.js?v=20260727-site-controls-landing-v60"></script>
+<script src="assets/js/public-music-shell.js?v=20260728-content-controls-v62.1"></script>
 <script src="assets/js/music-player.js?v=20260728-site-analytics-v61.9"></script>
-<script src="assets/js/music-dashboard.js?v=20260727-site-controls-landing-v60"></script>
-<script src="assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60"></script>
+<script src="assets/js/music-dashboard.js?v=20260728-content-controls-v62.1"></script>
+<script src="assets/js/public-sidebar.js?v=20260728-content-controls-v62.1"></script>
 </body>
 </html>
