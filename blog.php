@@ -93,8 +93,11 @@ header(
     rel="alternate"
     type="application/rss+xml"
     title="<?=e($archiveTitle)?> RSS"
-    href="<?=e(publishing_absolute_url('blog-feed.php'))?>"
+    href="<?=e(publishing_absolute_url('blog-feed.php' . ($category!=='' ? '?category=' . rawurlencode($category) : '')))?>"
 >
+<?php endif;?>
+<?php if($blogSettings['atom_enabled']):?>
+<link rel="alternate" type="application/atom+xml" title="<?=e($archiveTitle)?> Atom" href="<?=e(publishing_absolute_url('blog-atom.php' . ($category!=='' ? '?category=' . rawurlencode($category) : '')))?>">
 <?php endif;?>
 <meta property="og:type" content="website">
 <meta property="og:title" content="<?=e($archiveIntro)?>">

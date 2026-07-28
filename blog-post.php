@@ -95,6 +95,9 @@ header(
 <meta name="description" content="<?=e($description)?>">
 <meta name="build-version" content="20260727-site-controls-landing-v60">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
+<?php $feedSettings=publishing_blog_settings();?>
+<?php if($feedSettings['rss_enabled']):?><link rel="alternate" type="application/rss+xml" title="<?=e($feedSettings['title'])?> RSS" href="<?=e(publishing_absolute_url('blog-feed.php'))?>"><?php endif;?>
+<?php if($feedSettings['atom_enabled']):?><link rel="alternate" type="application/atom+xml" title="<?=e($feedSettings['title'])?> Atom" href="<?=e(publishing_absolute_url('blog-atom.php'))?>"><?php endif;?>
 <?php if($isAdminPreview):?>
 <meta name="robots" content="noindex,nofollow">
 <?php endif;?>

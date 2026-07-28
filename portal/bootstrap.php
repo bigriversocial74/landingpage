@@ -1088,6 +1088,7 @@ function portal_header(string $title, string $active, array $user): void
             'communications' => 'Communications',
             'notifications' => 'Notifications',
             'files' => 'Files',
+            'feeds' => 'Feed Reader',
             'account' => 'Account',
         ];
 
@@ -1110,6 +1111,7 @@ function portal_header(string $title, string $active, array $user): void
         'Work' => [
             'portfolio' => 'Portfolio',
             'blog' => 'Blog',
+            'feeds' => 'Feed Reader',
             'events' => 'Events',
             'bookings' => 'Bookings',
             'proposals' => 'Proposals',
@@ -1129,6 +1131,14 @@ function portal_header(string $title, string $active, array $user): void
     $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');
     if ($isAdmin && !$landingPageEditorEnabled) {
         unset($adminNavigationGroups['Work']['builder']);
+    }
+
+    if (!nmm_module_enabled('feed_reader', true)) {
+        if ($isAdmin) {
+            unset($adminNavigationGroups['Work']['feeds']);
+        } else {
+            unset($navigation['feeds']);
+        }
     }
 
     $script = $isAdmin ? 'admin.php' : 'client.php';
@@ -1159,6 +1169,7 @@ function portal_header(string $title, string $active, array $user): void
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title) ?> — <?= e(setting('site_name', 'North Mountain Media')) ?></title>
     <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260728-site-analytics-v61.9')) ?>">
+    <?php if($active==='feeds'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/feed-reader.css?v=20260728-rss-feed-reader-v62')) ?>"><?php endif;?>
 </head>
 <body
     class="portal-body"
@@ -1559,6 +1570,7 @@ function portal_footer(): void
     </main>
 </div>
 <script src="<?= e(app_url('assets/js/portal.js?v=20260728-site-analytics-v61.9')) ?>"></script>
+<?php if($active==='feeds'):?><script src="<?= e(app_url('assets/js/feed-reader.js?v=20260728-rss-feed-reader-v62')) ?>"></script><?php endif;?>
 </body>
 </html>
     <?php

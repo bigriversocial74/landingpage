@@ -1,0 +1,36 @@
+North Mountain Media RSS & Feed Reader Platform v62
+Validation target: 10/10 across all 13 scored sections
+
+Required automated gates
+- PHP syntax for every PHP file
+- JavaScript syntax for every JavaScript file
+- CSS structural balance for every CSS file
+- Existing landing-page/editor regressions
+- Existing Site Analytics/listening regression
+- RSS & Feed Reader v62 certification regression
+- Required v62 source, SQL, fixture, scorecard, and setup-document checks
+- Repository secret/runtime-file safety checks
+
+Focused v62 checks
+- RSS 2.0 and Atom endpoints and discovery links
+- Category feed output, full content, authors, dates, tags, media, ETag, Last-Modified, and 304 support
+- Six-table additive and fresh-install schema
+- Administrator and client reader routes
+- Per-user subscriptions, folders, and item states
+- RSS, Atom, and RDF parsing
+- Feed autodiscovery from website HTML
+- GUID/link/content deduplication
+- ETag/Last-Modified conditional source refresh
+- Refresh locks, evidence, retry backoff, cron, and cleanup
+- OPML import/export and folder preservation
+- HTTP/HTTPS and port restrictions
+- Private/reserved network rejection
+- DNS validation and cURL DNS pinning
+- Disabled automatic redirects and proxy usage
+- XML DTD/entity rejection and LIBXML_NONET
+- Sanitized imported HTML and local-network content URL rejection
+- CSRF, same-origin, authentication, ownership, and rate limiting
+- Responsive three-pane UI and keyboard/accessibility behavior
+
+Deployment requires database/rss_feed_reader_v62.sql and the feed_reader config block.
+Preserve the live config.php and complete storage/ directory.

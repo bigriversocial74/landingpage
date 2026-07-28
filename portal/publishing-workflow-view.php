@@ -120,6 +120,27 @@ function publishing_render_blog_settings_panel(
 <label class="checkbox-row">
 <input
     type="checkbox"
+    name="blog_atom_enabled"
+    value="1"
+    <?=$settings['atom_enabled']?'checked':''?>
+>
+<span>Enable the public Atom feed.</span>
+</label>
+<label class="field">
+<span>Public feed item limit</span>
+<input type="number" name="feed_public_item_limit" min="5" max="100" value="<?=(int)$settings['feed_item_limit']?>">
+</label>
+<label class="field">
+<span>Feed language</span>
+<input name="blog_feed_language" maxlength="40" value="<?=e($settings['feed_language'])?>" placeholder="en-us">
+</label>
+<label class="field full">
+<span>Feed copyright</span>
+<input name="blog_feed_copyright" maxlength="255" value="<?=e($settings['feed_copyright'])?>">
+</label>
+<label class="checkbox-row">
+<input
+    type="checkbox"
     name="blog_sitemap_enabled"
     value="1"
     <?=$settings['sitemap_enabled']?'checked':''?>

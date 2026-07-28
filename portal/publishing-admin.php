@@ -297,6 +297,22 @@ function publishing_handle_admin_action(
                 : '0'
         );
         publishing_save_setting(
+            'blog_atom_enabled',
+            isset($_POST['blog_atom_enabled']) ? '1' : '0'
+        );
+        publishing_save_setting(
+            'feed_public_item_limit',
+            (string)max(5, min(100, int_input('feed_public_item_limit')))
+        );
+        publishing_save_setting(
+            'blog_feed_language',
+            mb_substr(trim(input('blog_feed_language')) ?: 'en-us', 0, 40)
+        );
+        publishing_save_setting(
+            'blog_feed_copyright',
+            mb_substr(trim(input('blog_feed_copyright')), 0, 255)
+        );
+        publishing_save_setting(
             'blog_sitemap_enabled',
             isset($_POST['blog_sitemap_enabled'])
                 ? '1'
