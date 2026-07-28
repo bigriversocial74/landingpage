@@ -25,7 +25,29 @@ try {
         throw new RuntimeException('Too many connected call attempts were received. Try again later.');
     }
 
-    pod_authorize_connected_call_token($token);
+    $context = pod_authorize_connected_call_token($token);
+    $contactId = (int)($context['crm_contact_id'] ?? 0);
+    $contactEmail = strtolower(trim((string)($context['contact_email'] ?? '')));
+
+    if (
+        $contactId > 0
+        && ($contactEmail === '' || !filter_var($contactEmail, FILTER_VALIDATE_EMAIL))
+    ) {
+        $contactEmail = 'pod-' . substr(
+            hash('sha256', (string)$context['remote_pod_uuid']),
+            0,
+            24
+        ) . '@local.invalid';
+        db()->prepare(
+            'UPDATE crm_contacts
+             SET email=:email,updated_at=UTC_TIMESTAMP()
+             WHERE id=:id AND (email IS NULL OR email="")'
+        )->execute([
+            'email' => $contactEmail,
+            'id' => $contactId,
+        ]);
+    }
+
     redirect('connected-call.php');
 } catch (Throwable $exception) {
     if (http_response_code() < 400) http_response_code(403);
