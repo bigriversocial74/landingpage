@@ -97,6 +97,8 @@ jobs:
           php tests/pod-identity-relationships-v63.php
           php tests/pod-connected-calling-v63-1.php
           php tests/pod-connected-messaging-v63-2.php
+          php tests/pod-agent-receptionist-v63-3.php
+          php tests/pod-agent-voice-receptionist-v63-4.php
 
       - name: Required source
         shell: bash
@@ -165,6 +167,27 @@ jobs:
           test -f POD-CONNECTED-MESSAGING-SETUP-v63.2.md
           test -f V63.2-SCORECARD.md
           test -f V63.2-VALIDATION.txt
+          test -f database/pod_agent_receptionist_v63_3.sql
+          test -f portal/pod-agent-receptionist.php
+          test -f portal/pod-receptionist.php
+          test -f api/pod-receptionist.php
+          test -f connected-receptionist.php
+          test -f assets/js/pod-receptionist-v63-3.js
+          test -f assets/css/pod-receptionist-v63-3.css
+          test -f tests/pod-agent-receptionist-v63-3.php
+          test -f POD-AGENT-RECEPTIONIST-SETUP-v63.3.md
+          test -f V63.3-SCORECARD.md
+          test -f V63.3-VALIDATION.txt
+          test -f database/pod_agent_voice_receptionist_v63_4.sql
+          test -f portal/pod-agent-voice.php
+          test -f portal/pod-voice.php
+          test -f api/pod-agent-voice.php
+          test -f assets/js/pod-receptionist-voice-v63-4.js
+          test -f assets/css/pod-receptionist-voice-v63-4.css
+          test -f tests/pod-agent-voice-receptionist-v63-4.php
+          test -f POD-AGENT-VOICE-RECEPTIONIST-SETUP-v63.4.md
+          test -f V63.4-SCORECARD.md
+          test -f V63.4-VALIDATION.txt
 
       - name: Repository safety
         shell: bash
