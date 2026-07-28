@@ -1,0 +1,65 @@
+name: Build v61.8 Deploy Artifact
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: github.head_ref == 'build/v61-8-deploy-artifact'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout merged source
+        uses: actions/checkout@v4
+        with:
+          ref: 7fab538fe5187b4c04c9caeb26bafcdc862998e7
+
+      - name: Validate production files
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l portal/site-builder.php >/dev/null
+          php -l portal/site-builder-core.php >/dev/null
+          php -l portal/site-builder-api.php >/dev/null
+          php -l portal/site-builder-media.php >/dev/null
+          node --check assets/js/site-builder.js
+          node --check assets/js/site-builder-advanced.js
+
+      - name: Build clean deployment package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deploy-package
+          cp --parents \
+            assets/css/site-builder-admin.css \
+            assets/css/site-builder-public.css \
+            assets/js/site-builder.js \
+            assets/js/site-builder-advanced.js \
+            portal/site-builder.php \
+            portal/site-builder-core.php \
+            portal/site-builder-api.php \
+            portal/site-builder-media.php \
+            deploy-package/
+          cat > deploy-package/DEPLOY-v61.8.txt <<'EOF'
+          North Mountain Media Portal v61.8 deployment
+          Source merge: 7fab538fe5187b4c04c9caeb26bafcdc862998e7
+
+          Upload and overwrite the matching production files.
+          Preserve the live config.php file.
+          Preserve the complete storage/ directory.
+          No SQL migration is required.
+          Clear browser and server caches after deployment.
+          EOF
+          test ! -e deploy-package/config.php
+          test ! -e deploy-package/storage
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v61.8-deploy
+          path: deploy-package/
+          if-no-files-found: error
+          retention-days: 30
