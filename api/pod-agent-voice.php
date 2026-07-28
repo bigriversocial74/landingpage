@@ -26,6 +26,7 @@ if (!$connectedContext) {
         'message' => 'A valid connected POD call session is required.',
     ], 403);
 }
+$connectedRelationshipId = (int)($connectedContext['relationship_id'] ?? 0);
 
 $payload = request_json();
 $action = trim((string)($payload['action'] ?? ''));
@@ -33,8 +34,14 @@ $voiceSessionUuid = trim((string)($payload['voice_session_uuid'] ?? ''));
 
 try {
     if ($action === 'start') {
+        $receptionistSessionUuid = trim((string)($payload['receptionist_session_uuid'] ?? ''));
+        $receptionist = pod_receptionist_current_session($receptionistSessionUuid);
+        if (!$receptionist || (int)$receptionist['relationship_id'] !== $connectedRelationshipId) {
+            throw new RuntimeException('The voice session does not belong to this connected POD relationship.');
+        }
+
         $session = pod_voice_start_session(
-            trim((string)($payload['receptionist_session_uuid'] ?? '')),
+            $receptionistSessionUuid,
             !empty($payload['recognition_supported']),
             !empty($payload['synthesis_supported']),
             trim((string)($payload['selected_voice_name'] ?? '')),
@@ -42,6 +49,9 @@ try {
             !empty($payload['hands_free_enabled']),
             !empty($payload['spoken_replies_enabled'])
         );
+        if ((int)$session['relationship_id'] !== $connectedRelationshipId) {
+            throw new RuntimeException('The voice session relationship could not be verified.');
+        }
         json_response([
             'ok' => true,
             'session' => [
@@ -52,6 +62,11 @@ try {
                 'error_count' => (int)$session['error_count'],
             ],
         ]);
+    }
+
+    $voiceSession = pod_voice_session_by_uuid($voiceSessionUuid);
+    if (!$voiceSession || (int)$voiceSession['relationship_id'] !== $connectedRelationshipId) {
+        throw new RuntimeException('The browser voice session does not belong to this connected POD relationship.');
     }
 
     if ($action === 'record') {
