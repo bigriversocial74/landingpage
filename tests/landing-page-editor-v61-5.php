@@ -4,9 +4,9 @@ $root=dirname(__DIR__);
 $files=['editor'=>'portal/site-builder.php','core'=>'portal/site-builder-core.php','script'=>'assets/js/site-builder.js','bootstrap'=>'assets/js/site-builder-bootstrap.js','adminCss'=>'assets/css/site-builder-admin.css','publicCss'=>'assets/css/site-builder-public.css','publicJs'=>'assets/js/site-public.js'];
 $s=[];foreach($files as $name=>$file){$s[$name]=(string)file_get_contents($root.'/'.$file);if($s[$name]===''){fwrite(STDERR,"Unable to read {$file}\n");exit(1);}}
 $checks=[
- 'v61.7 editor build'=>['20260727-visual-page-editor-v61.7',$s['editor'].$s['script'].$s['core']],
+ 'v61.8 editor build'=>['20260727-visual-layout-system-v61.8',$s['editor'].$s['script'].$s['core']],
  'CSP safe bootstrap'=>['<textarea id="nmm-site-builder-bootstrap" hidden>',$s['editor']],
- 'external bootstrap'=>['site-builder-bootstrap.js?v=20260727-v61.7',$s['editor']],
+ 'external bootstrap'=>['site-builder-bootstrap.js?v=20260727-v61.8',$s['editor']],
  'registry assignment'=>['window.NMM_SITE_BUILDER = payload;',$s['bootstrap']],
  'pages workspace'=>['data-editor-tab="pages"',$s['editor']],
  'sections workspace'=>['data-editor-tab="sections"',$s['editor']],
@@ -35,4 +35,4 @@ foreach($checks as $label=>[$needle,$haystack]){if(!str_contains($haystack,$need
 foreach(['data-editor-tab="layers"','site-editor-tool-menu','editor-library-summary','site-editor-page-picker'] as $forbidden){if(str_contains($s['editor'],$forbidden)){fwrite(STDERR,"Removed sidebar UI returned: {$forbidden}\n");exit(1);}}
 if(str_contains($s['editor'],'<script>window.NMM_SITE_BUILDER=')){fwrite(STDERR,"Inline executable bootstrap violates CSP.\n");exit(1);}
 $core=$s['core'];$sectionStart=strpos($core,'function site_builder_section_library');$blockStart=strpos($core,'function site_builder_block_library');$cleanStart=strpos($core,'function site_builder_clean_text');if($sectionStart===false||$blockStart===false||$cleanStart===false){fwrite(STDERR,"Unable to locate libraries.\n");exit(1);}$sectionSource=substr($core,$sectionStart,$blockStart-$sectionStart);$blockSource=substr($core,$blockStart,$cleanStart-$blockStart);if(substr_count($sectionSource,"'label'=>")!==12){fwrite(STDERR,"Expected 12 section definitions.\n");exit(1);}if(substr_count($blockSource,"'label'=>")!==22){fwrite(STDERR,"Expected 22 block definitions.\n");exit(1);}
-echo "Visual Page Editor v61.7 regression passed.\n";
+echo "Visual Page Editor v61.8 retained regression passed.\n";

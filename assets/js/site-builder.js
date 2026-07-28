@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260727-visual-page-editor-v61.7 */
+/* North Mountain Media build: 20260727-visual-layout-system-v61.8 */
 (() => {
   'use strict';
 
@@ -45,6 +45,7 @@
   const markDirty = (message = 'Unsaved changes') => {
     state.dirty = true;
     if (saveState) saveState.textContent = message;
+    window.NMM_EDITOR_DIRTY_HOOK?.(message);
   };
   const snapshot = () => {
     state.history.push(JSON.stringify(state.payload));
@@ -235,6 +236,64 @@
     return `rgba(${(number >> 16) & 255},${(number >> 8) & 255},${number & 255},${opacity})`;
   };
   const safeNumber = (value, fallback, min, max) => Math.max(min, Math.min(max, Number(value || fallback)));
+
+  const responsiveKeys = new Set([
+    'headlineSize','textSize','bodySize','eyebrowSize','fontSize','fontWeight','textColor','textAlign',
+    'backgroundColor','backgroundImage','backgroundPosition','overlayColor','overlayOpacity',
+    'image','imagePosition','imageFit','imageRadius','imageFocalX','imageFocalY','imageAspect',
+    'contentWidth','minHeight','paddingTop','paddingBottom','padding','marginTop','marginBottom',
+    'contentLayout','gridColumns','blockGap','alignItems','justifyItems','columnSpan','order','alignSelf',
+    'width','borderRadius','shadow','alignment','hidden'
+  ]);
+  const settingValue = (item, key, fallback = '') => {
+    item.settings ||= {};
+    if (state.device !== 'desktop' && responsiveKeys.has(key)) {
+      const value = item.settings.responsive?.[state.device]?.[key];
+      if (value !== undefined && value !== '') return value;
+    }
+    const value = item.settings[key];
+    return value !== undefined && value !== '' ? value : fallback;
+  };
+  const writeSetting = (item, key, value) => {
+    item.settings ||= {};
+    if (state.device !== 'desktop' && responsiveKeys.has(key)) {
+      item.settings.responsive ||= {};
+      item.settings.responsive[state.device] ||= {};
+      item.settings.responsive[state.device][key] = value;
+      return;
+    }
+    item.settings[key] = value;
+  };
+  const clearDeviceOverrides = (item, device = state.device) => {
+    if (device === 'desktop' || !item?.settings?.responsive?.[device]) return;
+    delete item.settings.responsive[device];
+    if (!Object.keys(item.settings.responsive).length) delete item.settings.responsive;
+  };
+  const inlineStyleFor = (item, key) => item?.settings?.inlineStyles?.[key] || {};
+  const applyInlineFieldStyles = (node, item) => {
+    $$('[data-inline-edit]', node).forEach((element) => {
+      const style = inlineStyleFor(item, element.dataset.inlineEdit);
+      element.style.fontWeight = style.bold ? '800' : '';
+      element.style.fontStyle = style.italic ? 'italic' : '';
+      element.style.textDecoration = style.underline ? 'underline' : '';
+      element.style.textAlign = ['left','center','right'].includes(style.align) ? style.align : '';
+      if (/^#[0-9a-f]{6}$/i.test(style.color || '')) element.style.color = style.color;
+    });
+  };
+  const applySectionLayout = (container, section) => {
+    if (!container) return;
+    const fallbackGrid = ['features','columns'].includes(section.type);
+    const mode = settingValue(section, 'contentLayout', fallbackGrid ? 'grid' : 'flex');
+    container.classList.toggle('is-layout-grid', mode === 'grid');
+    container.classList.toggle('is-layout-flex', mode !== 'grid');
+    const max = state.device === 'desktop' ? 12 : state.device === 'tablet' ? 6 : 2;
+    const fallback = fallbackGrid ? (state.device === 'desktop' ? 3 : state.device === 'tablet' ? 2 : 1) : max;
+    container.style.setProperty('--editor-grid-columns', String(Math.max(1, Math.min(max, Number(settingValue(section, 'gridColumns', fallback))))));
+    container.style.setProperty('--editor-block-gap', `${safeNumber(settingValue(section, 'blockGap', 18), 18, 0, 120)}px`);
+    container.style.alignItems = settingValue(section, 'alignItems', 'stretch');
+    container.style.justifyItems = settingValue(section, 'justifyItems', 'stretch');
+  };
+
   const inlineSnapshot = (element) => {
     if (element.dataset.snapshotCaptured === '1') return;
     snapshot();
@@ -245,14 +304,14 @@
     element.contentEditable = 'true';
     element.spellcheck = true;
     element.dataset.inlineEdit = key;
-    element.addEventListener('focus', () => inlineSnapshot(element));
+    element.addEventListener('focus', () => { inlineSnapshot(element); window.NMM_EDITOR_INLINE_FOCUS_HOOK?.(element, item, key); });
     element.addEventListener('input', () => {
       item.settings ||= {};
       item.settings[key] = element.innerText.replace(/\u00a0/g, ' ');
       markDirty('Editing live page · save draft');
       renderLists();
     });
-    element.addEventListener('blur', () => { delete element.dataset.snapshotCaptured; });
+    element.addEventListener('blur', () => { delete element.dataset.snapshotCaptured; window.NMM_EDITOR_INLINE_BLUR_HOOK?.(element, item, key); });
     element.addEventListener('keydown', (event) => {
       if (singleLine && event.key === 'Enter') { event.preventDefault(); element.blur(); }
       event.stopPropagation();
@@ -261,48 +320,78 @@
   };
   const applySectionPresentation = (node, content, section) => {
     const settings = section.settings || {};
-    const overlay = safeNumber(settings.overlayOpacity, settings.backgroundImage ? 34 : 0, 0, 90) / 100;
-    content.style.backgroundColor = settings.backgroundColor || '';
-    content.style.color = settings.textColor || '';
-    content.style.minHeight = settings.minHeight ? `${safeNumber(settings.minHeight, 0, 0, 1200)}px` : '';
-    content.style.paddingTop = settings.paddingTop ? `${safeNumber(settings.paddingTop, 64, 0, 280)}px` : '';
-    content.style.paddingBottom = settings.paddingBottom ? `${safeNumber(settings.paddingBottom, 64, 0, 280)}px` : '';
-    content.style.backgroundPosition = settings.backgroundPosition || 'center';
-    if (settings.backgroundImage) {
-      const color = hexToRgba(settings.overlayColor || '#08121e', overlay);
-      content.style.backgroundImage = `linear-gradient(${color},${color}),url("${String(settings.backgroundImage).replaceAll('"', '%22')}")`;
-      node.classList.add('has-background-image');
+    const backgroundImage = settingValue(section, 'backgroundImage', '');
+    const overlay = safeNumber(settingValue(section, 'overlayOpacity', backgroundImage ? 34 : 0), backgroundImage ? 34 : 0, 0, 90) / 100;
+    content.style.backgroundColor = settingValue(section, 'backgroundColor', '');
+    content.style.color = settingValue(section, 'textColor', '');
+    content.style.minHeight = settingValue(section, 'minHeight', '') ? `${safeNumber(settingValue(section, 'minHeight', 0), 0, 0, 1400)}px` : '';
+    content.style.paddingTop = `${safeNumber(settingValue(section, 'paddingTop', 64), 64, 0, 320)}px`;
+    content.style.paddingBottom = `${safeNumber(settingValue(section, 'paddingBottom', 64), 64, 0, 320)}px`;
+    content.style.backgroundPosition = settingValue(section, 'backgroundPosition', 'center');
+    content.style.backgroundImage = '';
+    node.classList.toggle('has-background-image', Boolean(backgroundImage));
+    node.classList.toggle('is-full-width', Boolean(settingValue(section, 'fullWidth', false)));
+    node.classList.toggle('content-layout-grid', settingValue(section, 'contentLayout', ['features','columns'].includes(section.type) ? 'grid' : 'flex') === 'grid');
+    if (backgroundImage) {
+      const color = hexToRgba(settingValue(section, 'overlayColor', '#08121e'), overlay);
+      content.style.backgroundImage = `linear-gradient(${color},${color}),url("${String(backgroundImage).replaceAll('"', '%22')}")`;
     }
     const copy = $('.editor-section-copy', node);
-    if (copy && settings.contentWidth) copy.style.maxWidth = `${safeNumber(settings.contentWidth, 760, 280, 1400)}px`;
+    if (copy) copy.style.maxWidth = `${safeNumber(settingValue(section, 'contentWidth', 760), 760, 280, 1600)}px`;
     const eyebrow = $('[data-inline-section-field="eyebrow"]', node);
     const headline = $('[data-inline-section-field="headline"]', node);
     const supporting = $('[data-inline-section-field="text"]', node);
     const body = $('[data-inline-section-field="body"]', node);
-    if (eyebrow) eyebrow.style.fontSize = `${safeNumber(settings.eyebrowSize, 11, 9, 32)}px`;
+    if (eyebrow) eyebrow.style.fontSize = `${safeNumber(settingValue(section, 'eyebrowSize', 11), 11, 9, 32)}px`;
     if (headline) {
-      headline.style.fontSize = `${safeNumber(settings.headlineSize, section.type === 'hero' ? 64 : 48, 20, 140)}px`;
-      headline.style.fontWeight = settings.fontWeight || '';
-      headline.dataset.fontFamily = settings.fontFamily || 'system';
+      headline.style.fontSize = `${safeNumber(settingValue(section, 'headlineSize', section.type === 'hero' ? 64 : 48), section.type === 'hero' ? 64 : 48, 18, 160)}px`;
+      headline.style.fontWeight = settingValue(section, 'fontWeight', '');
+      headline.dataset.fontFamily = settingValue(section, 'fontFamily', 'system');
     }
-    if (supporting) supporting.style.fontSize = `${safeNumber(settings.textSize, 17, 11, 44)}px`;
-    if (body) body.style.fontSize = `${safeNumber(settings.bodySize, 15, 11, 36)}px`;
+    if (supporting) supporting.style.fontSize = `${safeNumber(settingValue(section, 'textSize', 17), 17, 11, 48)}px`;
+    if (body) body.style.fontSize = `${safeNumber(settingValue(section, 'bodySize', 15), 15, 11, 40)}px`;
+    const image = $('.editor-section-image img', node);
+    if (image) {
+      image.style.objectFit = settingValue(section, 'imageFit', 'cover');
+      image.style.objectPosition = `${safeNumber(settingValue(section, 'imageFocalX', 50), 50, 0, 100)}% ${safeNumber(settingValue(section, 'imageFocalY', 50), 50, 0, 100)}%`;
+      image.style.borderRadius = `${safeNumber(settingValue(section, 'imageRadius', 18), 18, 0, 80)}px`;
+      const aspect = settingValue(section, 'imageAspect', '');
+      image.style.aspectRatio = /^\d+\/\d+$/.test(aspect) ? aspect : '';
+    }
+    applyInlineFieldStyles(node, section);
   };
   const applyBlockPresentation = (node, block) => {
     const settings = block.settings || {};
-    if (settings.backgroundColor) node.style.backgroundColor = settings.backgroundColor;
-    if (settings.textColor) node.style.color = settings.textColor;
-    if (settings.padding) node.style.padding = `${safeNumber(settings.padding, 14, 0, 120)}px`;
-    if (settings.borderRadius !== undefined && settings.borderRadius !== '') node.style.borderRadius = `${safeNumber(settings.borderRadius, 12, 0, 80)}px`;
-    if (settings.textAlign) node.style.textAlign = settings.textAlign;
-    if (settings.width === 'full') node.style.flexBasis = '100%';
-    if (settings.width === 'half') node.style.flexBasis = 'calc(50% - 9px)';
-    if (settings.width === 'third') node.style.flexBasis = 'calc(33.333% - 12px)';
-    if (settings.shadow === 'soft') node.style.boxShadow = '0 12px 30px rgba(18,32,48,.10)';
-    if (settings.shadow === 'strong') node.style.boxShadow = '0 20px 48px rgba(18,32,48,.20)';
+    node.style.backgroundColor = settingValue(block, 'backgroundColor', '');
+    node.style.color = settingValue(block, 'textColor', '');
+    node.style.padding = `${safeNumber(settingValue(block, 'padding', 14), 14, 0, 160)}px`;
+    node.style.marginTop = `${safeNumber(settingValue(block, 'marginTop', 0), 0, -120, 240)}px`;
+    node.style.marginBottom = `${safeNumber(settingValue(block, 'marginBottom', 0), 0, -120, 240)}px`;
+    node.style.borderRadius = `${safeNumber(settingValue(block, 'borderRadius', 12), 12, 0, 100)}px`;
+    node.style.textAlign = settingValue(block, 'textAlign', '');
+    node.style.alignSelf = settingValue(block, 'alignSelf', 'stretch');
+    node.style.boxShadow = '';
+    if (settingValue(block, 'shadow', 'none') === 'soft') node.style.boxShadow = '0 12px 30px rgba(18,32,48,.10)';
+    if (settingValue(block, 'shadow', 'none') === 'strong') node.style.boxShadow = '0 20px 48px rgba(18,32,48,.20)';
+    const max = state.device === 'desktop' ? 12 : state.device === 'tablet' ? 6 : 2;
+    const fallback = settingValue(block, 'width', 'auto') === 'full' ? max : settingValue(block, 'width', 'auto') === 'half' ? Math.ceil(max / 2) : settingValue(block, 'width', 'auto') === 'third' ? Math.ceil(max / 3) : max;
+    const span = Math.max(1, Math.min(max, Number(settingValue(block, 'columnSpan', fallback))));
+    node.style.gridColumn = `span ${span}`;
+    node.style.order = String(Math.max(-20, Math.min(100, Number(settingValue(block, 'order', 0)))));
+    node.style.flexBasis = settingValue(block, 'width', 'auto') === 'full' ? '100%' : '';
     const content = $('.editor-block-content', node);
-    if (content && settings.fontSize) content.style.fontSize = `${safeNumber(settings.fontSize, 16, 9, 80)}px`;
-    if (content && settings.fontWeight) content.style.fontWeight = settings.fontWeight;
+    if (content) {
+      content.style.fontSize = `${safeNumber(settingValue(block, 'fontSize', 16), 16, 9, 80)}px`;
+      content.style.fontWeight = settingValue(block, 'fontWeight', '');
+    }
+    const image = $('img', node);
+    if (image) {
+      image.style.objectFit = settingValue(block, 'imageFit', 'cover');
+      image.style.objectPosition = `${safeNumber(settingValue(block, 'imageFocalX', 50), 50, 0, 100)}% ${safeNumber(settingValue(block, 'imageFocalY', 50), 50, 0, 100)}%`;
+      const aspect = settingValue(block, 'imageAspect', '');
+      image.style.aspectRatio = /^\d+\/\d+$/.test(aspect) ? aspect : '';
+    }
+    applyInlineFieldStyles(node, block);
   };
   const bindBlockInlineFields = (node, block) => {
     const map = {
@@ -319,6 +408,12 @@
     canvas.replaceChildren();
     const pageShell = document.createElement('div');
     pageShell.className = `editor-page-preview template-${escapeHtml(pageTemplate())}`;
+    const theme = state.payload.theme || {};
+    pageShell.style.fontSize = `${safeNumber(theme.baseFontSize, 16, 14, 24)}px`;
+    pageShell.style.lineHeight = String(theme.bodyLineHeight || 1.6);
+    pageShell.style.background = theme.pageBackground || '#ffffff';
+    pageShell.style.setProperty('--editor-button-radius', `${safeNumber(theme.buttonRadius, 60, 0, 60)}px`);
+    pageShell.style.setProperty('--editor-card-shadow', theme.cardShadow === 'soft' ? '0 14px 36px rgba(18,32,48,.10)' : theme.cardShadow === 'strong' ? '0 22px 54px rgba(18,32,48,.18)' : 'none');
     const header = ensureHeaderSettings();
     const menuLinks = headerLinks();
     const desktopLinks = header.showNavigation ? menuLinks.map((link) => `<span>${escapeHtml(link.label)}</span>`).join('') : '';
@@ -349,7 +444,7 @@
       section.settings ||= {};
       section.blocks ||= [];
       const node = document.createElement('section');
-      node.className = `editor-canvas-section section-${section.type} layout-${escapeHtml(section.settings.layout || 'default')} image-${escapeHtml(section.settings.imagePosition || 'right')}`;
+      node.className = `editor-canvas-section section-${section.type} layout-${escapeHtml(settingValue(section, 'layout', 'default'))} image-${escapeHtml(settingValue(section, 'imagePosition', 'right'))}`;
       if (state.selected?.kind === 'section' && state.selected.index === sectionIndex) node.classList.add('active');
       node.draggable = true;
       node.dataset.sectionIndex = sectionIndex;
@@ -388,6 +483,7 @@
       }));
 
       const blocks = $('.editor-canvas-blocks', node);
+      applySectionLayout(blocks, section);
       section.blocks.forEach((block, blockIndex) => {
         const blockNode = document.createElement('article');
         blockNode.className = `editor-canvas-block block-${block.type}`;
@@ -490,7 +586,8 @@
       if (type !== 'spacer') definitions.push(['eyebrow', 'Eyebrow', 'text'], ['headline', 'Headline', 'textarea'], ['text', 'Supporting text', 'textarea']);
       if (['hero', 'content'].includes(type)) definitions.push(['body', 'Body copy', 'textarea']);
       if (!['spacer', 'events', 'contact', 'music', 'portfolio', 'microgifter'].includes(type)) definitions.push(['image', 'Section image', 'image'], ['imageAlt', 'Image alt text', 'text']);
-      if (['hero', 'content', 'features', 'media', 'cta', 'columns'].includes(type)) definitions.push(['layout', 'Layout', 'select:default,split,centered,editorial,showcase,grid,cards,wide']);
+      if (['hero', 'content', 'features', 'media', 'cta', 'columns'].includes(type)) definitions.push(['layout', 'Section layout', 'select:default,split,centered,editorial,showcase,grid,cards,wide']);
+      definitions.push(['contentLayout', 'Block layout', 'select:flex,grid'], ['gridColumns', 'Grid columns', 'range:1:12'], ['blockGap', 'Block gap', 'range:0:120'], ['alignItems', 'Vertical alignment', 'select:start,center,end,stretch'], ['justifyItems', 'Horizontal alignment', 'select:start,center,end,stretch'], ['fullWidth', 'Full-width section', 'checkbox']);
       if (['hero', 'content', 'cta'].includes(type)) definitions.push(['alignment', 'Text alignment', 'select:left,center,right']);
       if (type === 'music') definitions.push(['trackId', 'Music track', 'data:musicTracks']);
       if (type === 'portfolio') definitions.push(['projectId', 'Portfolio project', 'data:portfolioProjects']);
@@ -501,7 +598,7 @@
         ['headlineSize', 'Headline size', 'range:20:140'], ['textSize', 'Supporting text size', 'range:11:44'], ['bodySize', 'Body size', 'range:11:36'], ['eyebrowSize', 'Eyebrow size', 'range:9:32'],
         ['fontFamily', 'Heading font', 'select:system,editorial,geometric,mono'], ['fontWeight', 'Heading weight', 'select:400,500,600,700,800,900'], ['textColor', 'Text color', 'color'],
         ['backgroundColor', 'Background color', 'color'], ['backgroundImage', 'Background image', 'image'], ['backgroundPosition', 'Background position', 'select:center,top,bottom,left,right'],
-        ['overlayColor', 'Overlay color', 'color'], ['overlayOpacity', 'Overlay opacity', 'range:0:90'], ['imagePosition', 'Image position', 'select:right,left,top,bottom,background'], ['imageFit', 'Image fit', 'select:cover,contain'], ['imageRadius', 'Image corners', 'range:0:60'],
+        ['overlayColor', 'Overlay color', 'color'], ['overlayOpacity', 'Overlay opacity', 'range:0:90'], ['imagePosition', 'Image position', 'select:right,left,top,bottom,background'], ['imageFit', 'Image fit', 'select:cover,contain'], ['imageRadius', 'Image corners', 'range:0:80'], ['imageFocalX', 'Image focal point X', 'range:0:100'], ['imageFocalY', 'Image focal point Y', 'range:0:100'], ['imageAspect', 'Image crop ratio', 'select:,16/9,4/3,3/2,1/1,3/4,9/16'],
         ['contentWidth', 'Text width', 'number'], ['minHeight', 'Minimum height', 'number'], ['paddingTop', 'Top spacing', 'number'], ['paddingBottom', 'Bottom spacing', 'number'],
         ['hidden', 'Hide section', 'checkbox'], ['hideOnDesktop', 'Hide on desktop', 'checkbox'], ['hideOnTablet', 'Hide on tablet', 'checkbox'], ['hideOnMobile', 'Hide on mobile', 'checkbox']
       );
@@ -519,7 +616,7 @@
         microgifter_offer: [['title', 'Title fallback', 'text'], ['offerId', 'Offer / campaign ID', 'text'], ['text', 'Description fallback', 'textarea'], ['buttonLabel', 'Button label', 'text'], ['url', 'Fallback URL', 'text']], spacer: [['height', 'Height', 'range:12:300']],
       };
       definitions.push(...(map[type] || [['text', 'Content', 'textarea']]));
-      definitions.push(['fontSize', 'Font size', 'range:9:80'], ['fontWeight', 'Font weight', 'select:400,500,600,700,800,900'], ['textColor', 'Text color', 'color'], ['backgroundColor', 'Background color', 'color'], ['textAlign', 'Alignment', 'select:left,center,right'], ['padding', 'Padding', 'range:0:120'], ['borderRadius', 'Corner radius', 'range:0:80'], ['width', 'Width', 'select:auto,full,half,third'], ['shadow', 'Shadow', 'select:none,soft,strong']);
+      definitions.push(['fontSize', 'Font size', 'range:9:80'], ['fontWeight', 'Font weight', 'select:400,500,600,700,800,900'], ['textColor', 'Text color', 'color'], ['backgroundColor', 'Background color', 'color'], ['textAlign', 'Alignment', 'select:left,center,right'], ['padding', 'Padding', 'range:0:160'], ['marginTop', 'Top margin', 'number'], ['marginBottom', 'Bottom margin', 'number'], ['borderRadius', 'Corner radius', 'range:0:100'], ['width', 'Legacy width', 'select:auto,full,half,third'], ['columnSpan', 'Column span', 'range:1:12'], ['order', 'Responsive order', 'number'], ['alignSelf', 'Self alignment', 'select:start,center,end,stretch'], ['shadow', 'Shadow', 'select:none,soft,strong'], ['imageFit', 'Image fit', 'select:cover,contain'], ['imageFocalX', 'Image focal point X', 'range:0:100'], ['imageFocalY', 'Image focal point Y', 'range:0:100'], ['imageAspect', 'Image crop ratio', 'select:,16/9,4/3,3/2,1/1,3/4,9/16']);
     }
     return definitions;
   };
@@ -568,6 +665,8 @@
     fields.replaceChildren();
     fieldDefinitions(item).forEach(([key, label, kind]) => {
       const wrapper = document.createElement('label');
+      wrapper.dataset.settingKey = key;
+      wrapper.dataset.settingKind = kind;
       const title = document.createElement('span');
       title.textContent = label;
       wrapper.append(title);
@@ -575,16 +674,18 @@
       if (kind === 'textarea' || kind === 'gallery') { input = document.createElement('textarea'); input.rows = kind === 'gallery' ? 7 : 4; }
       else if (kind.startsWith('select:')) { input = document.createElement('select'); kind.slice(7).split(',').forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value.replaceAll('_', ' '); input.append(option); }); }
       else if (kind.startsWith('data:')) { input = document.createElement('select'); const blank = document.createElement('option'); blank.value = '0'; blank.textContent = 'Choose an item'; input.append(blank); (boot.dataSources?.[kind.slice(5)] || []).forEach((sourceItem) => { const option = document.createElement('option'); option.value = sourceItem.value; option.textContent = sourceItem.label; input.append(option); }); }
-      else if (kind.startsWith('range:')) { const [, min, max] = kind.split(':'); input = document.createElement('input'); input.type = 'range'; input.min = min; input.max = max; input.step = '1'; const output = document.createElement('output'); output.textContent = item.settings?.[key] ?? ''; wrapper.append(output); input.addEventListener('input', () => { output.textContent = input.value; }); }
+      else if (kind.startsWith('range:')) { const [, min, max] = kind.split(':'); input = document.createElement('input'); input.type = 'range'; input.min = min; input.max = max; input.step = '1'; const output = document.createElement('output'); output.textContent = settingValue(item, key, ''); wrapper.append(output); input.addEventListener('input', () => { output.textContent = input.value; }); }
       else { input = document.createElement('input'); input.type = kind === 'image' ? 'url' : (kind || 'text'); }
-      if (kind === 'checkbox') input.checked = Boolean(item.settings?.[key]);
-      else if (kind === 'color') input.value = /^#[0-9a-f]{6}$/i.test(String(item.settings?.[key] || '')) ? item.settings[key] : (key.toLowerCase().includes('overlay') ? '#08121e' : '#ffffff');
-      else input.value = item.settings?.[key] ?? '';
+      input.dataset.settingKey = key;
+      input.dataset.settingKind = kind;
+      if (kind === 'checkbox') input.checked = Boolean(settingValue(item, key, false));
+      else if (kind === 'color') { const colorValue = String(settingValue(item, key, '')); input.value = /^#[0-9a-f]{6}$/i.test(colorValue) ? colorValue : (key.toLowerCase().includes('overlay') ? '#08121e' : '#ffffff'); }
+      else input.value = settingValue(item, key, '');
       let started = false;
       const update = () => {
         if (!started) { snapshot(); started = true; }
         item.settings ||= {};
-        item.settings[key] = kind === 'checkbox' ? input.checked : input.value;
+        writeSetting(item, key, kind === 'checkbox' ? input.checked : input.value);
         renderCanvas();
         renderLists();
         markDirty('Design updated · save draft');
@@ -595,11 +696,12 @@
       wrapper.append(input);
       if (kind === 'image' || kind === 'gallery') {
         const upload = document.createElement('button'); upload.type = 'button'; upload.className = 'editor-inline-upload'; upload.textContent = kind === 'gallery' ? 'Upload gallery images' : 'Upload image';
-        upload.addEventListener('click', () => chooseAndUploadImage(upload, (urls) => { snapshot(); item.settings ||= {}; item.settings[key] = kind === 'gallery' ? [...String(item.settings[key] || '').split(/\r?\n/).filter(Boolean), ...urls].slice(0, 8).join('\n') : (urls[0] || ''); input.value = item.settings[key]; renderAll(false); renderInspector(); markDirty(); }, kind === 'gallery'));
+        upload.addEventListener('click', () => chooseAndUploadImage(upload, (urls) => { snapshot(); item.settings ||= {}; writeSetting(item, key, kind === 'gallery' ? [...String(settingValue(item, key, '') || '').split(/\r?\n/).filter(Boolean), ...urls].slice(0, 8).join('\n') : (urls[0] || '')); input.value = settingValue(item, key, ''); renderAll(false); renderInspector(); markDirty(); }, kind === 'gallery'));
         wrapper.append(upload);
       }
       fields.append(wrapper);
     });
+    window.NMM_EDITOR_INSPECTOR_HOOK?.(item);
   };
 
   const selectItem = (selection, openInspector = false) => {
@@ -666,22 +768,22 @@
 
     if (state.libraryKind === 'saved') {
       (boot.savedBlocks || []).filter((saved) => {
-        const kind = saved.category === 'section' ? 'Section' : 'Block';
+        const kind = saved.category === 'global_section' ? 'Global' : saved.category === 'section' ? 'Section' : 'Block';
         const matchCategory = state.libraryCategory === 'All' || state.libraryCategory === kind;
         const matchQuery = !query || `${saved.name} ${saved.block_type} ${saved.category}`.toLowerCase().includes(query);
         return matchCategory && matchQuery;
       }).forEach((saved) => {
         count += 1;
-        const kind = saved.category === 'section' ? 'section' : 'block';
+        const kind = saved.category === 'global_section' ? 'global_section' : saved.category === 'section' ? 'section' : 'block';
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'site-library-card';
-        card.innerHTML = `${libraryVisual({ icon: kind === 'section' ? 'columns' : 'feature' }, saved.block_type)}<div class="site-library-card-copy"><span>Saved ${kind}</span><strong>${escapeHtml(saved.name)}</strong><p>${escapeHtml(saved.block_type)}</p></div>`;
+        card.innerHTML = `${libraryVisual({ icon: kind === 'section' || kind === 'global_section' ? 'columns' : 'feature' }, saved.block_type)}<div class="site-library-card-copy"><span>${kind === 'global_section' ? 'Synced global section' : `Saved ${kind}`}</span><strong>${escapeHtml(saved.name)}</strong><p>${escapeHtml(saved.block_type)}</p></div>`;
         card.addEventListener('click', () => {
           try {
             const item = rekeyItem(JSON.parse(saved.payload_json));
             snapshot();
-            if (kind === 'section') {
+            if (kind === 'section' || kind === 'global_section') {
               state.payload.sections.push(item);
               state.selected = { kind: 'section', index: state.payload.sections.length - 1 };
             } else {
@@ -695,7 +797,7 @@
             renderAll();
             renderInspector();
           } catch {
-            alert(kind === 'section' ? 'The saved section could not be added.' : 'Select a section before adding this saved block.');
+            alert(kind === 'section' || kind === 'global_section' ? 'The saved section could not be added.' : 'Select a section before adding this saved block.');
           }
         });
         libraryItems.append(card);
@@ -1111,6 +1213,7 @@
     if (inspector && state.selected) renderInspector();
     if (frame) frame.className = `site-editor-canvas-frame device-${state.device} template-${pageTemplate()}`;
     updateBackButton();
+    window.NMM_EDITOR_RENDER_HOOK?.();
   };
 
   const pageData = () => {
@@ -1232,6 +1335,7 @@
     state.device = button.dataset.device;
     if (frame) frame.className = `site-editor-canvas-frame device-${state.device} template-${pageTemplate()}`;
     renderCanvas();
+    if (inspectorModal && !inspectorModal.hidden) renderInspector();
     $$('[data-device]').forEach((item) => item.classList.toggle('active', item.dataset.device === state.device));
   }));
   $('[data-save-draft]')?.addEventListener('click', () => save(false));
@@ -1316,6 +1420,15 @@
     }
     if (event.key === 'Escape') { closeLibrary(); closeEditorModal(); closeInspector(); }
   });
+
+
+  window.NMM_EDITOR_BRIDGE = {
+    state, boot, clone, $, $$, snapshot, markDirty, restoreSnapshot,
+    renderAll, renderCanvas, renderLists, renderInspector, selectedItem, selectItem,
+    activeSectionIndex, settingValue, writeSetting, clearDeviceOverrides,
+    request, pageData, save, openLibrary, closeLibrary, addSection, addBlock,
+    chooseAndUploadImage, uploadImage, frame, saveState, inspectorModal,
+  };
 
   let editorInitialized = false;
   const initializeEditor = () => {

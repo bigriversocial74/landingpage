@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-visual-page-editor-v61.7 */
+/* North Mountain Media build: 20260727-visual-layout-system-v61.8 */
 declare(strict_types=1);
 
 function site_builder_schema_available(): bool
@@ -101,6 +101,126 @@ function site_builder_templates(): array
         'blank'=>['version'=>2,'theme'=>['template'=>'blank','contentWidth'=>'1180','primary'=>'#152638','accent'=>'#0b8588','radius'=>'18','footerText'=>'North Mountain Media · Phoenix, Arizona','headingFont'=>'system','bodyFont'=>'system','baseFontSize'=>'16','sectionGap'=>'0'],'sections'=>[]],
     ];
 }
+
+
+function site_builder_media_library(): array
+{
+    $directory=NMM_ROOT.'/storage/site-builder-media';
+    if(!is_dir($directory)) return [];
+    $items=[];
+    foreach(glob($directory.'/builder-*')?:[] as $file){
+        if(!is_file($file)) continue;
+        $name=basename($file);
+        if(!preg_match('/^builder-[a-f0-9]{36}\.(?:jpe?g|png|webp|gif)$/i',$name)) continue;
+        $size=(int)filesize($file);
+        $image=@getimagesize($file);
+        if(!is_array($image)) continue;
+        $items[]=[
+            'storedName'=>$name,
+            'url'=>app_url('builder-media.php?file='.rawurlencode($name)),
+            'width'=>(int)($image[0]??0),
+            'height'=>(int)($image[1]??0),
+            'mime'=>(string)($image['mime']??''),
+            'size'=>$size,
+            'modified'=>(int)filemtime($file),
+        ];
+    }
+    usort($items,static fn(array $a,array $b):int=>($b['modified']<=>$a['modified'])?:strcmp($a['storedName'],$b['storedName']));
+    return array_slice($items,0,240);
+}
+
+function site_builder_responsive_value(array $settings,string $key,string $device='desktop',mixed $fallback=null): mixed
+{
+    if($device!=='desktop'){
+        $responsive=is_array($settings['responsive']??null)?$settings['responsive']:[];
+        $overrides=is_array($responsive[$device]??null)?$responsive[$device]:[];
+        if(array_key_exists($key,$overrides)&&$overrides[$key]!=='') return $overrides[$key];
+    }
+    return array_key_exists($key,$settings)&&$settings[$key]!==''?$settings[$key]:$fallback;
+}
+
+function site_builder_inline_style(array $settings,string $field): string
+{
+    $styles=is_array($settings['inlineStyles']??null)?$settings['inlineStyles']:[];
+    $style=is_array($styles[$field]??null)?$styles[$field]:[];
+    $css=[];
+    if(!empty($style['bold']))$css[]='font-weight:800';
+    if(!empty($style['italic']))$css[]='font-style:italic';
+    if(!empty($style['underline']))$css[]='text-decoration:underline';
+    if(in_array((string)($style['align']??''),['left','center','right'],true))$css[]='text-align:'.$style['align'];
+    if(preg_match('/^#[0-9a-f]{6}$/i',(string)($style['color']??'')))$css[]='color:'.$style['color'];
+    return $css?' style="'.e(implode(';',$css)).'"':'';
+}
+
+function site_builder_global_section_payload(int $id): ?array
+{
+    if($id<=0||!site_builder_schema_available())return null;
+    static $cache=[];
+    if(array_key_exists($id,$cache))return $cache[$id];
+    try{
+        $query=db()->prepare('SELECT payload_json FROM site_saved_blocks WHERE id=:id AND category="global_section" LIMIT 1');
+        $query->execute(['id'=>$id]);
+        $json=$query->fetchColumn();
+        if(!is_string($json)||$json==='')return $cache[$id]=null;
+        $decoded=json_decode($json,true,512,JSON_THROW_ON_ERROR);
+        if(!is_array($decoded))return $cache[$id]=null;
+        $clean=site_builder_sanitize_payload(['sections'=>[$decoded]])['sections'][0]??null;
+        return $cache[$id]=$clean;
+    }catch(Throwable){
+        return $cache[$id]=null;
+    }
+}
+
+function site_builder_resolve_global_sections(array $payload): array
+{
+    $sections=is_array($payload['sections']??null)?$payload['sections']:[];
+    foreach($sections as $index=>$section){
+        if(!is_array($section))continue;
+        $settings=is_array($section['settings']??null)?$section['settings']:[];
+        $globalId=max(0,(int)($settings['globalSectionId']??0));
+        if($globalId<=0||!empty($settings['globalSectionDetached']))continue;
+        $global=site_builder_global_section_payload($globalId);
+        if(!$global)continue;
+        $global['id']=(string)($section['id']??$global['id']??site_builder_id('global'));
+        $global['settings']=is_array($global['settings']??null)?$global['settings']:[];
+        $global['settings']['globalSectionId']=$globalId;
+        $global['settings']['globalSectionName']=(string)($settings['globalSectionName']??$global['settings']['globalSectionName']??'Global section');
+        $sections[$index]=$global;
+    }
+    $payload['sections']=$sections;
+    return site_builder_sanitize_payload($payload);
+}
+
+function site_builder_block_style(array $settings): string
+{
+    $css=[];
+    $background=(string)site_builder_responsive_value($settings,'backgroundColor','desktop','');
+    $text=(string)site_builder_responsive_value($settings,'textColor','desktop','');
+    $padding=max(0,min(160,(int)site_builder_responsive_value($settings,'padding','desktop',0)));
+    $radius=max(0,min(100,(int)site_builder_responsive_value($settings,'borderRadius','desktop',0)));
+    $align=(string)site_builder_responsive_value($settings,'textAlign','desktop','');
+    if(preg_match('/^#[0-9a-f]{3,8}$/i',$background))$css[]='background-color:'.$background;
+    if(preg_match('/^#[0-9a-f]{3,8}$/i',$text))$css[]='color:'.$text;
+    if($padding>0)$css[]='padding:'.$padding.'px';
+    if($radius>0)$css[]='border-radius:'.$radius.'px';
+    if(in_array($align,['left','center','right'],true))$css[]='text-align:'.$align;
+    if(($settings['shadow']??'')==='soft')$css[]='box-shadow:0 12px 30px rgba(18,32,48,.10)';
+    if(($settings['shadow']??'')==='strong')$css[]='box-shadow:0 20px 48px rgba(18,32,48,.20)';
+    $spanDesktop=max(1,min(12,(int)site_builder_responsive_value($settings,'columnSpan','desktop',12)));
+    $spanTablet=max(1,min(6,(int)site_builder_responsive_value($settings,'columnSpan','tablet',min(6,$spanDesktop))));
+    $spanMobile=max(1,min(2,(int)site_builder_responsive_value($settings,'columnSpan','mobile',2)));
+    $orderDesktop=max(-20,min(100,(int)site_builder_responsive_value($settings,'order','desktop',0)));
+    $orderTablet=max(-20,min(100,(int)site_builder_responsive_value($settings,'order','tablet',$orderDesktop)));
+    $orderMobile=max(-20,min(100,(int)site_builder_responsive_value($settings,'order','mobile',$orderTablet)));
+    $css[]='--block-span-desktop:'.$spanDesktop;
+    $css[]='--block-span-tablet:'.$spanTablet;
+    $css[]='--block-span-mobile:'.$spanMobile;
+    $css[]='--block-order-desktop:'.$orderDesktop;
+    $css[]='--block-order-tablet:'.$orderTablet;
+    $css[]='--block-order-mobile:'.$orderMobile;
+    return implode(';',$css);
+}
+
 
 function site_builder_landing_payload_from_settings(): array
 {
@@ -434,26 +554,96 @@ function site_builder_block_wrapper_style(array $block): string
 
 function site_builder_render_section(array $section): string
 {
-    $type=(string)($section['type']??'content');$settings=is_array($section['settings']??null)?$section['settings']:[];$blocks=is_array($section['blocks']??null)?$section['blocks']:[];
-    if(!empty($settings['hidden']))return'';
+    $type=(string)($section['type']??'content');
+    $settings=is_array($section['settings']??null)?$section['settings']:[];
+    $blocks=is_array($section['blocks']??null)?$section['blocks']:[];
+    if(!empty($settings['hidden'])) return '';
+
     $alignment=in_array((string)($settings['alignment']??'left'),['left','center','right'],true)?(string)$settings['alignment']:'left';
-    $layout=preg_replace('/[^a-z0-9_-]/i','',(string)($settings['layout']??'default'))?:'default';$imagePosition=preg_replace('/[^a-z0-9_-]/i','',(string)($settings['imagePosition']??'right'))?:'right';
-    $classes=['site-builder-section','site-section-'.$type,'align-'.$alignment,'layout-'.$layout,'image-'.$imagePosition];if(($settings['image']??'')!=='')$classes[]='has-section-image';if(($settings['backgroundImage']??'')!=='')$classes[]='has-background-image';
-    foreach(['desktop','tablet','mobile']as$device)if(!empty($settings['hideOn'.ucfirst($device)]))$classes[]='hide-'.$device;
+    $layout=preg_replace('/[^a-z0-9_-]/i','',(string)($settings['layout']??'default'))?:'default';
+    $contentLayout=(string)($settings['contentLayout']??(in_array($type,['features','columns'],true)?'grid':'flex'));
+    $classes=['site-builder-section','site-section-'.$type,'align-'.$alignment,'layout-'.$layout,'content-layout-'.$contentLayout];
+    if(($settings['image']??'')!=='')$classes[]='has-section-image';
+    if(!empty($settings['fullWidth']))$classes[]='is-full-width';
+    foreach(['desktop','tablet','mobile'] as $device){if(!empty($settings['hideOn'.ucfirst($device)]))$classes[]='hide-'.$device;}
+
     $styles=[];
-    if(($settings['backgroundColor']??'')!==''&&preg_match('/^#[0-9a-f]{6}$/i',(string)$settings['backgroundColor']))$styles[]='background-color:'.$settings['backgroundColor'];
-    if(($settings['textColor']??'')!==''&&preg_match('/^#[0-9a-f]{6}$/i',(string)$settings['textColor']))$styles[]='color:'.$settings['textColor'];
-    if(($settings['backgroundImage']??'')!==''){$opacity=max(0,min(90,(int)($settings['overlayOpacity']??34)))/100;$overlay=site_builder_hex_rgba((string)($settings['overlayColor']??'#08121e'),$opacity);$styles[]='background-image:linear-gradient('.$overlay.','.$overlay.'),url("'.e(nmm_public_link_url((string)$settings['backgroundImage'])).'")';$styles[]='background-position:'.e(in_array((string)($settings['backgroundPosition']??'center'),['center','top','bottom','left','right'],true)?(string)$settings['backgroundPosition']:'center');}
-    if(($settings['paddingTop']??'')!=='')$styles[]='padding-top:'.max(0,min(280,(int)$settings['paddingTop'])).'px';if(($settings['paddingBottom']??'')!=='')$styles[]='padding-bottom:'.max(0,min(280,(int)$settings['paddingBottom'])).'px';if(($settings['minHeight']??'')!=='')$styles[]='min-height:'.max(0,min(1200,(int)$settings['minHeight'])).'px';
-    $styles[]='--section-headline-size:'.max(20,min(140,(int)($settings['headlineSize']??($type==='hero'?68:52)))).'px';$styles[]='--section-copy-size:'.max(11,min(44,(int)($settings['textSize']??20))).'px';$styles[]='--section-body-size:'.max(11,min(36,(int)($settings['bodySize']??16))).'px';$styles[]='--section-eyebrow-size:'.max(9,min(32,(int)($settings['eyebrowSize']??12))).'px';
-    $styles[]='--section-image-radius:'.max(0,min(60,(int)($settings['imageRadius']??18))).'px';$styles[]='--section-content-width:'.max(280,min(1400,(int)($settings['contentWidth']??760))).'px';
-    $font=(string)($settings['fontFamily']??'system');if(in_array($font,['editorial','geometric','mono'],true))$classes[]='font-'.$font;if(($settings['fontWeight']??'')!=='')$styles[]='--section-heading-weight:'.max(100,min(900,(int)$settings['fontWeight']));
+    if(($settings['backgroundColor']??'')!==''&&preg_match('/^#[0-9a-f]{3,8}$/i',(string)$settings['backgroundColor']))$styles[]='background-color:'.$settings['backgroundColor'];
+    if(($settings['backgroundImage']??'')!==''){
+        $opacity=max(0,min(90,(int)($settings['overlayOpacity']??34)))/100;
+        $overlay=(string)($settings['overlayColor']??'#07121e');
+        if(!preg_match('/^#[0-9a-f]{6}$/i',$overlay))$overlay='#07121e';
+        [$r,$g,$b]=sscanf($overlay,'#%02x%02x%02x');
+        $styles[]='background-image:linear-gradient(rgba('.(int)$r.','.(int)$g.','.(int)$b.','.$opacity.'),rgba('.(int)$r.','.(int)$g.','.(int)$b.','.$opacity.')),url("'.e(nmm_public_link_url((string)$settings['backgroundImage'])).'")';
+        $styles[]='background-position:'.e((string)($settings['backgroundPosition']??'center'));
+    }
+    $paddingTop=max(0,min(320,(int)($settings['paddingTop']??0)));
+    $paddingBottom=max(0,min(320,(int)($settings['paddingBottom']??0)));
+    if($paddingTop>0)$styles[]='padding-top:'.$paddingTop.'px';
+    if($paddingBottom>0)$styles[]='padding-bottom:'.$paddingBottom.'px';
+    $headlineDesktop=max(20,min(160,(int)site_builder_responsive_value($settings,'headlineSize','desktop',$type==='hero'?74:54)));
+    $headlineTablet=max(20,min(120,(int)site_builder_responsive_value($settings,'headlineSize','tablet',min(64,$headlineDesktop))));
+    $headlineMobile=max(18,min(80,(int)site_builder_responsive_value($settings,'headlineSize','mobile',min(46,$headlineTablet))));
+    $textDesktop=max(11,min(48,(int)site_builder_responsive_value($settings,'textSize','desktop',20)));
+    $textTablet=max(11,min(40,(int)site_builder_responsive_value($settings,'textSize','tablet',min(20,$textDesktop))));
+    $textMobile=max(11,min(32,(int)site_builder_responsive_value($settings,'textSize','mobile',min(18,$textTablet))));
+    $styles[]='--section-headline-desktop:'.$headlineDesktop.'px';
+    $styles[]='--section-headline-tablet:'.$headlineTablet.'px';
+    $styles[]='--section-headline-mobile:'.$headlineMobile.'px';
+    $styles[]='--section-text-desktop:'.$textDesktop.'px';
+    $styles[]='--section-text-tablet:'.$textTablet.'px';
+    $styles[]='--section-text-mobile:'.$textMobile.'px';
     $style=$styles?' style="'.implode(';',$styles).'"':'';
-    ob_start();?><section class="<?=e(implode(' ',$classes))?>" data-section-type="<?=e($type)?>"<?=$style?>><div class="site-section-inner"><div class="site-section-head"><div class="site-section-copy-column"><?php if(($settings['eyebrow']??'')!==''):?><p class="site-section-eyebrow"><?=e($settings['eyebrow'])?></p><?php endif;?><?php if(($settings['headline']??'')!==''):?><h2><?=e($settings['headline'])?></h2><?php endif;?><?php if(($settings['text']??'')!==''):?><p class="site-section-copy"><?=nl2br(e($settings['text']))?></p><?php endif;?><?php if(($settings['body']??'')!==''):?><p class="site-section-body"><?=nl2br(e($settings['body']))?></p><?php endif;?></div><?php if(($settings['image']??'')!==''):?><figure class="site-section-media"><img src="<?=e(nmm_public_link_url((string)$settings['image']))?>" alt="<?=e($settings['imageAlt']??'')?>" style="object-fit:<?=e(($settings['imageFit']??'cover')==='contain'?'contain':'cover')?>"></figure><?php endif;?></div><?php if($type==='contact'&&(!$blocks)):?><?=site_builder_contact_form($settings)?><?php elseif($type==='portfolio'&&(!$blocks)):?><?=site_builder_portfolio_project($settings)?><?php elseif($type==='music'&&(!$blocks)):?><?=site_builder_music_track($settings)?><?php elseif($type==='events'&&(!$blocks)):?><?=site_builder_event_list($settings)?><?php elseif($type==='microgifter'&&(!$blocks)):?><?php require_once __DIR__.'/microgifter-connectors.php';echo microgifter_render_offer_block($settings);?><?php endif;?><div class="site-section-blocks"><?php foreach($blocks as $block):?><div class="site-builder-block site-block-<?=e($block['type']??'text')?>"<?=site_builder_block_wrapper_style($block)?>><?=site_builder_render_block($block)?></div><?php endforeach;?></div></div></section><?php return(string)ob_get_clean();
+
+    $columnsDesktop=max(1,min(12,(int)site_builder_responsive_value($settings,'gridColumns','desktop',in_array($type,['features','columns'],true)?3:12)));
+    $columnsTablet=max(1,min(6,(int)site_builder_responsive_value($settings,'gridColumns','tablet',min(2,$columnsDesktop))));
+    $columnsMobile=max(1,min(2,(int)site_builder_responsive_value($settings,'gridColumns','mobile',1)));
+    $gapDesktop=max(0,min(120,(int)site_builder_responsive_value($settings,'blockGap','desktop',18)));
+    $gapTablet=max(0,min(100,(int)site_builder_responsive_value($settings,'blockGap','tablet',$gapDesktop)));
+    $gapMobile=max(0,min(80,(int)site_builder_responsive_value($settings,'blockGap','mobile',min(16,$gapTablet))));
+    $gridStyle='--grid-cols-desktop:'.$columnsDesktop.';--grid-cols-tablet:'.$columnsTablet.';--grid-cols-mobile:'.$columnsMobile.';--grid-gap-desktop:'.$gapDesktop.'px;--grid-gap-tablet:'.$gapTablet.'px;--grid-gap-mobile:'.$gapMobile.'px';
+
+    $imageX=max(0,min(100,(int)($settings['imageFocalX']??50)));
+    $imageY=max(0,min(100,(int)($settings['imageFocalY']??50)));
+    $imageFit=in_array((string)($settings['imageFit']??'cover'),['cover','contain'],true)?(string)$settings['imageFit']:'cover';
+    $imageRadius=max(0,min(80,(int)($settings['imageRadius']??0)));
+    $imageAspect=preg_match('/^[0-9]+\/[0-9]+$/',(string)($settings['imageAspect']??''))?(string)$settings['imageAspect']:'';
+    $imageStyle='object-position:'.$imageX.'% '.$imageY.'%;object-fit:'.$imageFit.($imageRadius>0?';border-radius:'.$imageRadius.'px':'').($imageAspect!==''?';aspect-ratio:'.$imageAspect:'');
+
+    $copyWidth=max(280,min(1600,(int)($settings['contentWidth']??0)));
+    $copyStyle=$copyWidth>280?' style="max-width:'.$copyWidth.'px"':'';
+    ob_start();?>
+<section class="<?=e(implode(' ',$classes))?>" data-section-type="<?=e($type)?>"<?=$style?>>
+  <div class="site-section-inner">
+    <div class="site-section-head">
+      <div class="site-section-copy-column"<?=$copyStyle?>>
+        <?php if(($settings['eyebrow']??'')!==''):?><p class="site-section-eyebrow"<?=site_builder_inline_style($settings,'eyebrow')?>><?=e($settings['eyebrow'])?></p><?php endif;?>
+        <?php if(($settings['headline']??'')!==''):?><h2<?=site_builder_inline_style($settings,'headline')?>><?=e($settings['headline'])?></h2><?php endif;?>
+        <?php if(($settings['text']??'')!==''):?><p class="site-section-copy"<?=site_builder_inline_style($settings,'text')?>><?=nl2br(e($settings['text']))?></p><?php endif;?>
+        <?php if(($settings['body']??'')!==''):?><p class="site-section-body"<?=site_builder_inline_style($settings,'body')?>><?=nl2br(e($settings['body']))?></p><?php endif;?>
+      </div>
+      <?php if(($settings['image']??'')!==''):?><figure class="site-section-media"><img src="<?=e(nmm_public_link_url((string)$settings['image']))?>" alt="<?=e($settings['imageAlt']??'')?>" style="<?=e($imageStyle)?>"></figure><?php endif;?>
+    </div>
+    <?php if($type==='contact'&&(!$blocks)):?><?=site_builder_contact_form($settings)?>
+    <?php elseif($type==='portfolio'&&(!$blocks)):?><?=site_builder_portfolio_project($settings)?>
+    <?php elseif($type==='music'&&(!$blocks)):?><?=site_builder_music_track($settings)?>
+    <?php elseif($type==='events'&&(!$blocks)):?><?=site_builder_event_list($settings)?>
+    <?php elseif($type==='microgifter'&&(!$blocks)):?><?php require_once __DIR__.'/microgifter-connectors.php';echo microgifter_render_offer_block($settings);?>
+    <?php endif;?>
+    <div class="site-section-blocks <?=$contentLayout==='grid'?'is-layout-grid':'is-layout-flex'?>" style="<?=e($gridStyle)?>">
+      <?php foreach($blocks as $block):
+        $blockSettings=is_array($block['settings']??null)?$block['settings']:[];
+        $blockStyle=site_builder_block_style($blockSettings);
+      ?><div class="site-builder-block site-block-<?=e($block['type']??'text')?>" style="<?=e($blockStyle)?>"><?=site_builder_render_block($block)?></div><?php endforeach;?>
+    </div>
+  </div>
+</section>
+<?php return (string)ob_get_clean();
 }
 
 function site_builder_render_page(array $page,array $payload,bool $preview=false): void
 {
+    $payload=site_builder_resolve_global_sections($payload);
     if(!headers_sent()){
         header('Cache-Control: '.($preview?'no-store, private':'no-cache, max-age=0, must-revalidate'));
         header('X-Content-Type-Options: nosniff');
@@ -482,7 +672,21 @@ function site_builder_render_page(array $page,array $payload,bool $preview=false
     $headerSticky=!array_key_exists('sticky',$header)||(bool)$header['sticky'];
     $headerCtaLabel=trim((string)($header['ctaLabel']??''));
     $headerCtaUrl=trim((string)($header['ctaUrl']??''));
-    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="build-version" content="20260727-visual-page-editor-v61.7"><title><?=e($title)?> — <?=e($siteName)?></title><?php if($description!==''):?><meta name="description" content="<?=e($description)?>"><meta property="og:description" content="<?=e($description)?>"><?php endif;?><?php if($keywords!==''):?><meta name="keywords" content="<?=e($keywords)?>"><?php endif;?><meta name="robots" content="<?=$preview||!(bool)($page['seo_index_enabled']??1)?'noindex,nofollow':'index,follow'?>"><meta property="og:title" content="<?=e($title)?>"><meta property="og:type" content="website"><?php if($canonical!==''):?><link rel="canonical" href="<?=e($canonical)?>"><meta property="og:url" content="<?=e($canonical)?>"><?php endif;?><?php if($social!==''):?><meta property="og:image" content="<?=e(nmm_public_link_url($social))?>"><?php endif;?><link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-public.css?v=20260727-v61.7'))?>"><link rel="stylesheet" href="<?=e(app_url('assets/css/music-library.css?v=20260727-v61'))?>"><style>:root{--site-content-width:<?=max(720,min(1600,(int)($theme['contentWidth']??1180)))?>px;--site-primary:<?=e($theme['primary']??'#152638')?>;--site-accent:<?=e($theme['accent']??'#0b8588')?>;--site-radius:<?=max(0,min(48,(int)($theme['radius']??18)))?>px;--site-base-font-size:<?=max(14,min(22,(int)($theme['baseFontSize']??16)))?>px;--site-section-gap:<?=max(0,min(80,(int)($theme['sectionGap']??0)))?>px}</style></head><body class="visual-site-page template-<?=e($template)?> heading-font-<?=e((string)($theme['headingFont']??'system'))?> body-font-<?=e((string)($theme['bodyFont']??'system'))?>"><?php if($preview):?><a class="site-preview-back" href="<?=e(app_url('portal/site-builder.php?page='.(int)$page['id']))?>">← Back to editor</a><?php endif;?><header class="visual-site-header header-<?=e($headerStyle)?> <?=$headerSticky?'is-sticky':'not-sticky'?>"><a class="visual-site-brand visual-site-brand-desktop" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a><div class="visual-site-brand-mobile"><a class="visual-site-brand" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a></div><?php if($headerShowNavigation):?><button type="button" class="visual-site-menu-button" data-site-menu-toggle aria-expanded="false" aria-label="Open navigation"><span></span><span></span><span></span></button><nav class="visual-site-navigation visual-site-navigation-desktop"><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?></nav><?php endif;?><?php if($headerCtaLabel!==''&&$headerCtaUrl!==''):?><a class="visual-site-header-cta" href="<?=e(nmm_public_link_url($headerCtaUrl))?>"><?=e($headerCtaLabel)?></a><?php endif;?></header><?php if($headerShowNavigation):?><aside class="visual-site-navigation-mobile mobile-menu-<?=e(in_array((string)($header['mobileMenu']??'drawer'),['drawer','dropdown'],true)?(string)$header['mobileMenu']:'drawer')?>" data-site-menu aria-hidden="true"><header><a class="visual-site-brand" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a><button type="button" data-site-menu-close aria-label="Close navigation">×</button></header><nav><?php if(!site_builder_render_menu_location('mobile','visual-menu')):?><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?><?php endif;?></nav><?php if($headerCtaLabel!==''&&$headerCtaUrl!==''):?><a class="visual-site-mobile-cta" href="<?=e(nmm_public_link_url($headerCtaUrl))?>"><?=e($headerCtaLabel)?></a><?php endif;?></aside><button type="button" class="visual-site-menu-backdrop" data-site-menu-close aria-label="Close navigation"></button><?php endif;?><main><?php foreach($payload['sections']??[] as $section) echo site_builder_render_section($section);?></main><footer class="visual-site-footer"><div><?php if(!site_builder_render_menu_location('footer','visual-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div></footer><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.7'))?>"></script><script src="<?=e(app_url('assets/js/music-player.js?v=20260727-v61'))?>"></script></body></html><?php
+    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="build-version" content="20260727-visual-layout-system-v61.8"><title><?=e($title)?> — <?=e($siteName)?></title><?php if($description!==''):?><meta name="description" content="<?=e($description)?>"><meta property="og:description" content="<?=e($description)?>"><?php endif;?><?php if($keywords!==''):?><meta name="keywords" content="<?=e($keywords)?>"><?php endif;?><meta name="robots" content="<?=$preview||!(bool)($page['seo_index_enabled']??1)?'noindex,nofollow':'index,follow'?>"><meta property="og:title" content="<?=e($title)?>"><meta property="og:type" content="website"><?php if($canonical!==''):?><link rel="canonical" href="<?=e($canonical)?>"><meta property="og:url" content="<?=e($canonical)?>"><?php endif;?><?php if($social!==''):?><meta property="og:image" content="<?=e(nmm_public_link_url($social))?>"><?php endif;?><link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-public.css?v=20260727-v61.8'))?>"><link rel="stylesheet" href="<?=e(app_url('assets/css/music-library.css?v=20260727-v61'))?>"><style>:root{
+--site-content-width:<?=max(720,min(1600,(int)($theme['contentWidth']??1180)))?>px;
+--site-primary:<?=e($theme['primary']??'#152638')?>;
+--site-accent:<?=e($theme['accent']??'#0b8588')?>;
+--site-radius:<?=max(0,min(48,(int)($theme['radius']??18)))?>px;
+--site-base-font-size:<?=max(14,min(24,(int)($theme['baseFontSize']??16)))?>px;
+--site-line-height:<?=max(1.2,min(2.2,(float)($theme['bodyLineHeight']??1.6)))?>;
+--site-h1-size:<?=max(32,min(120,(int)($theme['h1Size']??76)))?>px;
+--site-h2-size:<?=max(28,min(100,(int)($theme['h2Size']??64)))?>px;
+--site-button-radius:<?=max(0,min(60,(int)($theme['buttonRadius']??60)))?>px;
+--site-button-pad-x:<?=max(8,min(48,(int)($theme['buttonPaddingX']??18)))?>px;
+--site-card-border:<?=e(($theme['cardBorder']??'subtle')==='none'?'transparent':'#dfe6ec')?>;
+--site-card-shadow:<?=e(($theme['cardShadow']??'none')==='soft'?'0 14px 36px rgba(18,32,48,.10)':(($theme['cardShadow']??'none')==='strong'?'0 22px 54px rgba(18,32,48,.18)':'none'))?>;
+--site-page-background:<?=e($theme['pageBackground']??'#ffffff')?>;
+}</style></head><body class="visual-site-page template-<?=e($template)?> heading-font-<?=e((string)($theme['headingFont']??'system'))?> body-font-<?=e((string)($theme['bodyFont']??'system'))?>"><?php if($preview):?><a class="site-preview-back" href="<?=e(app_url('portal/site-builder.php?page='.(int)$page['id']))?>">← Back to editor</a><?php endif;?><header class="visual-site-header header-<?=e($headerStyle)?> <?=$headerSticky?'is-sticky':'not-sticky'?>"><a class="visual-site-brand visual-site-brand-desktop" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a><div class="visual-site-brand-mobile"><a class="visual-site-brand" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a></div><?php if($headerShowNavigation):?><button type="button" class="visual-site-menu-button" data-site-menu-toggle aria-expanded="false" aria-label="Open navigation"><span></span><span></span><span></span></button><nav class="visual-site-navigation visual-site-navigation-desktop"><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?></nav><?php endif;?><?php if($headerCtaLabel!==''&&$headerCtaUrl!==''):?><a class="visual-site-header-cta" href="<?=e(nmm_public_link_url($headerCtaUrl))?>"><?=e($headerCtaLabel)?></a><?php endif;?></header><?php if($headerShowNavigation):?><aside class="visual-site-navigation-mobile mobile-menu-<?=e(in_array((string)($header['mobileMenu']??'drawer'),['drawer','dropdown'],true)?(string)$header['mobileMenu']:'drawer')?>" data-site-menu aria-hidden="true"><header><a class="visual-site-brand" href="<?=e(app_url('index.php'))?>"><?php if($headerLogo!==''):?><img src="<?=e(nmm_public_link_url($headerLogo))?>" alt="<?=e($headerLogoAlt)?>"><?php endif;?><span><?=e($headerName)?></span></a><button type="button" data-site-menu-close aria-label="Close navigation">×</button></header><nav><?php if(!site_builder_render_menu_location('mobile','visual-menu')):?><?php if(!site_builder_render_menu_location('header','visual-menu')):?><?=site_builder_fallback_menu()?><?php endif;?><?php endif;?></nav><?php if($headerCtaLabel!==''&&$headerCtaUrl!==''):?><a class="visual-site-mobile-cta" href="<?=e(nmm_public_link_url($headerCtaUrl))?>"><?=e($headerCtaLabel)?></a><?php endif;?></aside><button type="button" class="visual-site-menu-backdrop" data-site-menu-close aria-label="Close navigation"></button><?php endif;?><main><?php foreach($payload['sections']??[] as $section) echo site_builder_render_section($section);?></main><footer class="visual-site-footer"><div><?php if(!site_builder_render_menu_location('footer','visual-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div></footer><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.8'))?>"></script><script src="<?=e(app_url('assets/js/music-player.js?v=20260727-v61'))?>"></script></body></html><?php
 }
 
 function site_builder_module_links(): array
