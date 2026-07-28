@@ -26,6 +26,9 @@ try {
     }
 
     $context = pod_authorize_connected_call_token($token);
+    session_regenerate_id(true);
+    $_SESSION['pod_connected_call_context']['authorized_at'] = time();
+
     $contactId = (int)($context['crm_contact_id'] ?? 0);
     $contactEmail = strtolower(trim((string)($context['contact_email'] ?? '')));
 
@@ -41,7 +44,11 @@ try {
         db()->prepare(
             'UPDATE crm_contacts
              SET email=:email,updated_at=UTC_TIMESTAMP()
-             WHERE id=:id AND (email IS NULL OR email="")'
+             WHERE id=:id
+               AND (
+                    email IS NULL OR email=""
+                    OR email NOT LIKE "%@%"
+               )'
         )->execute([
             'email' => $contactEmail,
             'id' => $contactId,
