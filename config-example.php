@@ -31,6 +31,10 @@ return [
         // Encrypts remote POD messaging credentials stored by this POD.
         // Keep this separate when possible and rotate only after replacing stored links.
         'pod_message_link_secret' => 'replace-with-a-long-random-pod-message-link-secret',
+        // Encrypts POD-to-HomeServer provider payloads, results, artifacts, and
+        // derives deterministic idempotent bearer credentials. Keep it private
+        // and stable; rotation requires re-pairing all POD HomeServer devices.
+        'pod_homeserver_bridge_secret' => 'replace-with-a-long-random-pod-homeserver-bridge-secret',
 
         'session_idle_seconds' => 30 * 60,
         'session_absolute_seconds' => 12 * 60 * 60,
@@ -125,7 +129,20 @@ return [
         'ffmpeg_path' => 'ffmpeg',
     ],
 
-
+    'pod_homeserver' => [
+        // Disabled until a coordinated HomeServer POD adapter is installed and
+        // the owner deliberately enables this provider endpoint.
+        'enabled' => false,
+        'pairing_code_minutes' => 15,
+        'request_skew_seconds' => 300,
+        'nonce_retention_hours' => 24,
+        'max_request_bytes' => 12 * 1024 * 1024,
+        'max_audio_bytes' => 8 * 1024 * 1024,
+        'artifact_ttl_minutes' => 60,
+        'job_ttl_minutes' => 30,
+        'lease_seconds' => 300,
+        'max_attempts' => 3,
+    ],
 
     'visitor_intelligence' => [
         'enabled' => true,
