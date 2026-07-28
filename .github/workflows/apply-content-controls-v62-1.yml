@@ -36,8 +36,8 @@ jobs:
           echo 'c20b20efa8979b2a191f17ff1a5eed97308bfd6558e86897730ec848071c73fa  /tmp/v621.patch.gz' | sha256sum -c -
           gzip -dc /tmp/v621.patch.gz > /tmp/v621.patch
           echo 'eb2fdd7f90e6db5cdafec3b32e0cd9c1d6a51c66d74c862e06a27f73b6790f98  /tmp/v621.patch' | sha256sum -c -
-          git show origin/build/content-controls-v62-1:tools/content-delete-controls-v62-1.php.b64 > /tmp/content-delete-controls-v62-1.php.b64
-          base64 -d /tmp/content-delete-controls-v62-1.php.b64 > /tmp/content-delete-controls-v62-1.php
+          git show origin/build/content-controls-v62-1:tools/content-delete-controls-v62-1.php.b64 > /tmp/content-delete-controls-v62-1.php
+          php -l /tmp/content-delete-controls-v62-1.php >/dev/null
 
       - name: Apply production source to merged v62 baseline
         shell: bash
