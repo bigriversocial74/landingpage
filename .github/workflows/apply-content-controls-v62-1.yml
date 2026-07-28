@@ -1,21 +1,21 @@
 name: Apply Content Controls v62.1
 
 on:
-  push:
-    branches:
-      - build/content-controls-v62-1
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.head_ref == 'build/content-controls-v62-1'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout isolated build branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Reconstruct and verify certified source
