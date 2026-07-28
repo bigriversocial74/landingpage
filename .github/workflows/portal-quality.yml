@@ -93,6 +93,7 @@ jobs:
           php tests/site-analytics-listening-v61-9.php
           php tests/rss-feed-reader-v62.php
           php tests/social-feed-reader-v62-2.php
+          php tests/public-sidebar-rss-v62-2-1.php
 
       - name: Required source
         shell: bash
@@ -102,9 +103,11 @@ jobs:
           test -f portal/site-builder.php
           test -f portal/site-builder-core.php
           test -f portal/site-builder-api.php
+          test -f portal/public-sidebar.php
           test -f assets/js/site-builder.js
           test -f assets/css/site-builder-admin.css
           test -f assets/css/site-builder-public.css
+          test -f assets/css/public-sidebar-v62-2-1.css
           test -f database/visual_site_builder_v61.sql
           test -f LANDING-PAGE-BUILDER-SETUP-v61.4.md
           test -f V61.4-VALIDATION.txt
@@ -129,6 +132,7 @@ jobs:
           test -f tests/fixtures/rss-v62.xml
           test -f tests/fixtures/atom-v62.xml
           test -f tests/social-feed-reader-v62-2.php
+          test -f tests/public-sidebar-rss-v62-2-1.php
 
       - name: Repository safety
         shell: bash
