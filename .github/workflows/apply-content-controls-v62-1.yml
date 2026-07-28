@@ -1,0 +1,160 @@
+name: Apply Content Controls v62.1
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/content-delete-controls-v62-1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Reconstruct and verify certified patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            tools/v621.patch.b64.part00 \
+            tools/v621.patch.b64.part01 \
+            tools/v621.patch.b64.part02 \
+            tools/v621.patch.b64.part03 \
+            tools/v621.patch.b64.part04 \
+            tools/v621.patch.b64.part05 \
+            tools/v621.patch.b64.part06a \
+            tools/v621.patch.b64.part06b > /tmp/v621.patch.gz.b64
+          echo '1fc72fb0526385c9cd1d6490fa9c9757a573e3935d28eead5d8ee113fae02758  /tmp/v621.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/v621.patch.gz.b64 > /tmp/v621.patch.gz
+          echo 'c20b20efa8979b2a191f17ff1a5eed97308bfd6558e86897730ec848071c73fa  /tmp/v621.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/v621.patch.gz > /tmp/v621.patch
+          echo 'eb2fdd7f90e6db5cdafec3b32e0cd9c1d6a51c66d74c862e06a27f73b6790f98  /tmp/v621.patch' | sha256sum -c -
+          git show origin/build/content-controls-v62-1:tools/content-delete-controls-v62-1.php.b64 > /tmp/content-delete-controls-v62-1.php
+          php -l /tmp/content-delete-controls-v62-1.php >/dev/null
+
+      - name: Apply production source to merged v62 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git reset --hard ad8c16a186c436821a25579d3419f6421dd0142b
+          git clean -fdx
+          git apply --check /tmp/v621.patch
+          git apply /tmp/v621.patch
+          install -m 0644 /tmp/content-delete-controls-v62-1.php tests/content-delete-controls-v62-1.php
+          git diff --check
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find . -path './.git' -prune -o -type f -name '*.php' -print0)
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            node --check "$file" >/dev/null
+          done < <(find . -path './.git' -prune -o -type f -name '*.js' -print0)
+
+      - name: CSS structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          for path in Path('.').rglob('*.css'):
+              if '.git' in path.parts:
+                  continue
+              source = path.read_text(encoding='utf-8')
+              depth = 0
+              quote = None
+              escaped = False
+              comment = False
+              index = 0
+              while index < len(source):
+                  char = source[index]
+                  nxt = source[index + 1] if index + 1 < len(source) else ''
+                  if comment:
+                      if char == '*' and nxt == '/':
+                          comment = False
+                          index += 2
+                          continue
+                      index += 1
+                      continue
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                      index += 1
+                      continue
+                  if char == '/' and nxt == '*':
+                      comment = True
+                      index += 2
+                      continue
+                  if char in ('"', "'"):
+                      quote = char
+                  elif char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                      if depth < 0:
+                          raise SystemExit(f'Unbalanced CSS braces in {path}')
+                  index += 1
+              if depth != 0 or quote or comment:
+                  raise SystemExit(f'Unbalanced CSS structure in {path}')
+          print('CSS structure passed.')
+          PY
+
+      - name: Portal regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-v61-4.php
+          php tests/landing-page-editor-v61-5.php
+          php tests/landing-page-editor-v61-8.php
+          php tests/site-analytics-listening-v61-9.php
+          php tests/rss-feed-reader-v62.php
+          php tests/content-delete-controls-v62-1.php
+
+      - name: Repository safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -f config.php
+          test ! -f .github/workflows/export-content-delete-audit-v62-1.yml
+          test ! -f .github/workflows/apply-content-controls-v62-1.yml
+          test ! -f .github/workflows/diagnose-content-controls-v62-1.yml
+          if find tools -maxdepth 1 -type f -name 'v621.patch.b64.part*' -print 2>/dev/null | grep -q .; then
+            echo 'Temporary v62.1 payload files remain.' >&2
+            exit 1
+          fi
+          if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print | grep -q .; then
+            echo 'Unsafe configuration or runtime file found.' >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Publish certified production commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Clean Microgifter settings and add confirmed content deletion v62.1'
+          git push --force origin HEAD:generated/content-delete-controls-v62-1
