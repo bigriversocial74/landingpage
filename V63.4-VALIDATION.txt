@@ -1,0 +1,78 @@
+POD Browser Voice Receptionist v63.4 validation
+
+Required automated validation:
+- PHP syntax for every PHP file
+- JavaScript syntax for every JavaScript file
+- CSS structure for every stylesheet
+- All retained portal regressions
+- tests/pod-identity-relationships-v63.php
+- tests/pod-connected-calling-v63-1.php
+- tests/pod-connected-messaging-v63-2.php
+- tests/pod-agent-receptionist-v63-3.php
+- tests/pod-agent-voice-receptionist-v63-4.php
+- Required-source inventory
+- Repository safety checks
+
+Database validation:
+- Import v63 through v63.4 migrations in order
+- Repeat v63.4 migration safely
+- Confirm one voice-settings row per local POD identity
+- Confirm voice-session UUID uniqueness
+- Confirm receptionist and relationship foreign keys
+- Confirm voice events cascade with the voice session
+- Confirm no raw-audio, recording-path, or transcript-content column exists in v63.4 tables
+
+Capability validation:
+- Browser with recognition and synthesis reports Full voice
+- Recognition without synthesis reports Recognition only
+- Synthesis without recognition reports Synthesis only
+- Neither API reports Text only
+- Unsupported capability states keep the text receptionist operational
+
+Voice input validation:
+- Start listening requires a user action
+- Browser permission prompt appears when required
+- Interim recognition updates status only
+- Final recognition submits text through the existing receptionist form
+- Stop listening stops the active recognition turn
+- No `MediaRecorder`, manual `getUserMedia`, audio blob, or application audio upload is used
+- Microphone denial, no speech, no microphone, and recognition failure show text fallback
+
+Spoken reply validation:
+- Agent replies can be spoken after voice activation
+- Exact preferred browser voice is selected when available
+- Language-compatible voice fallback works
+- Owner speech rate and pitch limits are respected
+- Speak last reply works
+- Stop speaking cancels speech synthesis
+- Spoken-reply disable keeps text visible
+
+Hands-free validation:
+- Hands-free is owner-controlled and caller-controlled
+- Hands-free cannot activate when disabled by the owner
+- Listening stops while the receptionist is busy or speaking
+- Listening may restart only after speech completes
+- Caller can stop listening or disable hands-free at any time
+- Maximum voice-turn count is enforced by the server
+
+Authorization and privacy validation:
+- Voice API requires CSRF validation
+- Voice API is rate limited
+- A valid connected-call context is required
+- Receptionist session relationship must match connected relationship
+- Voice-session relationship must match connected relationship
+- Expired receptionist sessions invalidate the voice session
+- Voice event metadata excludes recognized text and spoken response content
+- Public privacy notice states browser speech-service limitations
+- Discovery states raw audio storage and POD upload are false
+
+Compatibility validation:
+- Existing deterministic receptionist answers and citations remain unchanged
+- Existing message, callback, transfer, and summary actions remain operational
+- Existing public `/call-dave.php` remains operational
+- Existing connected human `/connected-call.php` WebRTC remains operational
+- Existing voicemail remains operational
+- Existing POD Messages and local Communications remain operational
+- Existing RSS and feed reader remain operational
+
+Expected certified score: 10/10
