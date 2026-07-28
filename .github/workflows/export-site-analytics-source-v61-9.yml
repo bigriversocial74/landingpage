@@ -1,0 +1,47 @@
+name: Export Site Analytics Source v61.9
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.head_ref == 'fix/site-analytics-listening-sidebar-v61-9'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repair source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source
+          paths=(
+            api/music-play.php
+            api/visitor-activity.php
+            assets/js/music-player.js
+            assets/js/portal.js
+            assets/css/portal.css
+            portal/bootstrap.php
+            portal/site-analytics-view.php
+            portal/visitor-intelligence.php
+            portal/music-library.php
+            portal/admin.php
+            database/north_mountain_portal.sql
+            database/music_library_v44.sql
+            tests
+            .github/workflows/portal-quality.yml
+          )
+          for path in "${paths[@]}"; do
+            if [ -e "$path" ]; then
+              mkdir -p "source/$(dirname "$path")"
+              cp -R "$path" "source/$path"
+            fi
+          done
+          find source -type f -print | sort > source/FILES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-analytics-v61-9-source
+          path: source
