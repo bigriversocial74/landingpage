@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS pod_homeserver_voice_jobs (
     UNIQUE KEY uq_pod_homeserver_voice_lease_hash (lease_token_hash),
     KEY idx_pod_homeserver_voice_queue (connection_id,status,priority,queued_at),
     KEY idx_pod_homeserver_voice_expiry (status,expires_at),
+    KEY idx_pod_homeserver_voice_input_artifact (input_artifact_id),
+    KEY idx_pod_homeserver_voice_output_artifact (output_artifact_id),
     CONSTRAINT fk_pod_homeserver_voice_connection
         FOREIGN KEY (connection_id) REFERENCES pod_homeserver_connections(id)
         ON DELETE CASCADE,
@@ -151,14 +153,6 @@ CREATE TABLE IF NOT EXISTS pod_homeserver_voice_artifacts (
         FOREIGN KEY (job_id) REFERENCES pod_homeserver_voice_jobs(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-ALTER TABLE pod_homeserver_voice_jobs
-    ADD CONSTRAINT fk_pod_homeserver_voice_input_artifact
-        FOREIGN KEY (input_artifact_id) REFERENCES pod_homeserver_voice_artifacts(id)
-        ON DELETE SET NULL,
-    ADD CONSTRAINT fk_pod_homeserver_voice_output_artifact
-        FOREIGN KEY (output_artifact_id) REFERENCES pod_homeserver_voice_artifacts(id)
-        ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS pod_homeserver_voice_receipts (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
