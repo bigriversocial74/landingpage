@@ -157,6 +157,22 @@ return [
         'homeserver_export_enabled' => false,
     ],
 
+    'feed_reader' => [
+        'enabled' => true,
+        'cron_token' => 'replace-with-a-long-random-feed-refresh-token',
+        'refresh_minutes' => 30,
+        'max_sources_per_user' => 100,
+        'max_response_bytes' => 2 * 1024 * 1024,
+        'connect_timeout_seconds' => 5,
+        'request_timeout_seconds' => 20,
+        'max_redirects' => 5,
+        'max_items_per_feed' => 200,
+        'refresh_batch_size' => 20,
+        // Restrict remote fetches to standard web ports by default.
+        'allowed_ports' => [80, 443],
+        'user_agent' => 'NorthMountainMediaFeedReader/62 (+feed subscription service)',
+    ],
+
     'database' => [
         'host' => 'localhost',
         'port' => 3306,

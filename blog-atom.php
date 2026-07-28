@@ -10,11 +10,11 @@ require_once __DIR__ . '/portal/publishing-workflow.php';
 require_once __DIR__ . '/portal/blog-feed-output.php';
 
 $settings = publishing_blog_settings();
-if (!$settings['rss_enabled']) {
+if (!$settings['atom_enabled']) {
     http_response_code(404);
-    exit('RSS feed is disabled.');
+    exit('Atom feed is disabled.');
 }
 
-$xml = publishing_render_rss_feed();
-$context = publishing_feed_context('rss');
-publishing_feed_send($xml, 'application/rss+xml', (int)$context['last_modified']);
+$xml = publishing_render_atom_feed();
+$context = publishing_feed_context('atom');
+publishing_feed_send($xml, 'application/atom+xml', (int)$context['last_modified']);

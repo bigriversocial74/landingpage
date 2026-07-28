@@ -5,9 +5,10 @@ require_once __DIR__ . '/communications.php';
 require_once __DIR__ . '/communications-view.php';
 require_once __DIR__ . '/call-center-view.php';
 require_once __DIR__ . '/notifications-view.php';
+require_once __DIR__ . '/feed-reader-view.php';
 $user=require_role('client');
 $view=(string)($_GET['view']??'dashboard');
-$allowed=['dashboard','call-center','projects','communications','notifications','messages','files','account'];
+$allowed=['dashboard','call-center','projects','communications','notifications','messages','files','feeds','account'];
 if(!in_array($view,$allowed,true))$view='dashboard';
 if($view==='messages')$view='communications';
 
@@ -16,6 +17,9 @@ if(is_post()){
     enforce_authenticated_action_limit($user);
     $action=input('action');
     try{
+        if(feed_reader_handle_portal_action($action,$user)){
+            exit;
+        }
         if($action==='mark_all_notifications_read'){
             notification_mark_all_read((int)$user['id']);
             flash('success','All notifications were marked as read.');
@@ -74,6 +78,12 @@ $projectsStmt->execute(['c'=>$user['id']]);$projects=$projectsStmt->fetchAll();
 
 $title=status_label($view);
 portal_header($title,$view,$user);
+
+if($view==='feeds'){
+    feed_reader_render($user);
+    portal_footer();
+    exit;
+}
 
 if($view==='dashboard'){
     $open=count(array_filter($projects,fn($p)=>!in_array($p['status'],['completed','archived'],true)));

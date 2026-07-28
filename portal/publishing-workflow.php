@@ -136,6 +136,19 @@ function publishing_blog_settings(): array
             'blog_rss_enabled',
             '1'
         ) !== '0',
+        'atom_enabled' => publishing_setting(
+            'blog_atom_enabled',
+            '1'
+        ) !== '0',
+        'feed_item_limit' => max(
+            5,
+            min(100, (int)publishing_setting('feed_public_item_limit', '30'))
+        ),
+        'feed_language' => publishing_setting('blog_feed_language', 'en-us'),
+        'feed_copyright' => publishing_setting(
+            'blog_feed_copyright',
+            'Copyright ' . gmdate('Y') . ' North Mountain Media'
+        ),
         'sitemap_enabled' => publishing_setting(
             'blog_sitemap_enabled',
             '1'

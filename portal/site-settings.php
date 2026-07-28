@@ -17,6 +17,7 @@ function nmm_module_definitions(): array
         'resume' => ['label' => 'Resume', 'description' => 'Show the public resume and resume posts.', 'default' => true],
         'music_library' => ['label' => 'Music Library', 'description' => 'Show the public music catalog, albums, playlists, and tracks.', 'default' => true],
         'blog' => ['label' => 'Blog', 'description' => 'Show the public blog archive and published posts.', 'default' => true],
+        'feed_reader' => ['label' => 'Feed Reader', 'description' => 'Allow authenticated users to subscribe to and read external RSS and Atom feeds.', 'default' => true],
         'events' => ['label' => 'Events', 'description' => 'Show the public events calendar and event pages.', 'default' => true],
         'bookings' => ['label' => 'Bookings', 'description' => 'Show public appointment types and available booking times.', 'default' => true],
         'project_intake' => ['label' => 'Project Intake', 'description' => 'Show the public project-intake workflow.', 'default' => true],
