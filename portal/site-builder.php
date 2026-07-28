@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-visual-page-editor-v61.7 */
+/* North Mountain Media build: 20260727-visual-layout-system-v61.8 */
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
@@ -31,7 +31,7 @@ if (!$page) {
 }
 
 $revisions = site_builder_revisions((int)$page['id']);
-$payload = site_builder_decode((string)$page['draft_json']);
+$payload = site_builder_resolve_global_sections(site_builder_decode((string)$page['draft_json']));
 $isHomePage = strtolower((string)($page['slug'] ?? '')) === 'home';
 $isLandingPage = (($page['page_type'] ?? '') === 'landing') || $isHomePage;
 $isHomeLandingPage = $isHomePage;
@@ -84,7 +84,8 @@ if ($isHomeLandingPage && empty($payload['sections'])) {
 /* Compatibility flag retained for the existing API and older browser state. */
 $legacyImported = $defaultTemplateLoaded;
 
-$savedBlocks = db()->query('SELECT * FROM site_saved_blocks ORDER BY updated_at DESC,id DESC LIMIT 80')->fetchAll();
+$savedBlocks = db()->query('SELECT * FROM site_saved_blocks ORDER BY updated_at DESC,id DESC LIMIT 120')->fetchAll();
+$mediaLibrary = site_builder_media_library();
 $musicTracks = [];
 if (music_library_schema_available()) {
     foreach (music_admin_tracks() as $track) {
@@ -175,6 +176,7 @@ $bootstrap = [
     'blocks' => $blockLibrary,
     'revisions' => $revisions,
     'savedBlocks' => $savedBlocks,
+    'mediaLibrary' => $mediaLibrary,
     'dataSources' => [
         'musicTracks' => $musicTracks,
         'portfolioProjects' => $portfolioProjects,
@@ -218,8 +220,8 @@ $modalLabels = [
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="csrf-token" content="<?=e(csrf_token())?>">
 <title>Page Editor — <?=e(setting('site_name','North Mountain Media'))?></title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.7'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.7'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260727-v61.8'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/site-builder-admin.css?v=20260727-v61.8'))?>">
 </head>
 <body class="site-editor-body editor-booting">
 <div class="site-editor-shell">
@@ -269,6 +271,9 @@ $modalLabels = [
                 <button type="button" data-editor-modal-open="styles"><span>Global styles</span><small>Typography, colors, width, spacing, and corners</small></button>
                 <button type="button" data-editor-modal-open="header"><span>Header & navigation</span><small>Logo, menu, CTA, and mobile drawer</small></button>
                 <button type="button" data-editor-modal-open="responsive"><span>Responsive preview</span><small>Desktop, tablet, and mobile</small></button>
+                <button type="button" data-media-library-open><span>Media Library</span><small>Browse uploads, reuse images, set focal points, and remove unused files</small></button>
+                <button type="button" data-quality-open><span>Page quality</span><small>Accessibility, content, responsive, and conversion checks</small></button>
+                <div class="editor-quality-summary" data-quality-panel></div>
                 <button type="button" data-editor-modal-open="seo"><span>SEO & sharing</span><small>Search metadata and social image</small></button>
                 <button type="button" data-editor-modal-open="revisions"><span>Revision history</span><small>Restore an earlier draft</small></button>
                 <button type="button" data-editor-modal-open="page"><span>Page settings</span><small>Title, slug, and publishing settings</small></button>
@@ -281,7 +286,7 @@ $modalLabels = [
     <header class="site-editor-topbar">
         <div class="site-editor-topbar-primary"><button type="button" data-sidebar-toggle aria-label="Editor controls">☰</button><strong><?=e($page['title'])?></strong><span data-save-state>Loading template…</span></div>
         <div class="site-editor-device-tabs"><button data-device="desktop" class="active" aria-label="Desktop preview">Desktop</button><button data-device="tablet" aria-label="Tablet preview">Tablet</button><button data-device="mobile" aria-label="Mobile preview">Mobile</button></div>
-        <div class="site-editor-topbar-actions"><?php if($isLandingPage):?><button type="button" data-editor-modal-open="landing">Templates</button><?php endif;?><button type="button" data-editor-modal-open="styles">Design</button><button type="button" class="topbar-library" data-library-open="sections" data-topbar-library>Library <span><?=count($sectionLibrary)?> / <?=count($blockLibrary)?></span></button><button type="button" data-undo aria-label="Undo">Undo</button><button type="button" data-redo aria-label="Redo">Redo</button><a href="<?=e($bootstrap['preview'])?>" target="_blank" data-preview>Preview</a><button type="button" data-save-draft>Save</button><button class="publish" type="button" data-publish>Publish</button></div>
+        <div class="site-editor-topbar-actions"><?php if($isLandingPage):?><button type="button" data-editor-modal-open="landing">Templates</button><?php endif;?><button type="button" data-editor-modal-open="styles">Design</button><button type="button" data-media-library-open>Media</button><button type="button" data-command-open aria-label="Open command palette">⌘K</button><button type="button" class="topbar-library" data-library-open="sections" data-topbar-library>Library <span><?=count($sectionLibrary)?> / <?=count($blockLibrary)?></span></button><button type="button" data-undo aria-label="Undo">Undo</button><button type="button" data-redo aria-label="Redo">Redo</button><a href="<?=e($bootstrap['preview'])?>" target="_blank" data-preview>Preview</a><button type="button" data-save-draft>Save</button><button class="publish" type="button" data-publish>Publish</button></div>
     </header>
     <div class="site-editor-workspace">
         <div class="site-editor-canvas-frame device-desktop template-<?=e($page['template_key']??'split')?>" data-canvas-frame>
@@ -321,7 +326,19 @@ $modalLabels = [
                     <label>Content width<input type="number" min="720" max="1600" data-theme-field="contentWidth"></label>
                     <label>Primary color<input type="color" data-theme-field="primary"></label>
                     <label>Accent color<input type="color" data-theme-field="accent"></label>
-                    <label>Corner radius<input type="range" min="0" max="48" data-theme-field="radius"></label><label>Heading font<select data-theme-field="headingFont"><option value="system">System sans</option><option value="editorial">Editorial serif</option><option value="geometric">Geometric sans</option></select></label><label>Body font<select data-theme-field="bodyFont"><option value="system">System sans</option><option value="editorial">Editorial serif</option><option value="geometric">Geometric sans</option></select></label><label>Base font size<input type="range" min="14" max="22" data-theme-field="baseFontSize"></label><label>Section gap<input type="range" min="0" max="80" data-theme-field="sectionGap"></label>
+                    <label>Corner radius<input type="range" min="0" max="48" data-theme-field="radius"></label>
+                     <label>Heading font<select data-theme-field="headingFont"><option value="system">System sans</option><option value="editorial">Editorial serif</option><option value="geometric">Geometric sans</option></select></label>
+                     <label>Body font<select data-theme-field="bodyFont"><option value="system">System sans</option><option value="editorial">Editorial serif</option><option value="geometric">Geometric sans</option></select></label>
+                     <label>Base font size<input type="range" min="14" max="24" data-theme-field="baseFontSize"></label>
+                     <label>Body line height<input type="range" min="1.2" max="2.2" step=".05" data-theme-field="bodyLineHeight"></label>
+                     <label>Global H1 size<input type="range" min="36" max="120" data-theme-field="h1Size"></label>
+                     <label>Global H2 size<input type="range" min="28" max="100" data-theme-field="h2Size"></label>
+                     <label>Section gap<input type="range" min="0" max="120" data-theme-field="sectionGap"></label>
+                     <label>Button corners<input type="range" min="0" max="60" data-theme-field="buttonRadius"></label>
+                     <label>Button horizontal padding<input type="range" min="8" max="48" data-theme-field="buttonPaddingX"></label>
+                     <label>Card border<select data-theme-field="cardBorder"><option value="subtle">Subtle</option><option value="none">None</option></select></label>
+                     <label>Card shadow<select data-theme-field="cardShadow"><option value="none">None</option><option value="soft">Soft</option><option value="strong">Strong</option></select></label>
+                     <label>Page background<input type="color" data-theme-field="pageBackground"></label>
                 </div>
             </section>
             <section data-editor-modal-panel="responsive" hidden>
@@ -330,9 +347,10 @@ $modalLabels = [
             </section>
             <section data-editor-modal-panel="revisions" hidden>
                 <div class="editor-panel-heading"><span>History</span><h2>Revisions</h2></div>
-                <div class="editor-revision-list">
+                <div class="editor-named-revision"><input type="text" maxlength="190" placeholder="Snapshot name, such as Before homepage redesign" data-revision-note><button type="button" data-save-named-revision>Save named snapshot</button></div>
+                 <div class="editor-revision-list">
                     <?php foreach($revisions as $revision):?>
-                    <article><div><strong>Revision <?=$revision['revision_number']?></strong><span><?=e(status_label($revision['revision_type']))?> · <?=e(format_datetime($revision['created_at']))?></span><small><?=e($revision['display_name']??'Administrator')?></small></div><button type="button" data-restore-revision="<?=$revision['id']?>">Restore</button></article>
+                    <article><div><strong><?=e(($revision['note']??'')!==''?(string)$revision['note']:'Revision '.$revision['revision_number'])?></strong><span><?=e(status_label($revision['revision_type']))?> · <?=e(format_datetime($revision['created_at']))?></span><small>Revision <?=$revision['revision_number']?> · <?=e($revision['display_name']??'Administrator')?></small></div><button type="button" data-restore-revision="<?=$revision['id']?>">Restore</button></article>
                     <?php endforeach;?>
                     <?php if(!$revisions):?><p>No saved revisions yet.</p><?php endif;?>
                 </div>
@@ -366,7 +384,7 @@ $modalLabels = [
     <section class="site-editor-inspector-dialog" role="dialog" aria-modal="true">
         <header><div><span>Selected item</span><h2 data-inspector-title>Section</h2></div><button type="button" data-inspector-back aria-label="Close inspector">×</button></header>
         <div class="site-editor-inspector-body" data-inspector-fields></div>
-        <footer class="inspector-actions"><button type="button" data-duplicate-selected>Duplicate</button><button type="button" data-save-reusable>Save reusable</button><button type="button" class="danger" data-delete-selected>Delete</button></footer>
+        <footer class="inspector-actions"><button type="button" data-duplicate-selected>Duplicate</button><button type="button" data-save-reusable>Save reusable</button><button type="button" data-global-section-save>Save as global</button><button type="button" data-global-section-update hidden>Update global</button><button type="button" data-global-section-detach hidden>Detach global</button><button type="button" class="danger" data-delete-selected>Delete</button></footer>
     </section>
 </div>
 
@@ -392,8 +410,42 @@ $modalLabels = [
 </aside>
 <button class="site-library-backdrop" data-library-close aria-label="Close library"></button>
 </div>
+
+<div class="editor-inline-toolbar" data-inline-toolbar hidden role="toolbar" aria-label="Inline text tools">
+  <button type="button" data-inline-command="bold" aria-label="Bold"><b>B</b></button>
+  <button type="button" data-inline-command="italic" aria-label="Italic"><i>I</i></button>
+  <button type="button" data-inline-command="underline" aria-label="Underline"><u>U</u></button>
+  <span></span>
+  <button type="button" data-inline-command="align-left" aria-label="Align left">≡</button>
+  <button type="button" data-inline-command="align-center" aria-label="Align center">≣</button>
+  <button type="button" data-inline-command="align-right" aria-label="Align right">≡</button>
+  <span></span>
+  <button type="button" data-inline-command="smaller" aria-label="Smaller text">A−</button>
+  <button type="button" data-inline-command="larger" aria-label="Larger text">A+</button>
+  <button type="button" data-inline-command="link" aria-label="Edit link">Link</button>
+  <button type="button" data-inline-command="clear" aria-label="Clear formatting">Clear</button>
+</div>
+
+<div class="site-editor-modal editor-media-modal" data-media-modal hidden aria-hidden="true">
+  <button type="button" class="site-editor-modal-backdrop" data-media-close aria-label="Close media library"></button>
+  <section class="site-editor-modal-dialog" role="dialog" aria-modal="true">
+    <header><div><span>Website assets</span><h2>Media Library</h2></div><button type="button" data-media-close aria-label="Close media library">×</button></header>
+    <div class="editor-media-tools"><input type="search" placeholder="Search uploaded images" data-media-search><button type="button" data-media-upload>Upload images</button></div>
+    <div class="editor-media-grid" data-media-grid></div>
+  </section>
+</div>
+
+<div class="editor-command-palette" data-command-palette hidden aria-hidden="true">
+  <button type="button" class="editor-command-backdrop" data-command-close aria-label="Close command palette"></button>
+  <section role="dialog" aria-modal="true" aria-label="Editor commands">
+    <input type="search" placeholder="Search actions, pages, sections, and tools" data-command-search>
+    <div data-command-results></div>
+  </section>
+</div>
+
 <textarea id="nmm-site-builder-bootstrap" hidden><?=e($bootstrapJson)?></textarea>
-<script src="<?=e(app_url('assets/js/site-builder-bootstrap.js?v=20260727-v61.7'))?>"></script>
-<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.7'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder-bootstrap.js?v=20260727-v61.8'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder.js?v=20260727-v61.8'))?>"></script>
+<script src="<?=e(app_url('assets/js/site-builder-advanced.js?v=20260727-v61.8'))?>"></script>
 </body>
 </html>
