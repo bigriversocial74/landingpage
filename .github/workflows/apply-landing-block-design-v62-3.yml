@@ -1,6 +1,9 @@
 name: Apply Landing Block Design v62.3
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feature/landing-block-design-system-v62-3
