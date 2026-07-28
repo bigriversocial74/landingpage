@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS pod_messages (
     ) NOT NULL,
     remote_receipt_uuid CHAR(36) NULL,
     remote_received_at DATETIME NULL,
+    read_at DATETIME NULL,
     failure_code VARCHAR(80) NULL,
     failure_message VARCHAR(700) NULL,
     sent_by_user_id BIGINT UNSIGNED NULL,
@@ -89,6 +90,7 @@ CREATE TABLE IF NOT EXISTS pod_messages (
     UNIQUE KEY uq_pod_messages_uuid (message_uuid),
     KEY idx_pod_messages_thread_created (thread_id,id),
     KEY idx_pod_messages_delivery (delivery_status,updated_at),
+    KEY idx_pod_messages_unread (direction,read_at,id),
     KEY idx_pod_messages_reply (in_reply_to_uuid),
     CONSTRAINT fk_pod_messages_thread
         FOREIGN KEY (thread_id) REFERENCES pod_message_threads(id)
