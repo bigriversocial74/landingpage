@@ -1,0 +1,102 @@
+name: Apply Landing Block Design v62.3
+
+on:
+  push:
+    branches:
+      - feature/landing-block-design-system-v62-3
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/landing-block-design-system-v62-3
+          fetch-depth: 0
+
+      - name: Apply production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat tools/v623.apply.part00 tools/v623.apply.part01 tools/v623.apply.part02 | base64 -d > /tmp/apply-v623.py.gz
+          gzip -dc /tmp/apply-v623.py.gz > /tmp/apply-v623.py
+          python3 /tmp/apply-v623.py
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l portal/site-builder-core.php >/dev/null
+          php -l portal/site-builder.php >/dev/null
+          php -l tests/site-builder-design-system-v62-3.php >/dev/null
+          node --check assets/js/site-builder.js >/dev/null
+          php tests/landing-page-builder-v61-2.php
+          php tests/landing-page-editor-toggle.php
+          php tests/landing-page-editor-v61-4.php
+          php tests/landing-page-editor-v61-5.php
+          php tests/landing-page-editor-v61-8.php
+          php tests/site-builder-design-system-v62-3.php
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('assets/css/site-builder-design-v62-3.css')
+          source=path.read_text(encoding='utf-8')
+          depth=0
+          quote=None
+          escaped=False
+          comment=False
+          index=0
+          while index < len(source):
+              char=source[index]
+              nxt=source[index+1] if index+1 < len(source) else ''
+              if comment:
+                  if char=='*' and nxt=='/':
+                      comment=False
+                      index+=2
+                      continue
+                  index+=1
+                  continue
+              if quote:
+                  if escaped:
+                      escaped=False
+                  elif char=='\\':
+                      escaped=True
+                  elif char==quote:
+                      quote=None
+                  index+=1
+                  continue
+              if char=='/' and nxt=='*':
+                  comment=True
+                  index+=2
+                  continue
+              if char in ('"', "'"):
+                  quote=char
+              elif char=='{':
+                  depth+=1
+              elif char=='}':
+                  depth-=1
+                  if depth < 0:
+                      raise SystemExit(f'Unbalanced CSS braces in {path}')
+              index+=1
+          if depth or quote or comment:
+              raise SystemExit(f'Unbalanced CSS structure in {path}')
+          print('v62.3 CSS structure passed.')
+          PY
+
+      - name: Commit production changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-landing-block-design-v62-3.yml
+          rm -f tools/v623.apply.part00 tools/v623.apply.part01 tools/v623.apply.part02
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 1
+          fi
+          git commit -m "Build landing page block and template design system v62.3"
+          git push origin HEAD:feature/landing-block-design-system-v62-3
