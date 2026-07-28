@@ -1,14 +1,1 @@
-name: Build v62.1 Deploy Artifact
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  package:
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Temporary packaging workflow disabled."
+# Temporary packaging workflow removed after artifact creation.
