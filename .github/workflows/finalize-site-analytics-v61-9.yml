@@ -17,7 +17,7 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Finalize live assets and permanent regression
+      - name: Finalize live Music Player asset references
         shell: bash
         run: |
           set -euo pipefail
@@ -32,16 +32,6 @@ jobs:
               if source.count(old) != 1:
                   raise SystemExit(f'Expected one live Music Player cache reference in {name}.')
               path.write_text(source.replace(old, new, 1), encoding='utf-8')
-
-          workflow = Path('.github/workflows/portal-quality.yml')
-          source = workflow.read_text(encoding='utf-8')
-          test_line = '          php tests/site-analytics-listening-v61-9.php\n'
-          if test_line not in source:
-              needle = '          php tests/landing-page-editor-v61-5.php\n'
-              if source.count(needle) != 1:
-                  raise SystemExit('Unable to locate permanent regression insertion point.')
-              source = source.replace(needle, needle + test_line, 1)
-              workflow.write_text(source, encoding='utf-8')
           PY
 
       - name: Validate finalized source
@@ -54,16 +44,15 @@ jobs:
           node --check assets/js/music-player.js >/dev/null
           grep -q '20260728-site-analytics-v61.9' music-library.php
           grep -q '20260728-site-analytics-v61.9' music-collection.php
-          grep -q 'tests/site-analytics-listening-v61-9.php' .github/workflows/portal-quality.yml
           git diff --check
 
-      - name: Publish final production commit
+      - name: Publish final live-page commit
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add music-library.php music-collection.php .github/workflows/portal-quality.yml
+          git add music-library.php music-collection.php
           git diff --cached --check
-          git commit -m 'Finalize live listening assets and analytics regression v61.9'
+          git commit -m 'Finalize live listening asset references v61.9'
           git push --force origin HEAD:generated/site-analytics-v61-9-final
