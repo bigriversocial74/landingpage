@@ -35,7 +35,7 @@ $checks = [
     'agent permission' => ['agent_permission', $source['migration'] . $source['workspace']],
     'relationship event receipts' => ['pod_relationship_events', $source['migration'] . $source['service']],
     'public discovery endpoint' => ['pod_discovery_document', $source['service'] . $source['discovery']],
-    'well-known rewrite' => ['.well-known/pod.json', $source['htaccess']],
+    'well-known rewrite' => ['^\\.well-known/pod\\.json$ pod-discovery.php', $source['htaccess']],
     'protocol version' => ["'protocol' => 'pod-1'", $source['service']],
     'direct-only call capability' => ["'direct_only' => true", $source['service']],
     'public browser call retained' => ['data-public-call-form', $source['public_call']],
