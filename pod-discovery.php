@@ -4,9 +4,13 @@ declare(strict_types=1);
 define('NMM_PUBLIC_PAGE', true);
 require __DIR__ . '/portal/bootstrap.php';
 require_once __DIR__ . '/portal/pod-identity.php';
+require_once __DIR__ . '/portal/pod-connected-calling.php';
 
 try {
     $document = pod_discovery_document();
+    if (pod_connected_calling_schema_available()) {
+        $document = pod_connected_calling_discovery($document);
+    }
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: public, max-age=300, must-revalidate');
     header('Access-Control-Allow-Origin: *');

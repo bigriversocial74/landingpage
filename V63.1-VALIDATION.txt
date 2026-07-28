@@ -1,0 +1,44 @@
+POD Connected Contact Calling v63.1 validation
+
+Required automated validation:
+- PHP syntax for all PHP files
+- JavaScript syntax for all JavaScript files
+- CSS structure for all stylesheets
+- tests/pod-identity-relationships-v63.php
+- tests/pod-connected-calling-v63-1.php
+- All retained portal regressions
+- Required-source checks
+- Repository safety checks
+
+Database validation:
+- Import database/pod_identity_relationships_v63.sql
+- Import database/pod_connected_calling_v63_1.sql
+- Confirm both migrations are repeat-safe
+- Confirm inbound token hash uniqueness
+- Confirm one inbound and one outbound link per relationship
+- Confirm call-link rows cascade when a relationship is deleted
+- Confirm connected-call events retain no raw bearer token
+
+Functional validation:
+- Existing /call-dave.php public live call starts
+- Existing public voicemail records and submits
+- Existing public call signaling polls and exchanges offer/answer/ICE
+- Connected relationship with Calling=Call can issue an inbound link
+- Raw inbound link is displayed once
+- Database stores only the SHA-256 token hash
+- Remote call link is encrypted before storage
+- Contact-list Call submits through /portal/pod-call-launch.php
+- Recipient /pod-call.php validates and redirects to /connected-call.php
+- Connected call page recognizes the remote POD identity
+- Connected call page reuses api/public-call.php and assets/js/public-call.js
+- Revoked token is rejected
+- Expired token is rejected
+- Disconnected relationship is rejected
+- Blocked or revoked trust is rejected
+- Missing encryption secret fails safely
+- Connected context expires after 30 minutes
+- CRM call history remains attached to the linked POD contact
+- Discovery advertises relationship_calling=true and direct_only=true
+- No STUN or TURN dependency is introduced
+
+Expected certified score: 10/10

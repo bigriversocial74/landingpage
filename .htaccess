@@ -19,24 +19,24 @@ Options -Indexes
 </IfModule>
 
 
-# Allow same-origin microphone use on the portfolio chat call widget and
-# the dedicated Call Us page. The iframe still requires allow="microphone".
+# Allow same-origin microphone use on the portfolio chat call widget,
+# public Call Us page, and relationship-scoped connected call page.
 <IfModule mod_headers.c>
-    <FilesMatch "^(index|index-preview|call-dave|admin|client)\.php$">
+    <FilesMatch "^(index|index-preview|call-dave|connected-call|pod-call|admin|client)\.php$">
         Header always set Permissions-Policy "camera=(), microphone=(self), geolocation=(), payment=(), usb=()"
     </FilesMatch>
 </IfModule>
 
 # Prevent direct access to configuration and internal documentation.
 <IfModule mod_authz_core.c>
-    <FilesMatch "^(config\.php|config-example\.php|BUILD\.txt|PORTAL-README\.md|ADMIN-SETUP\.md|TRANSCRIPTION-SETUP\.md|COMMUNICATIONS-SETUP\.md|CALL-CENTER-SETUP\.md|VOICEMAIL-CRM-SETUP\.md|MEDIA-LIBRARY-CALL-SETUP\.md|KNOWLEDGE-LIBRARY-SETUP\.md|CALL-CENTER-SETTINGS-SETUP\.md|KNOWLEDGE-ENTRY-SETUP\.md|KNOWLEDGE-DETAIL-WIDTH-SETUP\.md|ADMIN-DATA-ASSISTANT-SETUP\.md|VOICE-CONTACT-TABS-SETUP\.md|CLEAN-CALL-INTERFACE-SETUP\.md|EMBEDDED-CALL-CARD-SETUP\.md|PUBLIC-SIDEBAR-SETUP\.md|VISITOR-SIDEBAR-SETUP\.md|ACCOUNT-PROFILE-SETUP\.md|PROJECT-LINKS-SETUP\.md|CRM-MESSAGE-SETUP\.md|PORTFOLIO-BACKEND-SETUP\.md|DASHBOARD-HISTORY-SETUP\.md|VISITOR-INTELLIGENCE-SETUP\.md|MUSIC-LIBRARY-SETUP\.md|PUBLISHING-SYSTEMS-SETUP\.md|PUBLISHING-WORKFLOW-SETUP\.md|EVENTS-CALENDAR-SETUP\.md|APPOINTMENTS-BOOKING-SETUP\.md|PROPOSALS-INTAKE-SETUP\.md|POD-IDENTITY-RELATIONSHIPS-SETUP-v63\.md|V63-SCORECARD\.md|V63-VALIDATION\.txt)$">
+    <FilesMatch "^(config\.php|config-example\.php|BUILD\.txt|PORTAL-README\.md|ADMIN-SETUP\.md|TRANSCRIPTION-SETUP\.md|COMMUNICATIONS-SETUP\.md|CALL-CENTER-SETUP\.md|VOICEMAIL-CRM-SETUP\.md|MEDIA-LIBRARY-CALL-SETUP\.md|KNOWLEDGE-LIBRARY-SETUP\.md|CALL-CENTER-SETTINGS-SETUP\.md|KNOWLEDGE-ENTRY-SETUP\.md|KNOWLEDGE-DETAIL-WIDTH-SETUP\.md|ADMIN-DATA-ASSISTANT-SETUP\.md|VOICE-CONTACT-TABS-SETUP\.md|CLEAN-CALL-INTERFACE-SETUP\.md|EMBEDDED-CALL-CARD-SETUP\.md|PUBLIC-SIDEBAR-SETUP\.md|VISITOR-SIDEBAR-SETUP\.md|ACCOUNT-PROFILE-SETUP\.md|PROJECT-LINKS-SETUP\.md|CRM-MESSAGE-SETUP\.md|PORTFOLIO-BACKEND-SETUP\.md|DASHBOARD-HISTORY-SETUP\.md|VISITOR-INTELLIGENCE-SETUP\.md|MUSIC-LIBRARY-SETUP\.md|PUBLISHING-SYSTEMS-SETUP\.md|PUBLISHING-WORKFLOW-SETUP\.md|EVENTS-CALENDAR-SETUP\.md|APPOINTMENTS-BOOKING-SETUP\.md|PROPOSALS-INTAKE-SETUP\.md|POD-IDENTITY-RELATIONSHIPS-SETUP-v63\.md|V63-SCORECARD\.md|V63-VALIDATION\.txt|POD-CONNECTED-CALLING-SETUP-v63\.1\.md|V63\.1-SCORECARD\.md|V63\.1-VALIDATION\.txt)$">
         Require all denied
     </FilesMatch>
 </IfModule>
 
 # Apache 2.2 compatibility fallback.
 <IfModule !mod_authz_core.c>
-    <FilesMatch "^(config\.php|config-example\.php|BUILD\.txt|PORTAL-README\.md|ADMIN-SETUP\.md|TRANSCRIPTION-SETUP\.md|COMMUNICATIONS-SETUP\.md|CALL-CENTER-SETUP\.md|VOICEMAIL-CRM-SETUP\.md|MEDIA-LIBRARY-CALL-SETUP\.md|KNOWLEDGE-LIBRARY-SETUP\.md|CALL-CENTER-SETTINGS-SETUP\.md|KNOWLEDGE-ENTRY-SETUP\.md|KNOWLEDGE-DETAIL-WIDTH-SETUP\.md|ADMIN-DATA-ASSISTANT-SETUP\.md|VOICE-CONTACT-TABS-SETUP\.md|CLEAN-CALL-INTERFACE-SETUP\.md|EMBEDDED-CALL-CARD-SETUP\.md|PUBLIC-SIDEBAR-SETUP\.md|VISITOR-SIDEBAR-SETUP\.md|ACCOUNT-PROFILE-SETUP\.md|PROJECT-LINKS-SETUP\.md|CRM-MESSAGE-SETUP\.md|PORTFOLIO-BACKEND-SETUP\.md|DASHBOARD-HISTORY-SETUP\.md|VISITOR-INTELLIGENCE-SETUP\.md|MUSIC-LIBRARY-SETUP\.md|PUBLISHING-SYSTEMS-SETUP\.md|PUBLISHING-WORKFLOW-SETUP\.md|EVENTS-CALENDAR-SETUP\.md|APPOINTMENTS-BOOKING-SETUP\.md|PROPOSALS-INTAKE-SETUP\.md|POD-IDENTITY-RELATIONSHIPS-SETUP-v63\.md|V63-SCORECARD\.md|V63-VALIDATION\.txt)$">
+    <FilesMatch "^(config\.php|config-example\.php|BUILD\.txt|PORTAL-README\.md|ADMIN-SETUP\.md|TRANSCRIPTION-SETUP\.md|COMMUNICATIONS-SETUP\.md|CALL-CENTER-SETUP\.md|VOICEMAIL-CRM-SETUP\.md|MEDIA-LIBRARY-CALL-SETUP\.md|KNOWLEDGE-LIBRARY-SETUP\.md|CALL-CENTER-SETTINGS-SETUP\.md|KNOWLEDGE-ENTRY-SETUP\.md|KNOWLEDGE-DETAIL-WIDTH-SETUP\.md|ADMIN-DATA-ASSISTANT-SETUP\.md|VOICE-CONTACT-TABS-SETUP\.md|CLEAN-CALL-INTERFACE-SETUP\.md|EMBEDDED-CALL-CARD-SETUP\.md|PUBLIC-SIDEBAR-SETUP\.md|VISITOR-SIDEBAR-SETUP\.md|ACCOUNT-PROFILE-SETUP\.md|PROJECT-LINKS-SETUP\.md|CRM-MESSAGE-SETUP\.md|PORTFOLIO-BACKEND-SETUP\.md|DASHBOARD-HISTORY-SETUP\.md|VISITOR-INTELLIGENCE-SETUP\.md|MUSIC-LIBRARY-SETUP\.md|PUBLISHING-SYSTEMS-SETUP\.md|PUBLISHING-WORKFLOW-SETUP\.md|EVENTS-CALENDAR-SETUP\.md|APPOINTMENTS-BOOKING-SETUP\.md|PROPOSALS-INTAKE-SETUP\.md|POD-IDENTITY-RELATIONSHIPS-SETUP-v63\.md|V63-SCORECARD\.md|V63-VALIDATION\.txt|POD-CONNECTED-CALLING-SETUP-v63\.1\.md|V63\.1-SCORECARD\.md|V63\.1-VALIDATION\.txt)$">
         Order allow,deny
         Deny from all
     </FilesMatch>
@@ -45,12 +45,12 @@ Options -Indexes
 
 # v56 public publishing workflow and feed cache controls
 <IfModule mod_headers.c>
-    <FilesMatch "^(index|index-preview|music-library|music-collection|blog|blog-post|resume-post|events|event|event-registration|booking|appointment|intake|intake-confirmation|proposal)\.php$">
+    <FilesMatch "^(index|index-preview|music-library|music-collection|blog|blog-post|resume-post|events|event|event-registration|booking|appointment|intake|intake-confirmation|proposal|call-dave|pod-call|connected-call)\.php$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"
     </FilesMatch>
-    <FilesMatch "^(visitor-activity|music-player|music-dashboard|public-music-shell|publishing-workflow|events-calendar|bookings|proposals)\.js$">
+    <FilesMatch "^(visitor-activity|music-player|music-dashboard|public-music-shell|publishing-workflow|events-calendar|bookings|proposals|pod-contacts-v63-1)\.js$">
         Header set Cache-Control "no-cache, must-revalidate, max-age=0"
     </FilesMatch>
 

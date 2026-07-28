@@ -1,0 +1,63 @@
+/* POD connected browser call v63.1 */
+.connected-pod-banner{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin:0 0 18px;
+  padding:15px;
+  border:1px solid #d8e2ec;
+  border-radius:16px;
+  background:#f5f8fb;
+}
+.connected-pod-banner img{
+  width:48px;
+  height:48px;
+  flex:0 0 48px;
+  border-radius:14px;
+  object-fit:cover;
+  background:#e8edf3;
+}
+.connected-pod-banner span,
+.connected-pod-banner strong,
+.connected-pod-banner small{
+  display:block;
+}
+.connected-pod-banner span{
+  color:#667085;
+  font-size:.72rem;
+  font-weight:800;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+.connected-pod-banner strong{
+  margin-top:2px;
+  color:#17202c;
+}
+.connected-pod-banner small{
+  margin-top:2px;
+  color:#5e6b7d;
+  overflow-wrap:anywhere;
+}
+.connected-call-privacy{
+  margin:14px 0 0;
+  color:#667085;
+  font-size:.84rem;
+  text-align:center;
+}
+.connected-call-back{
+  display:inline-flex;
+  margin-top:12px;
+  color:#465467;
+  font-weight:750;
+  text-decoration:none;
+}
+.connected-call-back:hover,
+.connected-call-back:focus-visible{
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+@media(max-width:600px){
+  .connected-pod-banner{
+    align-items:flex-start;
+  }
+}
