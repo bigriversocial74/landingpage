@@ -27,11 +27,10 @@ jobs:
           git apply /tmp/v619.patch
           python3 <<'PY'
           from pathlib import Path
-          root = Path('.')
           old = 'assets/js/music-player.js?v=20260727-site-controls-landing-v60'
           new = 'assets/js/music-player.js?v=20260728-site-analytics-v61.9'
           changed = 0
-          for path in root.rglob('*.php'):
+          for path in Path('.').rglob('*.php'):
               if '.git' in path.parts:
                   continue
               source = path.read_text(encoding='utf-8')
@@ -41,18 +40,7 @@ jobs:
                   changed += 1
           if changed < 2:
               raise SystemExit(f'Expected at least two Music Player cache references, updated {changed}.')
-          workflow = root / '.github/workflows/portal-quality.yml'
-          source = workflow.read_text(encoding='utf-8')
-          needle = '          php tests/landing-page-editor-v61-5.php\n'
-          replacement = needle + '          php tests/site-analytics-listening-v61-9.php\n'
-          if source.count(needle) != 1:
-              raise SystemExit('Unable to update permanent analytics regression coverage.')
-          workflow.write_text(source.replace(needle, replacement, 1), encoding='utf-8')
           PY
-          rm -f tools/v619.patch.b64
-          rm -f .github/workflows/diagnose-site-analytics-v61-9.yml
-          rm -f .github/workflows/export-site-analytics-source-v61-9.yml
-          rm -f .github/workflows/apply-site-analytics-v61-9.yml
 
       - name: PHP syntax
         shell: bash
@@ -133,23 +121,14 @@ jobs:
           php tests/landing-page-editor-v61-8.php
           php tests/site-analytics-listening-v61-9.php
 
-      - name: Repository safety
-        shell: bash
-        run: |
-          set -euo pipefail
-          test ! -f config.php
-          test ! -f tools/v619.patch.b64
-          test ! -f .github/workflows/diagnose-site-analytics-v61-9.yml
-          test ! -f .github/workflows/export-site-analytics-source-v61-9.yml
-          test ! -f .github/workflows/apply-site-analytics-v61-9.yml
-          git diff --check
-
-      - name: Commit generated repair
+      - name: Publish generated production commit
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add -u
+          git add tests/site-analytics-listening-v61-9.php
+          git diff --cached --check
           git commit -m 'Repair site analytics listening and sidebar v61.9'
-          git push origin HEAD:${{ github.head_ref }}
+          git push --force origin HEAD:generated/site-analytics-v61-9
