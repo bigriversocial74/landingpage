@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260727-visual-site-builder-v61 */
+/* North Mountain Media build: 20260728-public-sidebar-v62.2.1 */
 
 require_once __DIR__ . '/appointments-booking.php';
 
@@ -65,6 +65,14 @@ function nmm_render_public_sidebar(array $context): void
         );
     $rssUrl = nmm_public_sidebar_url('blog-feed.php');
 ?>
+<link
+    rel="stylesheet"
+    href="<?=nmm_public_sidebar_escape(
+        nmm_public_sidebar_url(
+            'assets/css/public-sidebar-v62-2-1.css?v=20260728-v62.2.1'
+        )
+    )?>"
+>
 <aside
     aria-label="Workspace navigation"
     class="workspace-sidebar"
@@ -94,7 +102,7 @@ function nmm_render_public_sidebar(array $context): void
 </div>
 
 <div class="sidebar-body">
-<section class="sidebar-section">
+<section class="sidebar-section sidebar-conversation-section">
 <span class="sidebar-kicker">Conversation</span>
 <nav
     aria-label="Conversation actions"
@@ -137,7 +145,7 @@ function nmm_render_public_sidebar(array $context): void
     type="button"
     data-rss-modal-open
 >
-<svg viewBox="0 0 24 24" aria-hidden="true">
+<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
 <circle cx="5" cy="19" r="2"></circle>
 <path d="M4 11a9 9 0 0 1 9 9"></path>
 <path d="M4 4a16 16 0 0 1 16 16"></path>
