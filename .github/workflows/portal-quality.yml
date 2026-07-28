@@ -82,16 +82,18 @@ jobs:
           print('CSS structure passed.')
           PY
 
-      - name: Landing page builder regression
+      - name: Portal regressions
         run: |
           set -euo pipefail
           php tests/landing-page-builder-v61-2.php
           php tests/landing-page-editor-toggle.php
           php tests/landing-page-editor-v61-4.php
           php tests/landing-page-editor-v61-5.php
+          php tests/landing-page-editor-v61-8.php
           php tests/site-analytics-listening-v61-9.php
+          php tests/rss-feed-reader-v62.php
 
-      - name: Required builder source
+      - name: Required source
         shell: bash
         run: |
           set -euo pipefail
@@ -107,6 +109,22 @@ jobs:
           test -f V61.4-VALIDATION.txt
           test -f LANDING-PAGE-BUILDER-SETUP-v61.5.md
           test -f V61.5-VALIDATION.txt
+          test -f blog-feed.php
+          test -f blog-atom.php
+          test -f portal/blog-feed-output.php
+          test -f portal/feed-reader-core.php
+          test -f portal/feed-reader-view.php
+          test -f portal/feed-reader-api.php
+          test -f portal/feed-reader-opml.php
+          test -f cron/feed-refresh.php
+          test -f assets/js/feed-reader.js
+          test -f assets/css/feed-reader.css
+          test -f database/rss_feed_reader_v62.sql
+          test -f RSS-FEED-READER-SETUP-v62.md
+          test -f V62-SCORECARD.md
+          test -f V62-VALIDATION.txt
+          test -f tests/fixtures/rss-v62.xml
+          test -f tests/fixtures/atom-v62.xml
 
       - name: Repository safety
         shell: bash
@@ -117,6 +135,14 @@ jobs:
           test ! -d .nmm-v615
           test ! -f .github/workflows/apply-v61-4-builder.yml
           test ! -f .github/workflows/apply-v61-5-builder.yml
+          test ! -f .github/workflows/export-rss-v62-source.yml
+          test ! -f .github/workflows/apply-rss-v62.yml
+          test ! -f .github/workflows/diagnose-rss-v62-payload.yml
+          test ! -f .github/workflows/repair-rss-v62-payload.yml
+          if find tools -maxdepth 1 -type f -name 'v62.patch.b64.part*' -print 2>/dev/null | grep -q .; then
+            echo 'Temporary v62 payload files remain.' >&2
+            exit 1
+          fi
           if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '*.pem' -o -name '*.key' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.log' -o -name '*.lock' \) -print | grep -q .; then
             echo 'Unsafe configuration or runtime file found.' >&2
             exit 1
