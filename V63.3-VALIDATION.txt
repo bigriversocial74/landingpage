@@ -1,0 +1,74 @@
+POD Agent Receptionist Routing v63.3 validation
+
+Required automated validation:
+- PHP syntax for every PHP file
+- JavaScript syntax for every JavaScript file
+- CSS structure for every stylesheet
+- All retained portal regressions
+- tests/pod-identity-relationships-v63.php
+- tests/pod-connected-calling-v63-1.php
+- tests/pod-connected-messaging-v63-2.php
+- tests/pod-agent-receptionist-v63-3.php
+- Required-source inventory
+- Repository safety checks
+
+Database validation:
+- Import v63 through v63.3 migrations in order
+- Repeat v63.3 migration safely
+- Confirm one settings record per local POD identity
+- Confirm session UUID uniqueness
+- Confirm relationship and CRM foreign keys
+- Confirm session transcripts and events cascade on session deletion
+- Confirm call-center callback reference becomes null rather than deleting the session
+
+Routing validation:
+- available + owner_first opens connected-call.php
+- available + agent_first opens connected-receptionist.php
+- available + agent_only opens connected-receptionist.php
+- busy + agent_first opens connected-receptionist.php
+- busy + voicemail opens connected-receptionist.php with message action
+- offline + callback opens connected-receptionist.php with callback action
+- disabled receptionist falls back to connected-call.php
+- anonymous /call-dave.php remains unchanged
+
+Authorization validation:
+- Missing connected-call context is rejected
+- Disconnected relationship is rejected
+- Agent permission none is rejected
+- Trust mismatch or revoked is rejected
+- Expired receptionist session is rejected
+- API requires CSRF token
+- API rate limit is enforced
+- Maximum question count is enforced
+
+Public-answer validation:
+- Agent identifies itself as automated and not the owner
+- Availability answer uses only public line status
+- Contact answer uses only public contact settings
+- Project answer uses portfolio_public_projects()
+- Blog answer uses blog_public_posts()
+- Service answer derives from published portfolio service labels
+- Responses include public source links where applicable
+- Private CRM notes are not queried
+- Private knowledge records are not queried
+- Owner-agent conversations are not queried
+- No model API or HomeServer credential is accessed
+
+Action validation:
+- Leave message creates a Call Center request
+- Request callback creates a callback request and optional preferred time
+- Both actions create Call Center event, CRM activity, administrator notification, receptionist event, and activity receipt
+- Transfer succeeds only when public line status is available, transfer is enabled, and Calling permission is Call
+- Transfer returns caller to existing connected-call.php
+- Session completion stores a summary and ended timestamp
+
+Compatibility validation:
+- Existing administrator data assistant remains read-only and operational
+- Existing public Call Us page remains operational
+- Existing connected WebRTC call remains operational
+- Existing voicemail remains operational
+- Existing POD messaging remains operational
+- Existing local Communications remains operational
+- Existing RSS and feed reader remain operational
+
+Expected certified score: 10/10
