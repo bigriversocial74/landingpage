@@ -1,4 +1,4 @@
-/* POD Agent Receptionist Routing v63.3 */
+/* POD Agent Receptionist Routing v63.3 + voice bridge v63.4 */
 (() => {
   'use strict';
 
@@ -25,10 +25,15 @@
   let sessionUuid = '';
   let busy = false;
 
+  const emit = (name, detail = {}) => {
+    window.dispatchEvent(new CustomEvent(name, { detail }));
+  };
+
   const setBusy = (value) => {
     busy = value;
     document.querySelector('.pr-card')?.classList.toggle('pr-loading', value);
     form.querySelector('button[type="submit"]')?.toggleAttribute('disabled', value);
+    emit('pod:receptionist-busy', { busy: value });
   };
 
   const showResult = (message, error = false) => {
@@ -85,6 +90,12 @@
 
     chat.append(article);
     chat.scrollTop = chat.scrollHeight;
+    emit('pod:receptionist-message', {
+      role,
+      text: String(text || ''),
+      sources: Array.isArray(sources) ? sources : [],
+      sessionUuid,
+    });
   };
 
   const applyActions = (actions = {}) => {
@@ -99,7 +110,12 @@
     try {
       const data = await request('start');
       sessionUuid = String(data.session?.session_uuid || '');
+      body.dataset.receptionistSessionUuid = sessionUuid;
       body.dataset.receptionistName = data.session?.agent_name || 'POD Receptionist';
+      emit('pod:receptionist-started', {
+        sessionUuid,
+        session: data.session || {},
+      });
       appendMessage('agent', data.session?.greeting || 'Hello. I am the POD receptionist.');
       applyActions(data.session?.actions || {});
 
@@ -126,6 +142,7 @@
       }
     } catch (error) {
       showResult(error.message, true);
+      emit('pod:receptionist-error', { message: error.message });
     } finally {
       setBusy(false);
     }
@@ -150,6 +167,7 @@
       }
     } catch (error) {
       showResult(error.message, true);
+      emit('pod:receptionist-error', { message: error.message });
     } finally {
       setBusy(false);
       input.focus();
@@ -181,6 +199,7 @@
       callbackForm.reset();
     } catch (error) {
       showResult(error.message, true);
+      emit('pod:receptionist-error', { message: error.message });
     } finally {
       setBusy(false);
     }
@@ -200,6 +219,7 @@
       messageForm.reset();
     } catch (error) {
       showResult(error.message, true);
+      emit('pod:receptionist-error', { message: error.message });
     } finally {
       setBusy(false);
     }
@@ -210,9 +230,11 @@
     setBusy(true);
     try {
       await request('transfer');
+      emit('pod:receptionist-transfer', { sessionUuid });
       window.location.assign(liveCallUrl);
     } catch (error) {
       showResult(error.message, true);
+      emit('pod:receptionist-error', { message: error.message });
       setBusy(false);
     }
   });
@@ -221,8 +243,13 @@
     try {
       const data = await request('complete');
       showResult(data.result?.summary || 'Receptionist session complete.');
+      emit('pod:receptionist-completed', {
+        sessionUuid,
+        summary: data.result?.summary || '',
+      });
     } catch (error) {
       showResult(error.message, true);
+      emit('pod:receptionist-error', { message: error.message });
     }
   });
 
@@ -238,6 +265,22 @@
       },
       body: JSON.stringify({ action: 'complete', session_uuid: sessionUuid }),
     }).catch(() => {});
+  });
+
+  window.PodReceptionist = Object.freeze({
+    submitText(text) {
+      const value = String(text || '').trim();
+      if (!value || busy) return false;
+      input.value = value;
+      form.requestSubmit();
+      return true;
+    },
+    getSessionUuid() {
+      return sessionUuid;
+    },
+    isBusy() {
+      return busy;
+    },
   });
 
   start();

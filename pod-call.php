@@ -6,6 +6,8 @@ define('NMM_PUBLIC_MICROPHONE_PAGE', true);
 require __DIR__ . '/portal/bootstrap.php';
 nmm_require_public_module('call_us');
 require_once __DIR__ . '/portal/pod-connected-calling.php';
+require_once __DIR__ . '/portal/pod-messaging.php';
+require_once __DIR__ . '/portal/pod-agent-receptionist.php';
 
 header('Cache-Control: no-store, private, max-age=0');
 header('Pragma: no-cache');
@@ -53,6 +55,18 @@ try {
             'email' => $contactEmail,
             'id' => $contactId,
         ]);
+    }
+
+    $route = 'owner_first';
+    if (pod_receptionist_schema_available()) {
+        $settings = pod_receptionist_settings(true);
+        if ($settings && (int)$settings['enabled'] === 1) {
+            $route = pod_receptionist_route($settings, call_center_public_status());
+        }
+    }
+
+    if (in_array($route, ['agent_first','agent_only','callback','voicemail'], true)) {
+        redirect('connected-receptionist.php');
     }
 
     redirect('connected-call.php');
