@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('NMM_PUBLIC_PAGE', true);
-/* North Mountain Media build: 20260727-visual-site-builder-v61 */
+/* North Mountain Media build: 20260728-site-analytics-listening-v61.9 */
 
 require dirname(__DIR__) . '/portal/bootstrap.php';
 if(!nmm_module_enabled('music_library'))json_response(['ok'=>false,'message'=>'This public module is currently unavailable.'],404);
@@ -60,6 +60,17 @@ if (!in_array($eventType, $allowedEventTypes, true)) {
 }
 $positionSeconds = max(0, min(86400, (int)($data['position_seconds'] ?? 0)));
 $durationSeconds = max(0, min(86400, (int)($data['duration_seconds'] ?? 0)));
+$playbackId = preg_replace(
+    '/[^a-z0-9_\-]/i',
+    '',
+    substr((string)($data['playback_id'] ?? ''), 0, 96)
+) ?? '';
+$eventIndex = max(0, min(100000, (int)($data['event_index'] ?? 0)));
+$clientEventId = preg_replace(
+    '/[^a-z0-9_\-]/i',
+    '',
+    substr((string)($data['client_event_id'] ?? ''), 0, 140)
+) ?? '';
 
 $trackId = max(
     0,
@@ -113,8 +124,9 @@ if (
         ]);
     }
 
+    $recordedEventId = null;
     try {
-        visitor_intelligence_track(
+        $recordedEventId = visitor_intelligence_track(
             $eventType,
             [
                 'event_label' => (
@@ -124,7 +136,7 @@ if (
                     visitor_intelligence_path(
                         $data['page_path'] ?? ''
                     ),
-                'duration_seconds' => $positionSeconds,
+                'duration_seconds' => 0,
                 'metadata' => [
                     'track_id' => $trackId,
                     'track_slug' => (
@@ -142,6 +154,9 @@ if (
                     'demo_mode' => true,
                     'position_seconds' => $positionSeconds,
                     'duration_seconds' => $durationSeconds,
+                    'playback_id' => $playbackId !== '' ? $playbackId : null,
+                    'event_index' => $eventIndex,
+                    'client_event_id' => $clientEventId !== '' ? $clientEventId : null,
                     'analytics_destination' => [
                         'visitor_intelligence',
                         'crm_relationship_timeline',
@@ -158,7 +173,8 @@ if (
 
     json_response([
         'ok' => true,
-        'recorded' => true,
+        'recorded' => !empty($recordedEventId),
+        'event_id' => $recordedEventId ?? null,
         'demo' => true,
         'event_type' => $eventType,
     ]);
@@ -233,8 +249,9 @@ if ($eventType === 'music_track_started') {
     ]);
 }
 
+$recordedEventId = null;
 try {
-    visitor_intelligence_track(
+    $recordedEventId = visitor_intelligence_track(
         $eventType,
         [
             'event_label' => (string)$track['title'],
@@ -242,7 +259,7 @@ try {
                 visitor_intelligence_path(
                     $data['page_path'] ?? ''
                 ),
-            'duration_seconds' => $positionSeconds,
+            'duration_seconds' => 0,
             'metadata' => [
                 'track_id' => $trackId,
                 'track_slug' => (
@@ -265,6 +282,9 @@ try {
                 'demo_mode' => false,
                 'position_seconds' => $positionSeconds,
                 'duration_seconds' => $durationSeconds,
+                'playback_id' => $playbackId !== '' ? $playbackId : null,
+                'event_index' => $eventIndex,
+                'client_event_id' => $clientEventId !== '' ? $clientEventId : null,
                 'analytics_destination' => [
                     'visitor_intelligence',
                     'crm_relationship_timeline',
@@ -281,7 +301,8 @@ try {
 
 json_response([
     'ok' => true,
-    'recorded' => true,
+    'recorded' => !empty($recordedEventId),
+    'event_id' => $recordedEventId ?? null,
     'demo' => false,
     'event_type' => $eventType,
 ]);

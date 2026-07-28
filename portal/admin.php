@@ -3242,7 +3242,7 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
 <li>Byte-range MP3 playback and seeking</li>
 <li>Play, pause, previous, next, shuffle, repeat, volume, and queue</li>
 <li>Recently Played stored in the visitor browser</li>
-<li>music_library_view, music_album_view, music_playlist_view, and music_track_play analytics</li>
+<li>music library views plus started, paused, resumed, completed, and skipped listening analytics</li>
 <li>Visitor/session attribution and CRM relationship timeline activity</li>
 <li>No changes to the live song database</li>
 </ul>
@@ -4487,8 +4487,10 @@ if($view==='crm'){
                     )
                 ),
                 'detail'=>(string)(
-                    (string)$visitorEvent['event_type']
-                    ==='music_track_play'
+                    str_starts_with(
+                        (string)$visitorEvent['event_type'],
+                        'music_track_'
+                    )
                         ?implode(
                             ' · ',
                             array_filter([

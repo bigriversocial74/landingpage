@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260727-visual-site-builder-v61 */
+/* North Mountain Media build: 20260728-site-analytics-listening-v61.9 */
 (() => {
   'use strict';
 
@@ -53,7 +53,12 @@
     queue: [],
     index: -1,
     trackId: 0,
-    reported: new Set(),
+    activeTrack: null,
+    playbackId: '',
+    playbackTrackId: 0,
+    playbackStatus: 'idle',
+    playbackEventIndex: 0,
+    suppressPauseEvent: false,
     repeat: false,
     shuffle: false,
   };
@@ -271,7 +276,7 @@
   });
 
   const currentTrack = () =>
-    state.queue[state.index] || null;
+    state.activeTrack || state.queue[state.index] || null;
 
   const updateButtons = () => {
     document.querySelectorAll(
@@ -414,15 +419,35 @@
     );
   };
 
+  const playbackToken = (track) => {
+    const random = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 14);
+    return `${Date.now().toString(36)}-${Number(track?.id || 0)}-${random}`
+      .replace(/[^a-z0-9_-]/gi, '')
+      .slice(0, 96);
+  };
+
+  const beginPlayback = (track) => {
+    state.playbackId = playbackToken(track);
+    state.playbackTrackId = Number(track?.id || 0);
+    state.playbackStatus = 'playing';
+    state.playbackEventIndex = 0;
+    announcePlay(track);
+  };
+
   const reportMusicEvent = (track, eventType) => {
     if (!track?.id || !eventType) return;
     const audio = state.audio;
+    state.playbackEventIndex += 1;
+    const clientEventId = `${state.playbackId}-${state.playbackEventIndex}`;
     fetch(
       new URL('api/music-play.php', document.baseURI),
       {
         method: 'POST',
         credentials: 'same-origin',
         cache: 'no-store',
+        keepalive: true,
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
@@ -431,6 +456,9 @@
           track_id: track.id,
           demo: Boolean(track.demo),
           event_type: eventType,
+          playback_id: state.playbackId,
+          event_index: state.playbackEventIndex,
+          client_event_id: clientEventId,
           position_seconds: Math.max(0, Math.round(audio?.currentTime || 0)),
           duration_seconds: Math.max(0, Math.round(audio?.duration || track.duration || 0)),
           page_path: `${location.pathname}${location.search}`,
@@ -441,17 +469,19 @@
 
   const reportPlay = (track) => {
     if (!track?.id) return;
-    const firstStart = !state.reported.has(track.id);
-    if (firstStart) {
-      state.reported.add(track.id);
-      announcePlay(track);
+    const trackId = Number(track.id);
+    const needsNewPlayback = !state.playbackId
+      || state.playbackTrackId !== trackId
+      || ['idle', 'completed', 'skipped'].includes(state.playbackStatus);
+    if (needsNewPlayback) {
+      beginPlayback(track);
+      reportMusicEvent(track, 'music_track_started');
+      return;
     }
-    reportMusicEvent(
-      track,
-      firstStart
-        ? 'music_track_started'
-        : 'music_track_resumed'
-    );
+    if (state.playbackStatus === 'paused') {
+      state.playbackStatus = 'playing';
+      reportMusicEvent(track, 'music_track_resumed');
+    }
   };
 
   const loadTrack = async (
@@ -465,7 +495,7 @@
 
     if (!audio) return;
 
-    const previousTrack = state.queue.find((item) => item.id === state.trackId) || null;
+    const previousTrack = state.activeTrack;
     if (
       previousTrack
       && state.trackId
@@ -473,10 +503,13 @@
       && audio.currentTime > 1
       && (!Number.isFinite(audio.duration) || audio.currentTime < audio.duration - 1)
     ) {
+      state.playbackStatus = 'skipped';
       reportMusicEvent(previousTrack, 'music_track_skipped');
     }
 
+    state.suppressPauseEvent = true;
     state.trackId = track.id;
+    state.activeTrack = track;
     updatePlayer(track);
 
     const absoluteStream = new URL(
@@ -489,6 +522,7 @@
       audio.load();
     }
 
+    window.setTimeout(() => { state.suppressPauseEvent = false; }, 80);
     updateButtons();
 
     if (!autoplay) return;
@@ -769,9 +803,12 @@
       const track = currentTrack();
       if (
         track
+        && !state.suppressPauseEvent
+        && state.playbackStatus === 'playing'
         && audio.currentTime > 0
         && !audio.ended
       ) {
+        state.playbackStatus = 'paused';
         reportMusicEvent(track, 'music_track_paused');
       }
       if (toggle) {
@@ -788,11 +825,14 @@
     audio.addEventListener('ended', () => {
       const track = currentTrack();
       if (track) {
+        state.playbackStatus = 'completed';
         reportMusicEvent(track, 'music_track_completed');
       }
-      if (state.repeat) {
+      if (state.repeat && track) {
         audio.currentTime = 0;
-        audio.play().catch(() => {});
+        state.playbackId = '';
+        state.playbackStatus = 'idle';
+        audio.play().then(() => reportPlay(track)).catch(() => {});
         return;
       }
 

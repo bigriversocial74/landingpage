@@ -406,7 +406,7 @@ Shuffle
 <script
     src="<?=e(app_url(
         'assets/js/music-player.js'
-        . '?v=20260727-site-controls-landing-v60'
+        . '?v=20260728-site-analytics-v61.9'
     ))?>"
 ></script>
 <script

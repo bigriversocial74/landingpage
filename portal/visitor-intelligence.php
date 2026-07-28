@@ -1,5 +1,5 @@
 <?php
-/* North Mountain Media build: 20260727-site-controls-landing-v60 */
+/* North Mountain Media build: 20260728-site-analytics-listening-v61.9 */
 declare(strict_types=1);
 
 function visitor_intelligence_config(): array
@@ -755,6 +755,11 @@ function visitor_intelligence_track(
         'music_album_view',
         'music_playlist_view',
         'music_track_play',
+        'music_track_started',
+        'music_track_paused',
+        'music_track_resumed',
+        'music_track_completed',
+        'music_track_skipped',
         'blog_archive_view',
         'blog_post_view',
         'events_calendar_view',
@@ -1175,6 +1180,11 @@ function visitor_intelligence_event_label(
         'music_album_view' => 'Music album viewed',
         'music_playlist_view' => 'Music playlist viewed',
         'music_track_play' => 'Music track played',
+        'music_track_started' => 'Listening started',
+        'music_track_paused' => 'Listening paused',
+        'music_track_resumed' => 'Listening resumed',
+        'music_track_completed' => 'Track completed',
+        'music_track_skipped' => 'Track skipped',
         'blog_archive_view' => 'Blog archive viewed',
         'blog_post_view' => 'Blog post viewed',
         'events_calendar_view' => 'Events calendar viewed',
@@ -1243,9 +1253,9 @@ function visitor_intelligence_summary(
             SUM(event_type="portfolio_view") AS portfolio_views,
             SUM(event_type="portfolio_link_click") AS project_clicks,
             SUM(event_type="chat_prompt") AS chat_prompts,
-            SUM(event_type="music_track_play") AS music_plays,
+            SUM(event_type IN ("music_track_play","music_track_started")) AS music_plays,
             COUNT(DISTINCT CASE
-                WHEN event_type="music_track_play"
+                WHEN event_type IN ("music_track_play","music_track_started")
                 THEN JSON_UNQUOTE(
                     JSON_EXTRACT(metadata_json,"$.track_id")
                 ) END
@@ -1529,9 +1539,9 @@ function visitor_intelligence_contact_summary(
             SUM(event_type="page_view") AS page_views,
             SUM(event_type="portfolio_view") AS portfolio_views,
             SUM(event_type="chat_prompt") AS chat_prompts,
-            SUM(event_type="music_track_play") AS music_plays,
+            SUM(event_type IN ("music_track_play","music_track_started")) AS music_plays,
             COUNT(DISTINCT CASE
-                WHEN event_type="music_track_play"
+                WHEN event_type IN ("music_track_play","music_track_started")
                 THEN JSON_UNQUOTE(
                     JSON_EXTRACT(metadata_json,"$.track_id")
                 ) END
