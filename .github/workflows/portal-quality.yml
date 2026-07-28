@@ -99,6 +99,7 @@ jobs:
           php tests/pod-connected-messaging-v63-2.php
           php tests/pod-agent-receptionist-v63-3.php
           php tests/pod-agent-voice-receptionist-v63-4.php
+          php tests/pod-homeserver-voice-provider-v63-5.php
 
       - name: Required source
         shell: bash
@@ -188,6 +189,24 @@ jobs:
           test -f POD-AGENT-VOICE-RECEPTIONIST-SETUP-v63.4.md
           test -f V63.4-SCORECARD.md
           test -f V63.4-VALIDATION.txt
+          test -f database/pod_homeserver_voice_provider_v63_5.sql
+          test -f portal/pod-homeserver-provider.php
+          test -f portal/pod-homeserver.php
+          test -f api/homeserver/v1/provider.php
+          test -f api/homeserver/v1/pairing/exchange/index.php
+          test -f api/homeserver/v1/devices/heartbeat/index.php
+          test -f api/homeserver/v1/voice/jobs/poll/index.php
+          test -f api/homeserver/v1/voice/jobs/complete/index.php
+          test -f api/homeserver/v1/voice/jobs/fail/index.php
+          test -f api/homeserver/v1/voice/artifacts/read/index.php
+          test -f tests/pod-homeserver-voice-provider-v63-5.php
+          test -f tests/fixtures/pod-homeserver-v63-5/pairing-request.json
+          test -f tests/fixtures/pod-homeserver-v63-5/heartbeat-request.json
+          test -f tests/fixtures/pod-homeserver-v63-5/job-complete-request.json
+          test -f POD-HOMESERVER-VOICE-PROVIDER-CONTRACT-v63.5.md
+          test -f POD-HOMESERVER-VOICE-PROVIDER-SETUP-v63.5.md
+          test -f V63.5-SCORECARD.md
+          test -f V63.5-VALIDATION.txt
 
       - name: Repository safety
         shell: bash

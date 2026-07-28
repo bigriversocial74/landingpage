@@ -8,6 +8,7 @@ require_once __DIR__ . '/portal/pod-connected-calling.php';
 require_once __DIR__ . '/portal/pod-messaging.php';
 require_once __DIR__ . '/portal/pod-agent-receptionist.php';
 require_once __DIR__ . '/portal/pod-agent-voice.php';
+require_once __DIR__ . '/portal/pod-homeserver-provider.php';
 
 try {
     $document = pod_discovery_document();
@@ -43,6 +44,9 @@ try {
     }
     if (pod_voice_schema_available()) {
         $document = pod_voice_discovery($document);
+    }
+    if (pod_homeserver_schema_available()) {
+        $document = pod_homeserver_discovery($document);
     }
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: public, max-age=300, must-revalidate');

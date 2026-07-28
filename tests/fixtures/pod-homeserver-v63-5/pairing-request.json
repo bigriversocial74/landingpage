@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "provider_key": "pod",
+  "sync_code": "POD-1111-2222-3333-4444-5555-6666",
+  "request_id": "pairing-request-0001",
+  "installation_id": "homeserver-installation-0001",
+  "device_display_name": "Office HomeServer",
+  "homeserver_version": "0.1.3",
+  "device_public_key": "BASE64URL_ED25519_PUBLIC_KEY",
+  "requested_capabilities": [
+    "pod.pairing.v1",
+    "pod.device-heartbeat.v1",
+    "pod.voice.jobs.v1",
+    "pod.voice.transcription.v1",
+    "pod.voice.synthesis.v1",
+    "pod.voice.artifacts.v1",
+    "pod.voice.receipts.v1",
+    "pod.receptionist.context.v1"
+  ]
+}
