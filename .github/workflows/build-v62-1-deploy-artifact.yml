@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - build/v62-1-deploy-artifact
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
   package:
+    if: github.head_ref == 'build/v62-1-deploy-artifact' || github.ref_name == 'build/v62-1-deploy-artifact'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
