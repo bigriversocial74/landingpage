@@ -116,19 +116,40 @@ jobs:
           PY
 
       - name: Page editor regressions
+        id: regressions
         shell: bash
         run: |
-          set -euo pipefail
-          php tests/landing-page-builder-v61-2.php
-          php tests/landing-page-editor-toggle.php
-          php tests/landing-page-editor-v61-4.php
-          php tests/landing-page-editor-v61-5.php
-          php tests/landing-page-editor-v61-8.php
+          set +e
+          {
+            php tests/landing-page-builder-v61-2.php
+            php tests/landing-page-editor-toggle.php
+            php tests/landing-page-editor-v61-4.php
+            php tests/landing-page-editor-v61-5.php
+            php tests/landing-page-editor-v61-8.php
+          } >v618-regressions.log 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload regression diagnostic
+        if: steps.regressions.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: v61-8-regression-diagnostic
+          path: v618-regressions.log
+
+      - name: Require passing regressions
+        if: steps.regressions.outputs.exit_code != '0'
+        shell: bash
+        run: |
+          cat v618-regressions.log
+          exit 1
 
       - name: Commit generated upgrade
         shell: bash
         run: |
           set -euo pipefail
+          rm -f v618-regressions.log
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
