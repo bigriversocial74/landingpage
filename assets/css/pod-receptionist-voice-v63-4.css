@@ -1,0 +1,85 @@
+/* POD Browser Voice Receptionist v63.4 */
+.pr-voice{
+  display:grid;
+  gap:12px;
+  margin:0 20px 16px;
+  padding:15px;
+  border:1px solid #dce4ec;
+  border-radius:16px;
+  background:#f7f9fb;
+}
+.pr-voice[hidden]{display:none}
+.pr-voice-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.pr-voice-head h3{margin:.2rem 0 .25rem;font-size:1rem}
+.pr-voice-head p{margin:0;color:#667085;font-size:.84rem}
+.pr-voice-mode{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:6px 9px;
+  border-radius:999px;
+  background:#eaf0f6;
+  color:#344054;
+  font-size:.72rem;
+  font-weight:820;
+  white-space:nowrap;
+}
+.pr-voice-mode::before{
+  content:"";
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#98a2b3;
+}
+.pr-voice-mode.listening::before{background:#e14a4a;box-shadow:0 0 0 5px rgba(225,74,74,.12)}
+.pr-voice-mode.speaking::before{background:#3c73d9;box-shadow:0 0 0 5px rgba(60,115,217,.12)}
+.pr-voice-mode.ready::before{background:#21a166}
+.pr-voice-controls{display:flex;gap:9px;flex-wrap:wrap}
+.pr-voice-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:0;
+  border-radius:999px;
+  padding:10px 15px;
+  background:#111827;
+  color:#fff;
+  font:inherit;
+  font-weight:820;
+  cursor:pointer;
+}
+.pr-voice-button.secondary{background:#e9eef4;color:#263246}
+.pr-voice-button.danger{background:#fff0f0;color:#a32b2b}
+.pr-voice-button:disabled{opacity:.48;cursor:not-allowed}
+.pr-voice-options{display:flex;gap:12px;flex-wrap:wrap}
+.pr-voice-option{display:inline-flex;align-items:center;gap:7px;color:#445166;font-size:.84rem;font-weight:720}
+.pr-voice-option input{margin:0}
+.pr-voice-live{
+  min-height:22px;
+  padding:9px 11px;
+  border-radius:11px;
+  background:#fff;
+  color:#445166;
+  font-size:.84rem;
+}
+.pr-voice-live.error{background:#fff0f0;color:#8b2f2f}
+.pr-voice-privacy{margin:0;color:#667085;font-size:.78rem;line-height:1.45}
+.pr-voice-fallback{
+  padding:10px 12px;
+  border-radius:11px;
+  background:#fff6df;
+  color:#745514;
+  font-size:.84rem;
+}
+.pr-voice-fallback[hidden]{display:none}
+@media(max-width:680px){
+  .pr-voice-head{display:grid}
+  .pr-voice-mode{justify-self:start}
+  .pr-voice-button{flex:1 1 150px}
+}
