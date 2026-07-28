@@ -92,6 +92,7 @@ jobs:
           php tests/landing-page-editor-v61-8.php
           php tests/site-analytics-listening-v61-9.php
           php tests/rss-feed-reader-v62.php
+          php tests/social-feed-reader-v62-2.php
 
       - name: Required source
         shell: bash
@@ -119,12 +120,15 @@ jobs:
           test -f cron/feed-refresh.php
           test -f assets/js/feed-reader.js
           test -f assets/css/feed-reader.css
+          test -f assets/js/feed-reader-social.js
+          test -f assets/css/feed-reader-social.css
           test -f database/rss_feed_reader_v62.sql
           test -f RSS-FEED-READER-SETUP-v62.md
           test -f V62-SCORECARD.md
           test -f V62-VALIDATION.txt
           test -f tests/fixtures/rss-v62.xml
           test -f tests/fixtures/atom-v62.xml
+          test -f tests/social-feed-reader-v62-2.php
 
       - name: Repository safety
         shell: bash
