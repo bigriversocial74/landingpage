@@ -78,7 +78,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="<?=e($resumeDescription)?>">
-<meta name="build-version" content="20260727-site-controls-landing-v60">
+<meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
 <?php if($isAdminPreview):?>
 <meta name="robots" content="noindex,nofollow">
@@ -99,9 +99,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 )?></script>
 <?php endif;?>
 <title><?=e($post?$post['title']:'Resume entry unavailable')?> — David Evans</title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260727-site-controls-landing-v60'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260728-content-controls-v62.1'))?>">
 </head>
 <body class="blog-body">
 <div class="music-public-shell">
@@ -164,9 +164,9 @@ Administrator preview · <?=e(
 </main>
 </section>
 </div>
-<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260727-site-controls-landing-v60'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260728-content-controls-v62.1'))?>"></script>
 <?php if($post&&!$isAdminPreview):?>
 <script>
 window.NMMVisitorActivity?.track(

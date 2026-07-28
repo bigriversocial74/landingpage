@@ -954,6 +954,121 @@ if(is_post()){
             );
         }
 
+        if($action==='delete_music_upload'){
+            $assetId=int_input('asset_id');
+            $statement=db()->prepare(
+                'SELECT ka.*,mt.id AS track_id
+                 FROM knowledge_assets ka
+                 LEFT JOIN music_tracks mt ON mt.knowledge_asset_id=ka.id
+                 WHERE ka.id=:asset_id
+                   AND ka.media_kind="audio"
+                 LIMIT 1'
+            );
+            $statement->execute(['asset_id'=>$assetId]);
+            $asset=$statement->fetch();
+
+            if(!$asset){
+                throw new RuntimeException('Audio upload not found.');
+            }
+
+            if((int)($asset['track_id']??0)>0){
+                throw new RuntimeException('This audio upload is attached to a song. Delete the song from Songs instead.');
+            }
+
+            knowledge_remove_published_entry(
+                $asset['entry_id']!==null?(string)$asset['entry_id']:null
+            );
+
+            db()->prepare('DELETE FROM knowledge_assets WHERE id=:asset_id')
+                ->execute(['asset_id'=>$assetId]);
+
+            foreach(['stored_name','cover_stored_name'] as $fileKey){
+                if(empty($asset[$fileKey])){
+                    continue;
+                }
+                $file=knowledge_storage_path((string)$asset[$fileKey]);
+                if(is_file($file)){
+                    @unlink($file);
+                }
+            }
+
+            log_activity(
+                'music_upload_deleted',
+                'knowledge_asset',
+                $assetId,
+                ['name'=>(string)$asset['original_name']]
+            );
+            flash('success','Unused audio upload and cover artwork were permanently deleted.');
+            redirect('portal/admin.php?view=music&section=import');
+        }
+
+        if($action==='delete_music_track'){
+            $trackId=int_input('track_id');
+
+            if(!music_library_schema_available()||$trackId<=0){
+                throw new RuntimeException('Music track not found.');
+            }
+
+            $statement=db()->prepare(
+                'SELECT mt.id,mt.title,mt.knowledge_asset_id,
+                        ka.entry_id,ka.stored_name,ka.cover_stored_name
+                 FROM music_tracks mt
+                 JOIN knowledge_assets ka ON ka.id=mt.knowledge_asset_id
+                 WHERE mt.id=:track_id
+                 LIMIT 1'
+            );
+            $statement->execute(['track_id'=>$trackId]);
+            $track=$statement->fetch();
+
+            if(!$track){
+                throw new RuntimeException('Music track not found.');
+            }
+
+            $pdo=db();
+            $pdo->beginTransaction();
+
+            try{
+                $pdo->prepare(
+                    'DELETE FROM music_tracks WHERE id=:track_id'
+                )->execute(['track_id'=>$trackId]);
+                $pdo->prepare(
+                    'DELETE FROM knowledge_assets WHERE id=:asset_id'
+                )->execute(['asset_id'=>(int)$track['knowledge_asset_id']]);
+                $pdo->commit();
+            }catch(Throwable $exception){
+                if($pdo->inTransaction()){
+                    $pdo->rollBack();
+                }
+                throw $exception;
+            }
+
+            knowledge_remove_published_entry(
+                $track['entry_id']!==null?(string)$track['entry_id']:null
+            );
+
+            foreach(['stored_name','cover_stored_name'] as $fileKey){
+                if(empty($track[$fileKey])){
+                    continue;
+                }
+                $file=knowledge_storage_path((string)$track[$fileKey]);
+                if(is_file($file)){
+                    @unlink($file);
+                }
+            }
+
+            log_activity(
+                'music_track_deleted',
+                'music_track',
+                $trackId,
+                [
+                    'title'=>(string)$track['title'],
+                    'knowledge_asset_id'=>(int)$track['knowledge_asset_id'],
+                ]
+            );
+            flash('success','Song and its protected audio upload were permanently deleted.');
+            redirect('portal/admin.php?view=music&section=tracks');
+        }
+
         if($action==='save_music_album'){
             if(!music_library_schema_available()){
                 throw new RuntimeException(
@@ -1190,6 +1305,39 @@ if(is_post()){
                 'portal/admin.php?view=music&section=albums&edit='
                 .$albumId
             );
+        }
+
+        if($action==='delete_music_album'){
+            $albumId=int_input('album_id');
+
+            if(!music_library_schema_available()||$albumId<=0){
+                throw new RuntimeException('Music album not found.');
+            }
+
+            $album=music_admin_album($albumId);
+            if(!$album){
+                throw new RuntimeException('Music album not found.');
+            }
+
+            db()->prepare(
+                'DELETE FROM music_albums WHERE id=:album_id'
+            )->execute(['album_id'=>$albumId]);
+
+            if(!empty($album['cover_stored_name'])){
+                $cover=music_cover_storage_directory().'/'.basename((string)$album['cover_stored_name']);
+                if(is_file($cover)){
+                    @unlink($cover);
+                }
+            }
+
+            log_activity(
+                'music_album_deleted',
+                'music_album',
+                $albumId,
+                ['title'=>(string)$album['title']]
+            );
+            flash('success','Album was permanently deleted. Its songs remain available as singles.');
+            redirect('portal/admin.php?view=music&section=albums');
         }
 
         if($action==='save_music_playlist'){
@@ -1478,6 +1626,39 @@ if(is_post()){
                 'portal/admin.php?view=music&section=playlists&edit='
                 .$playlistId
             );
+        }
+
+        if($action==='delete_music_playlist'){
+            $playlistId=int_input('playlist_id');
+
+            if(!music_library_schema_available()||$playlistId<=0){
+                throw new RuntimeException('Music playlist not found.');
+            }
+
+            $playlist=music_admin_playlist($playlistId);
+            if(!$playlist){
+                throw new RuntimeException('Music playlist not found.');
+            }
+
+            db()->prepare(
+                'DELETE FROM music_playlists WHERE id=:playlist_id'
+            )->execute(['playlist_id'=>$playlistId]);
+
+            if(!empty($playlist['cover_stored_name'])){
+                $cover=music_cover_storage_directory().'/'.basename((string)$playlist['cover_stored_name']);
+                if(is_file($cover)){
+                    @unlink($cover);
+                }
+            }
+
+            log_activity(
+                'music_playlist_deleted',
+                'music_playlist',
+                $playlistId,
+                ['title'=>(string)$playlist['title']]
+            );
+            flash('success','Playlist was permanently deleted. Its songs were not removed.');
+            redirect('portal/admin.php?view=music&section=playlists');
         }
 
         if($action==='save_portfolio_project'){
@@ -1822,6 +2003,53 @@ if(is_post()){
             redirect('portal/admin.php?view=portfolio');
         }
 
+        if($action==='delete_portfolio_project'){
+            $projectId=int_input('project_id');
+
+            if(!portfolio_schema_available()||$projectId<=0){
+                throw new RuntimeException('The portfolio project was not found.');
+            }
+
+            $projectStatement=db()->prepare(
+                'SELECT id,title FROM portfolio_projects WHERE id=:project_id LIMIT 1'
+            );
+            $projectStatement->execute(['project_id'=>$projectId]);
+            $project=$projectStatement->fetch();
+
+            if(!$project){
+                throw new RuntimeException('The portfolio project was not found.');
+            }
+
+            $mediaStatement=db()->prepare(
+                'SELECT stored_name FROM portfolio_media WHERE project_id=:project_id'
+            );
+            $mediaStatement->execute(['project_id'=>$projectId]);
+            $media=$mediaStatement->fetchAll();
+
+            db()->prepare(
+                'DELETE FROM portfolio_projects WHERE id=:project_id'
+            )->execute(['project_id'=>$projectId]);
+
+            foreach($media as $item){
+                if(empty($item['stored_name'])){
+                    continue;
+                }
+                $file=portfolio_storage_directory().'/'.basename((string)$item['stored_name']);
+                if(is_file($file)){
+                    @unlink($file);
+                }
+            }
+
+            log_activity(
+                'portfolio_project_deleted',
+                'portfolio_project',
+                $projectId,
+                ['title'=>(string)$project['title']]
+            );
+            flash('success','Portfolio project and all project images were permanently deleted.');
+            redirect('portal/admin.php?view=portfolio');
+        }
+
         if($action==='save_project'){
             $id=int_input('id');$client=int_input('client_user_id');$title=input('title');
             if($client<=0||$title==='')throw new RuntimeException('Select a client and enter a project title.');
@@ -1962,6 +2190,36 @@ if(is_post()){
             $s=db()->prepare('INSERT INTO files(client_user_id,project_id,uploaded_by,original_name,stored_name,mime_type,size_bytes,description,visibility) VALUES(:c,:p,:u,:o,:st,:m,:z,:d,:v)');
             $s->execute(['c'=>$client,'p'=>$project?:null,'u'=>$user['id'],'o'=>$original,'st'=>$stored,'m'=>$mime,'z'=>$size,'d'=>nullable_input('description'),'v'=>$visibility]);flash('success','File uploaded.');redirect('portal/admin.php?view=files');
         }
+        if($action==='delete_file'){
+            $fileId=int_input('file_id');
+            $statement=db()->prepare(
+                'SELECT id,original_name,stored_name FROM files WHERE id=:file_id LIMIT 1'
+            );
+            $statement->execute(['file_id'=>$fileId]);
+            $fileRecord=$statement->fetch();
+
+            if(!$fileRecord){
+                throw new RuntimeException('Shared file not found.');
+            }
+
+            db()->prepare('DELETE FROM files WHERE id=:file_id')
+                ->execute(['file_id'=>$fileId]);
+
+            $storedFile=NMM_ROOT.'/storage/client-files/'.basename((string)$fileRecord['stored_name']);
+            if(is_file($storedFile)){
+                @unlink($storedFile);
+            }
+
+            log_activity(
+                'shared_file_deleted',
+                'file',
+                $fileId,
+                ['name'=>(string)$fileRecord['original_name']]
+            );
+            flash('success','Shared file was permanently deleted.');
+            redirect('portal/admin.php?view=files');
+        }
+
         if($action==='upload_knowledge_asset'){
             if(!isset($_FILES['knowledge_file'])||!is_array($_FILES['knowledge_file'])){
                 throw new RuntimeException('Select a knowledge file to upload.');
@@ -3544,13 +3802,40 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
 </div>
 </form>
 
-<?php if($selectedTrack&&$selectedTrack['status']!=='archived'):?>
-<form method="post" class="music-archive-form" onsubmit="return confirm('Archive this song?')">
+<?php if($selectedTrack):?>
+<div class="content-danger-zone music-content-danger-zone">
+<?php if($selectedTrack['status']!=='archived'):?>
+<form
+    method="post"
+    class="music-archive-form"
+    data-confirm="Archive this song? It will no longer appear in the public player, but the audio upload will remain."
+    data-confirm-title="Archive song?"
+    data-confirm-eyebrow="Music publishing"
+    data-confirm-action="Archive song"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="archive_music_track">
 <input type="hidden" name="track_id" value="<?=(int)$selectedTrack['id']?>">
 <button class="button button-danger" type="submit">Archive song</button>
 </form>
+<?php endif;?>
+<div>
+<strong>Delete song and audio file</strong>
+<p>Permanently remove the song, playlist references, protected audio upload, cover artwork, transcription data, and chat entry.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the song and its protected source audio file, cover artwork, transcription records, playlist references, and chat entry. This action cannot be undone."
+    data-confirm-title="Delete song and audio file?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete song"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_track">
+<input type="hidden" name="track_id" value="<?=(int)$selectedTrack['id']?>">
+<button class="button button-danger" type="submit">Delete song and audio file</button>
+</form>
+</div>
+</div>
 <?php endif;?>
 
 <?php else:?>
@@ -3570,6 +3855,19 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
 <td>
 <a href="?view=music&amp;section=tracks&amp;edit=<?=(int)$track['id']?>"><?=e($track['title'])?></a>
 <br><small><?=e($track['artist_name'])?><?php if($track['featured_artist']):?> feat. <?=e($track['featured_artist'])?><?php endif;?></small>
+<form
+    method="post"
+    class="music-table-delete"
+    data-confirm="Permanently delete this song and its protected audio upload?"
+    data-confirm-title="Delete song and audio file?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete song"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_track">
+<input type="hidden" name="track_id" value="<?=(int)$track['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </td>
 <td><?=e($track['album_title']?:'Single')?><br><small><?=e($track['genre']?:'—')?></small></td>
 <td><?=e((string)($track['release_year']?:'—'))?><br><small>Track <?=e((string)($track['track_number']?:'—'))?></small></td>
@@ -3628,6 +3926,24 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
 </div>
 <div class="form-footer"><button class="button button-primary" type="submit">Save album</button><a class="button" href="?view=music&amp;section=albums">Cancel</a></div>
 </form>
+<?php if($selectedAlbum):?>
+<div class="content-danger-zone music-content-danger-zone">
+<strong>Delete album</strong>
+<p>Permanently delete this album and its uploaded cover. Songs remain in the Music Library as singles.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the album and its uploaded cover image. Songs assigned to it will remain available as singles."
+    data-confirm-title="Delete album?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete album"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_album">
+<input type="hidden" name="album_id" value="<?=(int)$selectedAlbum['id']?>">
+<button class="button button-danger" type="submit">Delete album</button>
+</form>
+</div>
+<?php endif;?>
 <?php else:?>
 <div class="page-actions"><a class="button button-primary" href="?view=music&amp;section=albums&amp;edit=new">Create album</a></div>
 <div class="music-admin-card-grid">
@@ -3645,6 +3961,12 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
     rel="noopener"
 >Open public</a>
 <?php endif;?>
+<form method="post" data-confirm="Permanently delete this album and its uploaded cover? Songs will remain as singles." data-confirm-title="Delete album?" data-confirm-eyebrow="Permanent deletion" data-confirm-action="Delete album">
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_album">
+<input type="hidden" name="album_id" value="<?=(int)$album['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </footer>
 </article>
 <?php endforeach;?>
@@ -3717,6 +4039,24 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
 
 <div class="form-footer"><button class="button button-primary" type="submit">Save playlist</button><a class="button" href="?view=music&amp;section=playlists">Cancel</a></div>
 </form>
+<?php if($selectedPlaylist):?>
+<div class="content-danger-zone music-content-danger-zone">
+<strong>Delete playlist</strong>
+<p>Permanently delete this playlist and its uploaded cover. The songs themselves will remain.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the playlist, its song ordering, and its uploaded cover. The songs will not be deleted."
+    data-confirm-title="Delete playlist?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete playlist"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_playlist">
+<input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>">
+<button class="button button-danger" type="submit">Delete playlist</button>
+</form>
+</div>
+<?php endif;?>
 <?php else:?>
 <div class="page-actions"><a class="button button-primary" href="?view=music&amp;section=playlists&amp;edit=new">Create playlist</a></div>
 <div class="music-admin-card-grid">
@@ -3734,6 +4074,12 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
     rel="noopener"
 >Open public</a>
 <?php endif;?>
+<form method="post" data-confirm="Permanently delete this playlist and its uploaded cover? Songs will remain." data-confirm-title="Delete playlist?" data-confirm-eyebrow="Permanent deletion" data-confirm-action="Delete playlist">
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_playlist">
+<input type="hidden" name="playlist_id" value="<?=(int)$playlist['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </footer>
 </article>
 <?php endforeach;?>
@@ -3765,12 +4111,26 @@ Import <strong>database/music_library_v44.sql</strong> to enable tracks, albums,
 <td><span class="status status-<?=e($audioAsset['status'])?>"><?=e(status_label($audioAsset['status']))?></span></td>
 <td><?=!empty($audioAsset['cover_stored_name'])?'Attached':'Uses fallback'?></td>
 <td>
+<div class="inline-danger-actions">
 <form method="post">
 <?=csrf_field()?>
 <input type="hidden" name="action" value="adopt_music_asset">
 <input type="hidden" name="asset_id" value="<?=(int)$audioAsset['id']?>">
 <button class="button button-small" type="submit">Add to Music Library</button>
 </form>
+<form
+    method="post"
+    data-confirm="Permanently delete this unused audio upload, cover artwork, transcription data, and chat entry?"
+    data-confirm-title="Delete audio upload?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete upload"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_music_upload">
+<input type="hidden" name="asset_id" value="<?=(int)$audioAsset['id']?>">
+<button class="button button-small button-danger" type="submit">Delete upload</button>
+</form>
+</div>
 </td>
 </tr>
 <?php endforeach;?>
@@ -5129,6 +5489,12 @@ Import <strong>database/portfolio_backend_v41.sql</strong> to create the portfol
 <?php if($project['project_url']):?>
 <a class="button button-small" href="<?=e($project['project_url'])?>" target="_blank" rel="noopener">Project site</a>
 <?php endif;?>
+<form method="post" data-confirm="Permanently delete this portfolio project and every uploaded image?" data-confirm-title="Delete portfolio project?" data-confirm-eyebrow="Permanent deletion" data-confirm-action="Delete project">
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_portfolio_project">
+<input type="hidden" name="project_id" value="<?=(int)$project['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </footer>
 </article>
 <?php endforeach;?>
@@ -5414,7 +5780,13 @@ Import <strong>database/portfolio_backend_v41.sql</strong> to create the portfol
 </div>
 </form>
 
-<form method="post" onsubmit="return confirm('Remove this portfolio image?')">
+<form
+    method="post"
+    data-confirm="Permanently remove this portfolio image?"
+    data-confirm-title="Remove portfolio image?"
+    data-confirm-eyebrow="Portfolio media"
+    data-confirm-action="Remove image"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="delete_portfolio_media">
 <input type="hidden" name="project_id" value="<?=(int)$selected['id']?>">
@@ -5435,13 +5807,35 @@ Import <strong>database/portfolio_backend_v41.sql</strong> to create the portfol
 <span>Public portfolio slug: <?=e($selected['slug'])?></span>
 </p>
 <?php if($selected['status']!=='archived'):?>
-<form method="post" onsubmit="return confirm('Archive this portfolio project?')">
+<form
+    method="post"
+    data-confirm="Archive this portfolio project? It will be removed from the public portfolio but remain editable."
+    data-confirm-title="Archive portfolio project?"
+    data-confirm-eyebrow="Portfolio publishing"
+    data-confirm-action="Archive project"
+>
 <?=csrf_field()?>
 <input type="hidden" name="action" value="archive_portfolio_project">
 <input type="hidden" name="project_id" value="<?=(int)$selected['id']?>">
 <button class="button button-danger" type="submit">Archive project</button>
 </form>
 <?php endif;?>
+<div class="content-danger-zone">
+<strong>Delete permanently</strong>
+<p>Delete the portfolio project and every uploaded cover or gallery image.</p>
+<form
+    method="post"
+    data-confirm="This permanently deletes the portfolio project and all uploaded project images. This action cannot be undone."
+    data-confirm-title="Delete portfolio project?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete project"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_portfolio_project">
+<input type="hidden" name="project_id" value="<?=(int)$selected['id']?>">
+<button class="button button-danger" type="submit">Delete project</button>
+</form>
+</div>
 </div>
 </section>
 <?php endif;?>
@@ -5492,7 +5886,7 @@ if($view==='messages'){
 if($view==='files'){
     $clients=admin_clients();$projects=admin_projects();$files=db()->query('SELECT f.*,u.display_name AS client_name,u.company,p.title AS project_title FROM files f JOIN users u ON u.id=f.client_user_id LEFT JOIN projects p ON p.id=f.project_id ORDER BY f.created_at DESC LIMIT 100')->fetchAll();
 ?>
-<div class="dashboard-grid"><form method="post" enctype="multipart/form-data" class="form-panel"><?=csrf_field()?><input type="hidden" name="action" value="upload_file"><div class="form-grid"><label class="field"><span>Client</span><select name="client_user_id" required><option value="">Select</option><?php foreach($clients as $c):?><option value="<?=(int)$c['id']?>"><?=e($c['company']?:$c['display_name'])?></option><?php endforeach;?></select></label><label class="field"><span>Project</span><select name="project_id"><option value="">General</option><?php foreach($projects as $p):?><option value="<?=(int)$p['id']?>"><?=e($p['title'])?></option><?php endforeach;?></select></label><label class="field full"><span>File</span><input type="file" name="file" required><small>Executable and script formats are blocked.</small></label><label class="field full"><span>Description</span><input name="description"></label><label class="field"><span>Visibility</span><select name="visibility"><option value="client">Client</option><option value="admin">Admin only</option></select></label></div><div class="form-footer"><button class="button button-primary">Upload</button></div></form><section class="panel"><div class="panel-body"><div class="message-list"><?php foreach($files as $f):?><article class="file-card"><h2><?=e($f['original_name'])?></h2><p><?=e($f['description']?:'No description')?></p><div class="card-meta"><span><?=e($f['company']?:$f['client_name'])?></span><span><?=e($f['project_title']?:'General')?></span><span><?=e(format_bytes((int)$f['size_bytes']))?></span><span><?=e(status_label($f['visibility']))?></span></div><a class="button button-small" href="<?=e(app_url('portal/download.php?id='.$f['id']))?>">Download</a></article><?php endforeach;?></div></div></section></div>
+<div class="dashboard-grid"><form method="post" enctype="multipart/form-data" class="form-panel"><?=csrf_field()?><input type="hidden" name="action" value="upload_file"><div class="form-grid"><label class="field"><span>Client</span><select name="client_user_id" required><option value="">Select</option><?php foreach($clients as $c):?><option value="<?=(int)$c['id']?>"><?=e($c['company']?:$c['display_name'])?></option><?php endforeach;?></select></label><label class="field"><span>Project</span><select name="project_id"><option value="">General</option><?php foreach($projects as $p):?><option value="<?=(int)$p['id']?>"><?=e($p['title'])?></option><?php endforeach;?></select></label><label class="field full"><span>File</span><input type="file" name="file" required><small>Executable and script formats are blocked.</small></label><label class="field full"><span>Description</span><input name="description"></label><label class="field"><span>Visibility</span><select name="visibility"><option value="client">Client</option><option value="admin">Admin only</option></select></label></div><div class="form-footer"><button class="button button-primary">Upload</button></div></form><section class="panel"><div class="panel-body"><div class="message-list"><?php foreach($files as $f):?><article class="file-card"><h2><?=e($f['original_name'])?></h2><p><?=e($f['description']?:'No description')?></p><div class="card-meta"><span><?=e($f['company']?:$f['client_name'])?></span><span><?=e($f['project_title']?:'General')?></span><span><?=e(format_bytes((int)$f['size_bytes']))?></span><span><?=e(status_label($f['visibility']))?></span></div><div class="inline-danger-actions"><a class="button button-small" href="<?=e(app_url('portal/download.php?id='.$f['id']))?>">Download</a><form method="post" data-confirm="Permanently delete this shared file from the portal and storage?" data-confirm-title="Delete shared file?" data-confirm-eyebrow="Permanent deletion" data-confirm-action="Delete file"><?=csrf_field()?><input type="hidden" name="action" value="delete_file"><input type="hidden" name="file_id" value="<?=(int)$f['id']?>"><button class="button button-small button-danger" type="submit">Delete</button></form></div></article><?php endforeach;?></div></div></section></div>
 <?php
 }
 
@@ -6517,6 +6911,15 @@ $cardClass=$isVideo
 if($view==='settings'){
 $moduleDefinitions=nmm_module_definitions();
 $logoUrl=nmm_site_logo_url();
+$microgifterMode=nmm_site_setting('microgifter_connection_mode','disabled');
+$microgifterHasCredential=nmm_site_setting('microgifter_token_encrypted')!=='';
+$microgifterConnectionLabel=match($microgifterMode){
+    'demo'=>'Local demonstration',
+    'api'=>'REST API',
+    'mcp'=>'MCP server',
+    'homeserver'=>'HomeServer pairing',
+    default=>'Not connected',
+};
 ?>
 <form method="post" enctype="multipart/form-data" class="site-settings-form">
 <?=csrf_field()?>
@@ -6555,19 +6958,103 @@ $logoUrl=nmm_site_logo_url();
 </section>
 
 <section class="form-panel site-settings-panel microgifter-settings-panel">
-<header class="site-settings-heading"><div><span>Connected commerce</span><h2>Microgifter integration</h2><p>Prepare landing-page conversion blocks for the Microgifter API, existing MCP server, or HomeServer/MCP. Live transactions remain disabled until explicitly enabled.</p></div><button class="button" type="button" data-microgifter-test>Test connection</button></header>
+<header class="site-settings-heading">
+<div>
+<span>Connected commerce</span>
+<h2>Microgifter connection</h2>
+<p>Connect this site to Microgifter through the REST API, MCP server, or an authorized HomeServer pairing node.</p>
+<div class="microgifter-connection-state">
+<span class="<?=$microgifterMode!=='disabled'?'is-connected':''?>"><?=e($microgifterConnectionLabel)?></span>
+<?php if($microgifterHasCredential):?><span>Credential stored</span><?php endif;?>
+</div>
+</div>
+<button class="button" type="button" data-microgifter-test>Test connection</button>
+</header>
+
+<div class="microgifter-settings-layout">
+<section class="microgifter-settings-card">
+<header>
+<span>Connection</span>
+<h3>Endpoint and account</h3>
+<p>Choose one connection path, then enter the account and endpoint supplied by Microgifter.</p>
+</header>
 <div class="form-grid">
-<label class="field"><span>Connection mode</span><select name="microgifter_connection_mode"><option value="disabled" <?=nmm_site_setting('microgifter_connection_mode','disabled')==='disabled'?'selected':''?>>Disabled</option><option value="demo" <?=nmm_site_setting('microgifter_connection_mode')==='demo'?'selected':''?>>Local demonstration</option><option value="api" <?=nmm_site_setting('microgifter_connection_mode')==='api'?'selected':''?>>Microgifter REST API</option><option value="mcp" <?=nmm_site_setting('microgifter_connection_mode')==='mcp'?'selected':''?>>Microgifter MCP server</option><option value="homeserver" <?=nmm_site_setting('microgifter_connection_mode')==='homeserver'?'selected':''?>>Microgifter HomeServer/MCP</option></select></label>
-<label class="field"><span>Merchant/account ID</span><input name="microgifter_merchant_id" value="<?=e(nmm_site_setting('microgifter_merchant_id'))?>" maxlength="190"></label>
-<label class="field full"><span>API or MCP endpoint</span><input type="url" name="microgifter_endpoint" value="<?=e(nmm_site_setting('microgifter_endpoint'))?>" placeholder="https://microgifter.example/api or /mcp"></label>
-<label class="field"><span>Authentication token</span><input type="password" name="microgifter_token" autocomplete="new-password" placeholder="Leave blank to preserve the encrypted token"><small><?=nmm_site_setting('microgifter_token_encrypted')!==''?'An encrypted credential is stored.':'No credential is stored.'?></small></label>
-<label class="field"><span>Cache duration (minutes)</span><input type="number" name="microgifter_cache_minutes" min="1" max="1440" value="<?=e(nmm_site_setting('microgifter_cache_minutes','15'))?>"></label>
-<label class="field"><span>Request timeout (seconds)</span><input type="number" name="microgifter_timeout_seconds" min="2" max="30" value="<?=e(nmm_site_setting('microgifter_timeout_seconds','8'))?>"></label>
-<label class="checkbox-row"><input type="checkbox" name="remove_microgifter_token" value="1"><span>Remove the stored credential.</span></label>
-<label class="checkbox-row full"><input type="checkbox" name="microgifter_live_transactions_enabled" value="1" <?=nmm_setting_bool('microgifter_live_transactions_enabled',false)?'checked':''?>><span>Allow live gift, reward, campaign, or claim transactions. Keep disabled until the connector contract is verified.</span></label>
-<label class="checkbox-row"><input type="checkbox" name="microgifter_contact_sync_enabled" value="1" <?=nmm_setting_bool('microgifter_contact_sync_enabled',false)?'checked':''?>><span>Synchronize contacts.</span></label>
-<label class="checkbox-row"><input type="checkbox" name="microgifter_analytics_sync_enabled" value="1" <?=nmm_setting_bool('microgifter_analytics_sync_enabled',false)?'checked':''?>><span>Synchronize conversion analytics.</span></label>
-</div><p class="microgifter-test-result" data-microgifter-test-result></p>
+<label class="field">
+<span>Connection mode</span>
+<select name="microgifter_connection_mode">
+<option value="disabled" <?=$microgifterMode==='disabled'?'selected':''?>>Disabled</option>
+<option value="demo" <?=$microgifterMode==='demo'?'selected':''?>>Local demonstration</option>
+<option value="api" <?=$microgifterMode==='api'?'selected':''?>>Microgifter REST API</option>
+<option value="mcp" <?=$microgifterMode==='mcp'?'selected':''?>>Microgifter MCP server</option>
+<option value="homeserver" <?=$microgifterMode==='homeserver'?'selected':''?>>HomeServer pairing node</option>
+</select>
+</label>
+<label class="field">
+<span>Merchant or account ID</span>
+<input name="microgifter_merchant_id" value="<?=e(nmm_site_setting('microgifter_merchant_id'))?>" maxlength="190" placeholder="Microgifter account ID">
+</label>
+<label class="field full">
+<span>API, MCP, or pairing endpoint</span>
+<input type="url" name="microgifter_endpoint" value="<?=e(nmm_site_setting('microgifter_endpoint'))?>" placeholder="https://microgifter.com/api or paired MCP endpoint">
+</label>
+<label class="field full">
+<span>Authentication token</span>
+<input type="password" name="microgifter_token" autocomplete="new-password" placeholder="<?=$microgifterHasCredential?'Leave blank to keep the stored credential':'Paste the connection token'?>">
+<small><?=$microgifterHasCredential?'An encrypted credential is stored. Enter a new token only to replace it.':'No credential is stored.'?></small>
+</label>
+<?php if($microgifterHasCredential):?>
+<label class="checkbox-row full">
+<input type="checkbox" name="remove_microgifter_token" value="1">
+<span>Remove the stored credential when settings are saved.</span>
+</label>
+<?php endif;?>
+</div>
+
+<details class="microgifter-advanced">
+<summary>Advanced request settings</summary>
+<div class="form-grid">
+<label class="field">
+<span>Cache duration</span>
+<input type="number" name="microgifter_cache_minutes" min="1" max="1440" value="<?=e(nmm_site_setting('microgifter_cache_minutes','15'))?>">
+<small>Minutes before offer data is refreshed.</small>
+</label>
+<label class="field">
+<span>Request timeout</span>
+<input type="number" name="microgifter_timeout_seconds" min="2" max="30" value="<?=e(nmm_site_setting('microgifter_timeout_seconds','8'))?>">
+<small>Seconds before a connector request stops.</small>
+</label>
+</div>
+</details>
+</section>
+
+<section class="microgifter-settings-card">
+<header>
+<span>Permissions</span>
+<h3>Allowed connector activity</h3>
+<p>Keep every capability off until the connection contract and account permissions are verified.</p>
+</header>
+<div class="microgifter-toggle-list">
+<label class="checkbox-row">
+<input type="checkbox" name="microgifter_contact_sync_enabled" value="1" <?=nmm_setting_bool('microgifter_contact_sync_enabled',false)?'checked':''?>>
+<span>Synchronize contacts</span>
+</label>
+<label class="checkbox-row">
+<input type="checkbox" name="microgifter_analytics_sync_enabled" value="1" <?=nmm_setting_bool('microgifter_analytics_sync_enabled',false)?'checked':''?>>
+<span>Synchronize conversion analytics</span>
+</label>
+<label class="checkbox-row">
+<input type="checkbox" name="microgifter_live_transactions_enabled" value="1" <?=nmm_setting_bool('microgifter_live_transactions_enabled',false)?'checked':''?>>
+<span>Allow live commerce transactions</span>
+</label>
+</div>
+<div class="microgifter-live-warning">
+<strong>Live gifts, rewards, campaigns, and claims</strong>
+<span>Enable live transactions only after the selected connector has passed testing and its authorization scope has been reviewed.</span>
+</div>
+</section>
+</div>
+
+<p class="microgifter-test-result" data-microgifter-test-result></p>
 </section>
 
 <div class="site-settings-savebar"><span>Module, branding, and connection changes become active after saving.</span><button class="button button-primary">Save site settings</button></div>

@@ -318,13 +318,13 @@ header(
 );
 ?>
 <!DOCTYPE html>
-<!-- North Mountain Media build: 20260727-site-controls-landing-v60 -->
+<!-- North Mountain Media build: 20260728-content-controls-v62.1 -->
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>David Evans — North Mountain Media Workspace</title>
-<meta name="build-version" content="20260727-site-controls-landing-v60"/>
+<meta name="build-version" content="20260728-content-controls-v62.1"/>
 <meta content="David Evans — operations, ecommerce, procurement systems, CRM workflows and AI-assisted business intelligence." name="description"/>
 <style>
         :root {
@@ -2709,7 +2709,7 @@ header(
             }
         }
     </style>
-<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60">
+<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1">
 </head>
 <body>
 <div class="app-shell">
@@ -3182,7 +3182,7 @@ View portfolio case study
 </form>
 </section>
 </div><div aria-live="polite" class="chat-toast" id="chatToast" role="status"></div>
-<script src="chat-knowledge-base/knowledge-base.js?v=20260727-site-controls-landing-v60"></script>
+<script src="chat-knowledge-base/knowledge-base.js?v=20260728-content-controls-v62.1"></script>
 
 <script>
 document.addEventListener('click', function (event) {
@@ -3202,7 +3202,8 @@ document.addEventListener('click', function (event) {
   );
 }, true);
 </script>
-<script src="assets/js/visitor-activity.js?v=20260727-site-controls-landing-v60"></script>
+<script src="assets/js/visitor-activity.js?v=20260728-content-controls-v62.1"></script>
+<script src="assets/js/public-sidebar.js?v=20260728-content-controls-v62.1"></script>
 <script>
 (() => {
     const publicProfile = <?= json_encode([

@@ -93,7 +93,7 @@ header(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="<?=e($description)?>">
-<meta name="build-version" content="20260727-site-controls-landing-v60">
+<meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
 <?php $feedSettings=publishing_blog_settings();?>
 <?php if($feedSettings['rss_enabled']):?><link rel="alternate" type="application/rss+xml" title="<?=e($feedSettings['title'])?> RSS" href="<?=e(publishing_absolute_url('blog-feed.php'))?>"><?php endif;?>
@@ -127,9 +127,9 @@ header(
 )?></script>
 <?php endif;?>
 <title><?=e($title)?> — North Mountain Media</title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260727-site-controls-landing-v60'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260728-content-controls-v62.1'))?>">
 </head>
 <body class="blog-body">
 <div class="music-public-shell">
@@ -227,9 +227,9 @@ The requested article is not published or could not be found.
 </section>
 </div>
 
-<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260727-site-controls-landing-v60'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260728-content-controls-v62.1'))?>"></script>
 <?php if($post&&!$isAdminPreview):?>
 <script>
 window.NMMVisitorActivity?.track(

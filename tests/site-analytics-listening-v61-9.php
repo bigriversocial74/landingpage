@@ -40,7 +40,7 @@ $checks = [
     'recent playback sessions' => ['Recent listening activity', $source['analytics']],
     'shared first navigation style' => ['.portal-nav-group:first-child', $source['css']],
     'top nav special class removed' => ['class="portal-nav-group"', $source['bootstrap']],
-    'portal asset cache key' => ['20260728-site-analytics-v61.9', $source['bootstrap']],
+    'portal asset cache key' => ['20260728-content-controls-v62.1', $source['bootstrap']],
     'CRM lifecycle detail' => ["str_starts_with(\n                        (string)\$visitorEvent['event_type'],\n                        'music_track_'", $source['admin']],
 ];
 

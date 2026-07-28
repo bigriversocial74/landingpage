@@ -494,6 +494,18 @@ function publishing_render_resume_sortable(
     type="button"
     data-resume-move="down"
 >↓ Down</button>
+<form
+    method="post"
+    data-confirm="Permanently delete this resume post and its complete revision history?"
+    data-confirm-title="Delete resume post?"
+    data-confirm-eyebrow="Permanent deletion"
+    data-confirm-action="Delete post"
+>
+<?=csrf_field()?>
+<input type="hidden" name="action" value="delete_resume_post">
+<input type="hidden" name="id" value="<?=(int)$post['id']?>">
+<button class="button button-small button-danger" type="submit">Delete</button>
+</form>
 </footer>
 </article>
 <?php endforeach;?>

@@ -24,9 +24,9 @@ header('X-Content-Type-Options: nosniff');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Blog Preview — North Mountain Media</title>
-<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/blog.css?v=20260727-site-controls-landing-v60">
+<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/blog.css?v=20260728-content-controls-v62.1">
 </head>
 <body class="blog-body">
 <div class="music-public-shell">
@@ -96,6 +96,6 @@ nmm_render_public_sidebar($previewSidebarContext);
 </main>
 </section>
 </div>
-<script src="assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60"></script>
+<script src="assets/js/public-sidebar.js?v=20260728-content-controls-v62.1"></script>
 </body>
 </html>

@@ -27,11 +27,11 @@ $sample=[
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="build-version" content="20260727-site-controls-landing-v60">
+<meta name="build-version" content="20260728-content-controls-v62.1">
 <title>Events Preview — North Mountain Media</title>
-<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60">
-<link rel="stylesheet" href="assets/css/events.css?v=20260727-site-controls-landing-v60">
+<link rel="stylesheet" href="assets/css/public-music-shell.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/events.css?v=20260728-content-controls-v62.1">
 </head>
 <body class="events-body">
 <div class="music-public-shell">
@@ -48,5 +48,5 @@ $sample=[
 ['AUG','02','Community Build Review','Community','Phoenix, Arizona','#925F3B'],
 ] as $event):?><article class="events-card" style="--event-color:<?=$event[5]?>"><div class="events-card-media"><a class="events-card-placeholder" href="#"><span><?=$event[0]?></span><strong><?=$event[1]?></strong></a></div><div class="events-card-copy"><div class="events-card-kicker"><span><?=$event[3]?></span><span>Hybrid</span></div><h2><a href="#"><?=$event[2]?></a></h2><p>A complete event record with public details, registration, reminders, CRM activity, and attendance tracking.</p><div class="events-card-meta"><span>Monday, July 27, 2026 · 6:00 PM</span><span><?=$event[4]?></span></div><footer><a href="#">View event →</a><span class="events-registration-state is-open">Register for this event</span></footer></div></article><?php endforeach;?></div></section>
 </main></section></div>
-<script src="assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60"></script>
+<script src="assets/js/public-sidebar.js?v=20260728-content-controls-v62.1"></script>
 </body></html>

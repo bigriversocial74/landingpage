@@ -100,11 +100,11 @@ header(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="build-version" content="20260727-site-controls-landing-v60">
+<meta name="build-version" content="20260728-content-controls-v62.1">
 <title><?=e($appointment?$appointment['booking_type_name']:'Appointment unavailable')?> — North Mountain Media</title>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/bookings.css?v=20260727-site-controls-landing-v60'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/bookings.css?v=20260728-content-controls-v62.1'))?>">
 </head>
 <body class="bookings-body">
 <div class="music-public-shell">
@@ -254,8 +254,8 @@ header(
 </main>
 </section>
 </div>
-<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260727-site-controls-landing-v60'))?>"></script>
-<script src="<?=e(app_url('assets/js/bookings.js?v=20260727-site-controls-landing-v60'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/bookings.js?v=20260728-content-controls-v62.1'))?>"></script>
 </body>
 </html>

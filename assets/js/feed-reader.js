@@ -53,13 +53,6 @@
   };
 
 
-  root.addEventListener('submit', (event) => {
-    const form = event.target.closest('form[data-confirm]');
-    if (!form) return;
-    const message = form.dataset.confirm || 'Continue with this action?';
-    if (!window.confirm(message)) event.preventDefault();
-  });
-
   root.addEventListener('click', (event) => {
     const open = event.target.closest('[data-feed-dialog-open]');
     if (open && dialog) {

@@ -58,6 +58,12 @@ function nmm_render_public_sidebar(array $context): void
     $logoAlt = function_exists('nmm_site_logo_alt')
         ? nmm_site_logo_alt()
         : 'North Mountain Media';
+    $rssEnabled = $moduleEnabled('blog')
+        && (
+            !function_exists('nmm_site_setting')
+            || nmm_site_setting('blog_rss_enabled', '1') === '1'
+        );
+    $rssUrl = nmm_public_sidebar_url('blog-feed.php');
 ?>
 <aside
     aria-label="Workspace navigation"
@@ -125,6 +131,20 @@ function nmm_render_public_sidebar(array $context): void
 <a data-call-widget-open href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('call-dave.php'))?>"><span>Call Us</span></a>
 <?php endif;?>
 <?php endif;?>
+<?php if($rssEnabled):?>
+<button
+    class="rss-sidebar-button"
+    type="button"
+    data-rss-modal-open
+>
+<svg viewBox="0 0 24 24" aria-hidden="true">
+<circle cx="5" cy="19" r="2"></circle>
+<path d="M4 11a9 9 0 0 1 9 9"></path>
+<path d="M4 4a16 16 0 0 1 16 16"></path>
+</svg>
+<span>RSS Feed</span>
+</button>
+<?php endif;?>
 </nav>
 </section>
 
@@ -177,5 +197,69 @@ if ($slug === '' || $title === '') {
     data-sidebar-close
     type="button"
 ></button>
+
+<?php if($rssEnabled):?>
+<section
+    class="rss-feed-modal"
+    data-rss-modal
+    aria-hidden="true"
+    hidden
+>
+<button
+    class="rss-feed-modal-backdrop"
+    type="button"
+    data-rss-modal-close
+    aria-label="Close RSS feed information"
+></button>
+<div
+    class="rss-feed-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rss-feed-title"
+    aria-describedby="rss-feed-description"
+>
+<button
+    class="rss-feed-close"
+    type="button"
+    data-rss-modal-close
+    aria-label="Close RSS feed information"
+>×</button>
+<div class="rss-feed-icon" aria-hidden="true">
+<svg viewBox="0 0 24 24">
+<circle cx="5" cy="19" r="2"></circle>
+<path d="M4 11a9 9 0 0 1 9 9"></path>
+<path d="M4 4a16 16 0 0 1 16 16"></path>
+</svg>
+</div>
+<span class="rss-feed-eyebrow">Follow new posts</span>
+<h2 id="rss-feed-title">North Mountain Media RSS Feed</h2>
+<p id="rss-feed-description">
+RSS lets you receive newly published articles in any feed reader without relying on social-media algorithms or email newsletters. Copy this address and add it to your preferred RSS application.
+</p>
+<label class="rss-feed-url-field">
+<span>RSS feed URL</span>
+<input
+    type="text"
+    value="<?=nmm_public_sidebar_escape($rssUrl)?>"
+    readonly
+    data-rss-feed-url
+>
+</label>
+<div class="rss-feed-actions">
+<button
+    class="rss-feed-copy"
+    type="button"
+    data-rss-feed-copy
+>Copy RSS Feed URL</button>
+<a
+    href="<?=nmm_public_sidebar_escape($rssUrl)?>"
+    target="_blank"
+    rel="noopener"
+>Open feed</a>
+</div>
+<p class="rss-feed-copy-status" data-rss-copy-status role="status" aria-live="polite"></p>
+</div>
+</section>
+<?php endif;?>
 <?php
 }
