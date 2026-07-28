@@ -19,6 +19,8 @@ jobs:
         shell: bash
         run: |
           set -u
+          mkdir -p payload-diagnostic
+          cp tools/v62.patch.b64.part07 payload-diagnostic/github-part07.txt
           {
             wc -c tools/v62.patch.b64.part*
             sha256sum tools/v62.patch.b64.part*
@@ -39,8 +41,8 @@ jobs:
             else
               echo 'base64=invalid'
             fi
-          } > payload-diagnostics.txt 2>&1
+          } > payload-diagnostic/payload-diagnostics.txt 2>&1
       - uses: actions/upload-artifact@v4
         with:
           name: rss-v62-payload-diagnostics
-          path: payload-diagnostics.txt
+          path: payload-diagnostic
