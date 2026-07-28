@@ -1,6 +1,7 @@
 name: Build v62.2 Full Deploy ZIP
 
 on:
+  pull_request:
   push:
     branches:
       - build/v62-2-deploy-artifact
