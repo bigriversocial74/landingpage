@@ -1,0 +1,110 @@
+name: Build v62.1 Deploy Artifact
+
+on:
+  push:
+    branches:
+      - build/v62-1-deploy-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Assemble deploy package
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="north-mountain-media-portal-v62.1-deploy"
+          rm -rf "$root"
+          mkdir -p "$root"
+
+          files=(
+            appointment.php
+            assets/css/portal.css
+            assets/css/public-sidebar.css
+            assets/js/feed-reader.js
+            assets/js/portal.js
+            assets/js/public-sidebar.js
+            blog-post-preview.php
+            blog-post.php
+            blog-preview.php
+            blog.php
+            booking-preview.php
+            booking.php
+            call-us-centered-preview.php
+            event-registration.php
+            event.php
+            events-preview.php
+            events.php
+            index-preview.php
+            index.php
+            intake-confirmation.php
+            intake-preview.php
+            intake.php
+            music-collection-preview.php
+            music-library-preview.php
+            portal/admin.php
+            portal/bookings-admin.php
+            portal/bootstrap.php
+            portal/events-admin.php
+            portal/menus-admin.php
+            portal/proposals-admin.php
+            portal/public-sidebar.php
+            portal/publishing-admin.php
+            portal/publishing-workflow-view.php
+            proposal-preview.php
+            proposal.php
+            resume-post.php
+            workspace.php
+          )
+
+          for file in "${files[@]}"; do
+            test -f "$file"
+            mkdir -p "$root/$(dirname "$file")"
+            cp "$file" "$root/$file"
+          done
+
+          cat > "$root/DEPLOYMENT.txt" <<'EOF'
+          North Mountain Media Portal v62.1 Deployment
+
+          Source commit:
+          3525b38581cec08a39aa6625224e6d4c5ccf0830
+
+          Instructions:
+          1. Upload and overwrite the matching paths from this package.
+          2. Preserve the live config.php file.
+          3. Preserve the entire storage/ directory.
+          4. No SQL migration is required for v62.1.
+          5. Clear browser, CDN, opcode, and server caches after deployment.
+
+          Included fixes:
+          - Cleaned Microgifter connection settings panel.
+          - Delete controls for appropriate portal content with a reusable confirmation modal.
+          - Feed Reader Add Feed modal/script loading repair.
+          - Public RSS Feed sidebar button, explanation modal, displayed feed URL, and copy button.
+          - Cache-busting updates across affected public pages.
+          EOF
+
+          (
+            cd "$root"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+
+          zip -qr "north-mountain-media-portal-v62.1-deploy.zip" "$root"
+          sha256sum "north-mountain-media-portal-v62.1-deploy.zip" > "north-mountain-media-portal-v62.1-deploy.zip.sha256"
+
+      - name: Upload deploy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: north-mountain-media-portal-v62.1-deploy
+          path: |
+            north-mountain-media-portal-v62.1-deploy.zip
+            north-mountain-media-portal-v62.1-deploy.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
