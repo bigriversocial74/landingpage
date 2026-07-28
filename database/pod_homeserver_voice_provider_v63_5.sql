@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS pod_homeserver_pairing_codes (
 CREATE TABLE IF NOT EXISTS pod_homeserver_connections (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     connection_uuid CHAR(36) NOT NULL,
+    pairing_request_id VARCHAR(120) NOT NULL,
     pod_identity_id BIGINT UNSIGNED NOT NULL,
     installation_id VARCHAR(120) NOT NULL,
     device_id CHAR(36) NOT NULL,
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS pod_homeserver_connections (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_pod_homeserver_connection_uuid (connection_uuid),
+    UNIQUE KEY uq_pod_homeserver_pairing_request (pod_identity_id,pairing_request_id),
     UNIQUE KEY uq_pod_homeserver_device_id (device_id),
     UNIQUE KEY uq_pod_homeserver_installation (pod_identity_id,installation_id),
     UNIQUE KEY uq_pod_homeserver_bearer_hash (bearer_token_hash),
