@@ -64,7 +64,7 @@ $checks = [
     'existing public call retained' => ['data-public-call-form', $source['public_call']],
     'existing WebRTC retained' => ['RTCPeerConnection', $source['public_call_script']],
     'existing connected call retained' => ['Connected caller', $source['connected_call']],
-    'existing admin assistant retained' => ['admin_assistant_match_intent', $source['admin_assistant']],
+    'existing admin assistant retained' => ['admin_assistant_intent', $source['admin_assistant']],
 ];
 
 foreach ($checks as $label => [$needle, $haystack]) {
