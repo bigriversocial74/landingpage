@@ -1,0 +1,33 @@
+name: Diagnose Site Analytics v61.9
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'fix/site-analytics-listening-sidebar-v61-9'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect analytics and sidebar source
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '=== candidate files ==='
+            find . -path './.git' -prune -o -type f \( -iname '*analytics*' -o -iname '*music*' -o -iname '*sidebar*' -o -iname '*portal*' \) -print | sort
+            echo
+            echo '=== analytics strings ==='
+            grep -RInE --exclude-dir=.git --exclude='*.sql' 'Analytics dashboard|Website activity|Listening behavior|Recent music activity|listening_starts|completion rate|music.*event|track.*event|Music Library View|site analytics|Site Analytics' . || true
+            echo
+            echo '=== sidebar strings ==='
+            grep -RInE --exclude-dir=.git 'sidebar|portal-nav|nav-group|OPERATIONS|RELATIONSHIPS|WORK|SYSTEM' portal assets includes . 2>/dev/null | head -n 1600 || true
+          } > analytics-diagnostic.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-analytics-v61-9-diagnostic
+          path: analytics-diagnostic.txt
