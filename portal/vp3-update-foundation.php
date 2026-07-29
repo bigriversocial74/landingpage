@@ -153,6 +153,13 @@ function vp3_update_save_settings(array $input): void
     if ($endpoint !== '') {
         Vp3UpdateHttp::assertHttpsUrl($endpoint, true);
     }
+    $automaticInstall = !empty($input['automatic_install_enabled']);
+    $securityOnly = !empty($input['security_only']);
+    if ($automaticInstall && !$securityOnly) {
+        throw new RuntimeException(
+            'Unattended installation is restricted to signed Security or Critical releases. Keep Security-only enabled.'
+        );
+    }
     $existingWorker = vp3_admin_setting('vp3_update_worker_token_encrypted');
     $newWorker = trim((string)($input['worker_token'] ?? ''));
     $removeWorker = !empty($input['remove_worker_token']);
@@ -167,10 +174,38 @@ function vp3_update_save_settings(array $input): void
         'vp3_update_channel' => $channel,
         'vp3_update_manifest_endpoint' => mb_substr($endpoint, 0, 1000),
         'vp3_update_automatic_check_enabled' => !empty($input['automatic_check_enabled']) ? '1' : '0',
-        'vp3_update_automatic_install_enabled' => !empty($input['automatic_install_enabled']) ? '1' : '0',
-        'vp3_update_security_only' => !empty($input['security_only']) ? '1' : '0',
+        'vp3_update_automatic_install_enabled' => $automaticInstall ? '1' : '0',
+        'vp3_update_security_only' => $securityOnly ? '1' : '0',
         'vp3_update_worker_token_encrypted' => $encryptedWorker,
         'vp3_update_backup_retention_days' => (string)max(1, min(365, (int)($input['backup_retention_days'] ?? 30))),
         'vp3_update_request_timeout_seconds' => (string)max(10, min(300, (int)($input['request_timeout_seconds'] ?? 60))),
     ]);
+}
+
+function vp3_update_acquire_operation_lock()
+{
+    $path = vp3_update_work_root() . '/operation.lock';
+    $handle = fopen($path, 'c+');
+    if (!is_resource($handle) || !flock($handle, LOCK_EX | LOCK_NB)) {
+        if (is_resource($handle)) {
+            fclose($handle);
+        }
+        throw new RuntimeException('Another VP3 update operation is already running.');
+    }
+    ftruncate($handle, 0);
+    fwrite($handle, json_encode([
+        'pid' => getmypid(),
+        'started_at' => gmdate('c'),
+    ], JSON_UNESCAPED_SLASHES));
+    fflush($handle);
+    @chmod($path, 0640);
+    return $handle;
+}
+
+function vp3_update_release_operation_lock($handle): void
+{
+    if (is_resource($handle)) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
 }
