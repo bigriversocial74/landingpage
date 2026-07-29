@@ -90,14 +90,74 @@ final class Vp3UpdateManifest
     public static function verify(array $manifest): array
     {
         $settings = vp3_update_settings();
-        $required = ['manifest_version', 'release_id', 'product', 'version', 'channel', 'package', 'signature'];
+        $required = [
+            'manifest_version',
+            'issuer',
+            'audience',
+            'issued_at',
+            'expires_at',
+            'target',
+            'release_id',
+            'product',
+            'version',
+            'channel',
+            'package',
+            'signature',
+        ];
         foreach ($required as $key) {
             if (!array_key_exists($key, $manifest)) {
                 throw new RuntimeException('The VP3 update manifest is missing ' . $key . '.');
             }
         }
+        if ((int)$manifest['manifest_version'] !== 1) {
+            throw new RuntimeException('The VP3 update manifest version is unsupported.');
+        }
+        if (!hash_equals('vp3.me', trim((string)$manifest['issuer']))) {
+            throw new RuntimeException('The VP3 update manifest issuer is invalid.');
+        }
+        $audience = $manifest['audience'];
+        $audienceValid = is_array($audience)
+            ? in_array('pod-updater', array_map('strval', $audience), true)
+            : hash_equals('pod-updater', trim((string)$audience));
+        if (!$audienceValid) {
+            throw new RuntimeException('The VP3 update manifest audience is invalid.');
+        }
+        $issuedAt = strtotime((string)$manifest['issued_at']);
+        $expiresAt = strtotime((string)$manifest['expires_at']);
+        if ($issuedAt === false || $expiresAt === false) {
+            throw new RuntimeException('The VP3 update manifest time window is invalid.');
+        }
+        if ($issuedAt > time() + 300) {
+            throw new RuntimeException('The VP3 update manifest was issued in the future.');
+        }
+        if ($expiresAt < time() - 60) {
+            throw new RuntimeException('The VP3 update manifest has expired.');
+        }
+        if ($expiresAt <= $issuedAt || ($expiresAt - $issuedAt) > 604800) {
+            throw new RuntimeException('The VP3 update manifest validity window is unsafe.');
+        }
         if ((string)$manifest['product'] !== 'vp3-pod') {
             throw new RuntimeException('The update package is not for the VP3 POD product.');
+        }
+        $releaseId = trim((string)$manifest['release_id']);
+        if ($releaseId === '' || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,119}$/', $releaseId)) {
+            throw new RuntimeException('The VP3 update release ID is invalid.');
+        }
+        $identity = new Vp3DeploymentIdentity();
+        $target = is_array($manifest['target']) ? $manifest['target'] : [];
+        $expectedTarget = [
+            'license_public_id' => $identity->licenseId(),
+            'deployment_id' => $identity->deploymentId(),
+            'installation_fingerprint' => $identity->installationFingerprint(),
+        ];
+        foreach ($expectedTarget as $claim => $expected) {
+            $actual = trim((string)($target[$claim] ?? ''));
+            if ($expected === '' || $actual === '' || !hash_equals($expected, $actual)) {
+                throw new RuntimeException('The VP3 update manifest target does not match this POD deployment.');
+            }
+        }
+        if (isset($target['domain']) && !hash_equals($identity->domain(), strtolower(trim((string)$target['domain'])))) {
+            throw new RuntimeException('The VP3 update manifest domain does not match this POD.');
         }
         $channel = (string)$manifest['channel'];
         if (!in_array($channel, ['stable', 'preview', 'security'], true)) {
@@ -118,10 +178,6 @@ final class Vp3UpdateManifest
         if ($minimumVersion !== '' && version_compare((string)$settings['installed_version'], $minimumVersion, '<')) {
             throw new RuntimeException('The installed POD version is too old for this direct update.');
         }
-        $expires = trim((string)($manifest['expires_at'] ?? ''));
-        if ($expires !== '' && strtotime($expires) !== false && strtotime($expires) < time()) {
-            throw new RuntimeException('The VP3 update manifest has expired.');
-        }
         $package = is_array($manifest['package']) ? $manifest['package'] : [];
         $packageUrl = trim((string)($package['url'] ?? ''));
         $packageHash = strtolower(trim((string)($package['sha256'] ?? '')));
@@ -134,13 +190,15 @@ final class Vp3UpdateManifest
         }
         Vp3UpdateHttp::assertHttpsUrl($packageUrl, true);
 
-        $identity = new Vp3DeploymentIdentity();
         $credentials = new Vp3CredentialStore($identity);
         $client = new Vp3LicenseClient($identity, $credentials);
-        $jwks = $client->jwks(false);
-        $verified = Vp3UpdateCrypto::verifyManifest($manifest, $jwks);
+        [$verified, $jwks] = self::verifySignedManifest($manifest, $client);
         if (!Vp3UpdateCrypto::verifyPackageDescriptor($manifest, $jwks)) {
-            throw new RuntimeException('The signed update package descriptor is invalid.');
+            $freshJwks = $client->jwks(true);
+            if (!Vp3UpdateCrypto::verifyPackageDescriptor($manifest, $freshJwks)) {
+                throw new RuntimeException('The signed update package descriptor is invalid.');
+            }
+            $jwks = $freshJwks;
         }
 
         $normalized = $manifest;
@@ -169,5 +227,19 @@ final class Vp3UpdateManifest
     public static function hasNewerVersion(array $manifest): bool
     {
         return version_compare((string)$manifest['version'], vp3_update_installed_version(), '>');
+    }
+
+    private static function verifySignedManifest(array $manifest, Vp3LicenseClient $client): array
+    {
+        $firstError = null;
+        foreach ([false, true] as $force) {
+            try {
+                $jwks = $client->jwks($force);
+                return [Vp3UpdateCrypto::verifyManifest($manifest, $jwks), $jwks];
+            } catch (Throwable $exception) {
+                $firstError ??= $exception;
+            }
+        }
+        throw $firstError ?? new RuntimeException('The VP3 update manifest signature could not be verified.');
     }
 }
