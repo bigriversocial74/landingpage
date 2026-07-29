@@ -90,3 +90,5 @@ function microgifter_render_offer_block(array $settings=[]): string
     $link=$button!==''&&$url!==''?'<a class="site-block-button site-block-button-primary" href="'.e(nmm_public_link_url($url)).'" data-site-event="builder_microgifter_offer_clicked" data-site-label="'.e($title).'" data-site-offer-id="'.e($offerId).'" data-site-offer-price="'.e($price).'">'.e($button).'</a>':'';
     return '<article class="site-microgifter-card" data-microgifter-mode="'.e($mode).'"><span>Microgifter · '.e(status_label($mode)).'</span><h3>'.e($title).'</h3><p>'.e($text).'</p>'.($price!==''?'<strong class="site-microgifter-price">'.e($price).'</strong>':'').$link.'</article>';
 }
+
+require_once __DIR__ . '/vp3-license-settings-bridge.php';

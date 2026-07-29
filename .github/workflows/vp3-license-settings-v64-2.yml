@@ -1,0 +1,39 @@
+name: VP3 License Settings Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feature/vp3-license-settings-ui-v64-2-20260728
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l portal/vp3-license-settings-store.php
+          php -l portal/vp3-license-settings-bridge.php
+          php -l portal/vp3-license-settings-save.php
+          php -l portal/vp3-license-manager.php
+          php -l portal/microgifter-connectors.php
+          php -l api/vp3-license/update-eligibility.php
+          php -l cron/vp3-license-refresh.php
+          php -l tests/vp3-license-settings-v64-2.php
+
+      - name: VP3 license Settings regression
+        run: php tests/vp3-license-settings-v64-2.php
+
+      - name: No new licensing migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f database/vp3_pod_licensing_v64.sql
+          test ! -f database/vp3_license_settings_v64_2.sql
