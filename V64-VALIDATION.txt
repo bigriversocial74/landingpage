@@ -1,0 +1,112 @@
+VP3 POD Licensing Integration v64 validation
+
+Automated repository validation:
+- PHP syntax for every PHP file
+- JavaScript syntax for every JavaScript file
+- CSS structure for every stylesheet
+- All retained portal regressions through v63.5
+- tests/vp3-pod-licensing-v64.php
+- Required-source inventory
+- Repository safety and credential-pattern checks
+
+Migration validation:
+- Import database/vp3_pod_licensing_v64.sql after existing POD migrations
+- Repeat the migration safely
+- Confirm all seven vp3_* tables exist
+- Confirm no ALTER TABLE, DROP TABLE, or destructive customer-data SQL
+- Confirm public-ID, token hash, receipt UUID, event UUID, snapshot UUID, nonce hash, and request UUID uniqueness
+- Confirm deployment credentials and signed tokens are encrypted fields, not plaintext fields
+
+Provisioning validation:
+- One Domain registration maps to one POD license and one POD deployment
+- Multiple Domain registrations under one account do not share one global POD license
+- Required account, Domain registration, Domain, license, deployment, and fingerprint IDs are present
+- Installation fingerprint remains stable through an ordinary update
+- Copied deployment signals produce a different fallback fingerprint
+- Authorized rebind is documented and does not require deleting customer data
+
+Signed-request validation:
+- HTTPS outside loopback tests
+- No credentials, query, or fragment in provider base URL
+- Provisioned deployment credential is encrypted locally
+- Canonical METHOD/PATH/TIMESTAMP/NONCE/REQUEST_ID/SHA256(body)
+- HMAC-SHA256 signature and credential version headers
+- Random nonce and UUID request ID
+- Local nonce and request-ID uniqueness
+- Bounded request timeout and response bytes
+- Redirects disabled and TLS verification enabled
+- No query-string credential
+- Authorization headers and credentials are never logged
+
+Entitlement verification validation:
+- Valid Ed25519 entitlement succeeds
+- Valid RS256 entitlement succeeds when an RSA fixture is available
+- Tampered payload fails
+- Invalid signature fails
+- alg=none fails
+- Unsupported algorithm fails
+- Unknown signing key triggers one JWKS refresh and then fails safely
+- Rotated signing key succeeds after JWKS refresh
+- Wrong issuer fails
+- Wrong audience fails
+- Future iat/nbf outside skew fails
+- Expired online token fails online verification
+- Wrong account ID fails
+- Wrong Domain registration fails
+- Wrong Domain fails
+- Wrong POD license fails
+- Wrong deployment ID fails
+- Wrong installation fingerprint fails
+- Missing entitlement capability document fails
+
+Lifecycle and outage validation:
+- Active license permits explicit entitled capabilities
+- Grace preserves public content and recovery/security access
+- Suspended preserves public content, data, export, recovery, and security access
+- Expired preserves data and recovery path
+- Terminated preserves data and recovery path
+- Unknown preserves public content and fails premium actions closed
+- Temporary VP3 outage uses a valid cached offline lease
+- Expired offline lease stops premium actions without stopping public content
+- No lifecycle transition deletes customer content
+
+Storage validation:
+- POD measures configured local paths
+- 80 percent warning state
+- 90 percent warning state
+- 100 percent hard-limit state
+- Over-limit state after allowance reduction
+- New consumption that would exceed allowance is rejected before writing
+- Existing files are not deleted
+- Allowance increase applies after entitlement refresh without reinstalling
+- Storage receipts contain counts and sizes, not customer filenames/content
+
+Update validation:
+- Active entitled stable-channel update is eligible
+- Wrong channel is denied
+- Automatic-update entitlement removal is denied
+- Insufficient storage is denied
+- Unsigned manifest is denied
+- Invalid checksum is denied
+- Invalid package signature is denied
+- Incompatible migration is denied
+- Missing pre-update backup is denied
+- Critical security and recovery overrides obey VP3 policy
+- Updater still owns final download, checksum/signature verification, install health, and rollback
+- Update endpoint requires administrator CSRF or bearer worker authorization
+
+Owner UI validation:
+- /portal/vp3-license.php requires administrator role
+- Actions require CSRF and authenticated action rate limit
+- Domain, license ID, status, plan, dates, storage, channel/capabilities, validation, and connection state are visible
+- Grace, suspension, provider outage, storage, and validation notices are clear
+- Internal credentials, raw tokens, signatures, and private keys are not rendered
+
+Compatibility validation:
+- Public index remains ungated by online license validation
+- CRM, blog, portfolio, media, social, accounts, page builder, HomeServer, MCP, and updater are not redesigned
+- Existing calling, messaging, receptionist, HomeServer voice, RSS, and feed reader regressions remain green
+- Live config.php and storage/ remain deployment-preserved
+
+Expected certified score: 10/10
+Merge rule: PR remains unmerged until David Evans explicitly approves it
