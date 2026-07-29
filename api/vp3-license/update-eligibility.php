@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 define('NMM_PUBLIC_PAGE', true);
 require dirname(__DIR__, 2) . '/portal/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/portal/vp3-license-settings-store.php';
 require_once dirname(__DIR__, 2) . '/portal/vp3-licensing.php';
 require_once dirname(__DIR__, 2) . '/portal/vp3-license-policy.php';
 
