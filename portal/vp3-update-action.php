@@ -14,7 +14,9 @@ enforce_authenticated_action_limit($user);
 @ignore_user_abort(true);
 
 $action = input('action');
+$operationLock = null;
 try {
+    $operationLock = vp3_update_acquire_operation_lock();
     $agent = new Vp3UpdateAgent();
     if ($action === 'check') {
         $result = $agent->check((int)$user['id'], 'administrator');
@@ -34,7 +36,7 @@ try {
         if ($releaseId <= 0) {
             throw new RuntimeException('Select a valid VP3 release.');
         }
-        $result = $agent->install($releaseId, (int)$user['id'], 'administrator');
+        $agent->install($releaseId, (int)$user['id'], 'administrator');
         flash('success', 'The POD update completed and passed rollback-protected health validation.');
     } elseif ($action === 'rollback') {
         $backupId = int_input('backup_id');
@@ -48,5 +50,7 @@ try {
     }
 } catch (Throwable $exception) {
     flash('error', $exception->getMessage());
+} finally {
+    vp3_update_release_operation_lock($operationLock);
 }
 redirect('portal/vp3-updates.php');
