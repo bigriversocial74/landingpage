@@ -49,7 +49,9 @@ if ($isCli) {
     $releaseId = (int)($_SERVER['HTTP_X_VP3_RELEASE_ID'] ?? 0);
 }
 
+$operationLock = null;
 try {
+    $operationLock = vp3_update_acquire_operation_lock();
     $agent = new Vp3UpdateAgent();
     $result = match ($mode) {
         'check' => $agent->check(null, 'worker'),
@@ -81,4 +83,6 @@ try {
     }
     http_response_code(500);
     echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+} finally {
+    vp3_update_release_operation_lock($operationLock);
 }
