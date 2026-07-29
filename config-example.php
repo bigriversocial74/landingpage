@@ -35,6 +35,9 @@ return [
         // derives deterministic idempotent bearer credentials. Keep it private
         // and stable; rotation requires re-pairing all POD HomeServer devices.
         'pod_homeserver_bridge_secret' => 'replace-with-a-long-random-pod-homeserver-bridge-secret',
+        // Encrypts the locally cached VP3 deployment credential and signed
+        // entitlement token. Keep it private and stable through normal updates.
+        'vp3_license_local_secret' => 'replace-with-a-long-random-vp3-license-local-secret',
 
         'session_idle_seconds' => 30 * 60,
         'session_absolute_seconds' => 12 * 60 * 60,
@@ -184,6 +187,44 @@ return [
         // Restrict remote fetches to standard web ports by default.
         'allowed_ports' => [80, 443],
         'user_agent' => 'NorthMountainMediaFeedReader/62 (+feed subscription service)',
+    ],
+
+    'vp3_licensing' => [
+        // VP3.me is the commercial authority. Provisioning assigns one POD and
+        // one HomeServer license to each active Domain registration.
+        'provider_id' => getenv('VP3_PROVIDER_ID') ?: 'vp3',
+        'provider_name' => getenv('VP3_PROVIDER_NAME') ?: 'VP3.me',
+        'provider_base_url' => getenv('VP3_PROVIDER_BASE_URL') ?: 'https://vp3.me',
+        'api_version' => getenv('VP3_PROVIDER_API_VERSION') ?: 'v1',
+
+        // Provisioned public identifiers. Do not reuse one global POD license
+        // across multiple Domain registrations.
+        'license_public_id' => getenv('VP3_LICENSE_PUBLIC_ID') ?: '',
+        'account_public_id' => getenv('VP3_ACCOUNT_PUBLIC_ID') ?: '',
+        'domain_registration_id' => getenv('VP3_DOMAIN_REGISTRATION_ID') ?: '',
+        'domain' => getenv('VP3_DOMAIN') ?: '',
+        'deployment_id' => getenv('VP3_DEPLOYMENT_ID') ?: '',
+
+        // Prefer a secret manager or environment variable. The adapter encrypts
+        // the credential locally before storing a fallback copy in the database.
+        'deployment_credential' => getenv('VP3_DEPLOYMENT_CREDENTIAL') ?: '',
+        'credential_version' => (int)(getenv('VP3_CREDENTIAL_VERSION') ?: 1),
+
+        // Provisioning should supply this stable fingerprint. When omitted, the
+        // POD creates a protected local seed and combines it with deployment
+        // signals. Authorized replacement/rebind requires VP3 provisioning.
+        'installation_fingerprint' => getenv('VP3_INSTALLATION_FINGERPRINT') ?: '',
+        'installed_version' => getenv('POD_INSTALLED_VERSION') ?: '64.0.0',
+        'token_version' => 1,
+
+        // Local worker credentials. Never pass them in a query string.
+        'cron_token' => getenv('VP3_LICENSE_CRON_TOKEN') ?: 'replace-with-a-long-random-vp3-license-cron-token',
+        'update_worker_token' => getenv('VP3_UPDATE_WORKER_TOKEN') ?: 'replace-with-a-long-random-vp3-update-worker-token',
+
+        'request_timeout_seconds' => 12,
+        'max_response_bytes' => 1024 * 1024,
+        'jwks_cache_seconds' => 3600,
+        'storage_paths' => ['storage'],
     ],
 
     'database' => [
