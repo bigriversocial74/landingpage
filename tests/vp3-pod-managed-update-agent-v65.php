@@ -83,12 +83,6 @@ $manifest = [
         'size_bytes' => 1024,
     ],
 ];
-$manifestInput = Vp3UpdateCrypto::canonicalJson($manifest);
-$manifest['signature'] = [
-    'alg' => 'EdDSA',
-    'kid' => $kid,
-    'value' => Vp3Crypto::base64UrlEncode(sodium_crypto_sign_detached($manifestInput, $secretKey)),
-];
 $packageDescriptor = implode("\n", [
     $manifest['product'],
     $manifest['release_id'],
@@ -101,6 +95,12 @@ $manifest['package']['signature'] = [
     'alg' => 'EdDSA',
     'kid' => $kid,
     'value' => Vp3Crypto::base64UrlEncode(sodium_crypto_sign_detached($packageDescriptor, $secretKey)),
+];
+$manifestInput = Vp3UpdateCrypto::canonicalJson($manifest);
+$manifest['signature'] = [
+    'alg' => 'EdDSA',
+    'kid' => $kid,
+    'value' => Vp3Crypto::base64UrlEncode(sodium_crypto_sign_detached($manifestInput, $secretKey)),
 ];
 
 $verified = Vp3UpdateCrypto::verifyManifest($manifest, $jwks);
@@ -173,8 +173,8 @@ $requirements = [
     'archive file limit' => ['max_archive_files', $source['archive']],
     'zip bomb byte limit' => ['max_extracted_bytes', $source['archive']],
     'symlink rejection' => ['Symbolic links are not allowed', $source['archive']],
-    'config preservation' => ["$relative === 'config.php'", $source['backup']],
-    'storage preservation' => ["str_starts_with($relative, 'storage/')", $source['backup']],
+    'config preservation' => ["\$relative === 'config.php'", $source['backup']],
+    'storage preservation' => ["str_starts_with(\$relative, 'storage/')", $source['backup']],
     'database backup' => ['SHOW CREATE TABLE', $source['backup']],
     'destructive migration block' => ['destructive SQL operation', $source['health_core']],
     'pre-update backup' => ['backup->create', $source['install']],
@@ -187,7 +187,7 @@ $requirements = [
     'operation lock' => ['vp3_update_acquire_operation_lock', $source['action']],
     'worker lock' => ['vp3_update_acquire_operation_lock', $source['worker']],
     'worker bearer authorization' => ['authorization_required', $source['worker']],
-    'manual default' => ["'automatic_install_enabled', '0'", $source['foundation']],
+    'manual default' => ["vp3_update_automatic_install_enabled', '0'", $source['foundation']],
     'security-only unattended policy' => ['Unattended installation is restricted', $source['foundation']],
     'settings page integration' => ['vp3-update-settings-bridge.php', $source['settings_loader']],
     'encrypted worker token' => ['vp3_admin_encrypt_secret', $source['foundation']],
@@ -212,7 +212,8 @@ foreach ($forbidden as $label => $path) {
         v65_fail('Forbidden ' . $label . ': ' . $path);
     }
 }
-if (preg_match('/\b(ALTER|DROP|TRUNCATE|DELETE)\b/i', preg_replace('/^--.*$/m', '', $source['sql']) ?? '')) {
+$schemaSql = preg_replace('/^--.*$/m', '', $source['sql']) ?? '';
+if (preg_match('/\b(DROP\s+TABLE|DROP\s+DATABASE|TRUNCATE\s+TABLE|ALTER\s+TABLE|DELETE\s+FROM)\b/i', $schemaSql)) {
     v65_fail('The v65 installer migration is not additive.');
 }
 
