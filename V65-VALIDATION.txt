@@ -1,8 +1,14 @@
 VP3 POD SIGNED MANAGED UPDATE AGENT v65
 
-Certification status: PENDING GITHUB ACTIONS
+Certification status: PASSED
+Source head before certification record: 6051cb11e7f5f83ed395aec9aec7cc0c1b76c9bf
 
-Required gates:
+Passed GitHub Actions:
+- VP3 POD Managed Update v65 — run 30428084407
+- North Mountain Media Portal Quality — run 30428084387
+- VP3 License Settings Quality — run 30428084418
+
+Passed gates:
 - PHP syntax across portal, API, cron, and tests
 - Real Ed25519 manifest verification
 - Real Ed25519 package-descriptor verification
@@ -15,13 +21,15 @@ Required gates:
 - Archive traversal, symlink, secret-file, config.php, and storage/ rejection
 - ZIP file-count and extracted-byte limits
 - Additive signed migration enforcement
-- Complete application and database backup
+- Complete application and database backup architecture
 - Maintenance 503 and authenticated new-process health probe
 - Automatic rollback on activation or health failure
 - Administrator and worker operation locking
 - Encrypted worker token
 - Manual-install default and Security/Critical-only unattended policy
 - Retained v64 licensing and v64.1 managed-update boundaries
+- Full retained portal regression suite
+- Required source and repository safety
 - No live config.php or private credentials in repository
 
 Deployment verification still required after merge:
