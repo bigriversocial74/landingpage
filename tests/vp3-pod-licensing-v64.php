@@ -80,9 +80,10 @@ foreach ($checks as $label => [$needle, $haystack]) {
 }
 
 $privateKeyMarker = 'BEGIN ' . 'PRIVATE KEY';
+$stripeSecretMarker = 'sk_' . 'live_';
 $forbidden = [
     'VP3 private key' => [$privateKeyMarker, implode("\n", $source)],
-    'Stripe secret' => ['sk_live_', implode("\n", $source)],
+    'Stripe secret' => [$stripeSecretMarker, implode("\n", $source)],
     'query-string worker token' => ["\$_GET['token']", $source['cron'] . $source['update_api']],
     'license content deletion' => ['DELETE FROM blog_', $source['module'] . $source['migration']],
     'license media deletion' => ['DELETE FROM media_', $source['module'] . $source['migration']],
