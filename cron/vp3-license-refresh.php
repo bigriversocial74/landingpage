@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('NMM_PUBLIC_PAGE', true);
 require dirname(__DIR__) . '/portal/bootstrap.php';
 require_once dirname(__DIR__) . '/portal/vp3-license-settings-store.php';
+require_once dirname(__DIR__) . '/portal/vp3-update-version-override.php';
 require_once dirname(__DIR__) . '/portal/vp3-licensing.php';
 
 $isCli = PHP_SAPI === 'cli';
