@@ -21,8 +21,14 @@ The POD had licensing eligibility and an update-authorization endpoint, but no c
 | Concurrency and receipts | 5 | Filesystem operation lock, release/job/backup/migration/receipt records, redacted errors |
 | Regression and documentation | 5 | Real Ed25519 tests, tamper rejection, retained licensing tests, authority contract, deployment setup |
 
-## Final certification target
+## Final certification
 
-**10 / 10** after both GitHub workflows pass on the exact PR head.
+**10 / 10**
 
-Live hosting certification remains a deployment gate because GitHub Actions cannot prove shared-host filesystem ownership, Apache rewrite behavior, database permissions, or a full remote release-service transaction.
+Passed on the completed implementation head before the certification-only documentation update:
+
+- VP3 POD Managed Update v65 — run `30428084407`
+- North Mountain Media Portal Quality — run `30428084387`
+- VP3 License Settings Quality — run `30428084418`
+
+Live hosting certification remains a deployment gate because GitHub Actions cannot prove shared-host filesystem ownership, Apache rewrite behavior, database permissions, or a full remote release-service transaction. Leave unattended installation disabled until one successful signed Preview update and one deliberate failed-health rollback pass on the deployed POD.
