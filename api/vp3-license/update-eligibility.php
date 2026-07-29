@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('NMM_PUBLIC_PAGE', true);
 require dirname(__DIR__, 2) . '/portal/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/portal/vp3-licensing.php';
+require_once dirname(__DIR__, 2) . '/portal/vp3-license-policy.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, private');
@@ -49,11 +50,25 @@ try {
     if (!is_array($manifest)) {
         throw new RuntimeException('Update manifest must be a JSON object.');
     }
-    $result = vp3_update_eligibility($manifest);
-    http_response_code(!empty($result['eligible']) ? 200 : 403);
+
+    $eligibility = vp3_update_eligibility($manifest);
+    $policy = vp3_managed_updates_policy();
+    $eligible = !empty($eligibility['eligible']) && !empty($policy['automatic_updates_enabled']);
+
+    if (!$eligible && empty($policy['automatic_updates_enabled'])) {
+        $eligibility['reasons'] = array_values(array_unique(array_merge(
+            is_array($eligibility['reasons'] ?? null) ? $eligibility['reasons'] : [],
+            ['vp3_license_required_for_managed_updates']
+        )));
+    }
+
+    http_response_code($eligible ? 200 : 403);
     echo json_encode([
-        'ok' => (bool)($result['eligible'] ?? false),
-        'eligibility' => $result,
+        'ok' => $eligible,
+        'eligibility' => $eligibility,
+        'policy' => $policy,
+        'site_operational' => true,
+        'manual_deployment_allowed' => true,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $exception) {
     http_response_code(422);
@@ -61,5 +76,7 @@ try {
         'ok' => false,
         'error' => 'update_eligibility_failed',
         'message' => mb_substr($exception->getMessage(), 0, 300),
+        'site_operational' => true,
+        'manual_deployment_allowed' => true,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }

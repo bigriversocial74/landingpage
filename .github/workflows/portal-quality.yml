@@ -101,6 +101,7 @@ jobs:
           php tests/pod-agent-voice-receptionist-v63-4.php
           php tests/pod-homeserver-voice-provider-v63-5.php
           php tests/vp3-pod-licensing-v64.php
+          php tests/vp3-managed-updates-license-scope-v64-1.php
 
       - name: Required source
         shell: bash
@@ -210,12 +211,15 @@ jobs:
           test -f V63.5-VALIDATION.txt
           test -f database/vp3_pod_licensing_v64.sql
           test -f portal/vp3-licensing.php
+          test -f portal/vp3-license-policy.php
           test -f portal/vp3-license.php
           test -f api/vp3-license/update-eligibility.php
           test -f cron/vp3-license-refresh.php
           test -f tests/vp3-pod-licensing-v64.php
+          test -f tests/vp3-managed-updates-license-scope-v64-1.php
           test -f VP3-POD-LICENSING-CONTRACT-v64.md
           test -f VP3-POD-LICENSING-SETUP-v64.md
+          test -f VP3-MANAGED-UPDATES-LICENSE-SCOPE-v64.1.md
           test -f V64-SCORECARD.md
           test -f V64-VALIDATION.txt
 
