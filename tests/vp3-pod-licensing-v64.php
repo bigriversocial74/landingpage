@@ -79,8 +79,9 @@ foreach ($checks as $label => [$needle, $haystack]) {
     }
 }
 
+$privateKeyMarker = 'BEGIN ' . 'PRIVATE KEY';
 $forbidden = [
-    'VP3 private key' => ['BEGIN PRIVATE KEY', implode("\n", $source)],
+    'VP3 private key' => [$privateKeyMarker, implode("\n", $source)],
     'Stripe secret' => ['sk_live_', implode("\n", $source)],
     'query-string worker token' => ["\$_GET['token']", $source['cron'] . $source['update_api']],
     'license content deletion' => ['DELETE FROM blog_', $source['module'] . $source['migration']],
