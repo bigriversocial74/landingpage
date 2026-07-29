@@ -1,0 +1,64 @@
+name: VP3 POD Managed Update v65
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feature/vp3-pod-managed-update-agent-v65-20260728
+
+permissions:
+  contents: read
+
+jobs:
+  managed-update-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find portal api/vp3-update cron tests -type f -name '*.php' -print0)
+          php -l vp3-update-maintenance.php >/dev/null
+
+      - name: Signed update certification
+        run: php tests/vp3-pod-managed-update-agent-v65.php
+
+      - name: Retained licensing boundaries
+        run: |
+          set -euo pipefail
+          php tests/vp3-pod-licensing-v64.php
+          php tests/vp3-managed-updates-license-scope-v64-1.php
+          php tests/vp3-license-settings-v64-2.php
+
+      - name: Required updater source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f database/vp3_pod_managed_updates_v65.sql
+          test -f portal/vp3-update-core.php
+          test -f portal/vp3-update-provider.php
+          test -f portal/vp3-update-archive.php
+          test -f portal/vp3-update-backup.php
+          test -f portal/vp3-update-agent-install.php
+          test -f portal/vp3-update-settings-bridge.php
+          test -f portal/vp3-updates.php
+          test -f api/vp3-update/health.php
+          test -f cron/vp3-pod-update.php
+          test -f VP3-POD-MANAGED-UPDATE-CONTRACT-v65.md
+          test -f VP3-POD-MANAGED-UPDATE-SETUP-v65.md
+          test ! -f portal/vp3-updater-core.php
+          test ! -f portal/vp3-update-client.php
+
+      - name: Additive migration policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          stripped="$(sed '/^[[:space:]]*--/d' database/vp3_pod_managed_updates_v65.sql)"
+          if printf '%s' "$stripped" | grep -Eiq '\b(DROP[[:space:]]+TABLE|DROP[[:space:]]+DATABASE|TRUNCATE[[:space:]]+TABLE|ALTER[[:space:]]+TABLE|DELETE[[:space:]]+FROM)\b'; then
+            echo 'The v65 installer migration contains a destructive statement.' >&2
+            exit 1
+          fi

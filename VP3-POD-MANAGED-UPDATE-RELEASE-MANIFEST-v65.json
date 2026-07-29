@@ -1,0 +1,42 @@
+{
+  "manifest_version": 1,
+  "issuer": "vp3.me",
+  "audience": "pod-updater",
+  "issued_at": "2026-07-29T00:00:00Z",
+  "expires_at": "2026-07-29T06:00:00Z",
+  "target": {
+    "license_public_id": "LIC-POD-EXAMPLE",
+    "deployment_id": "POD-EXAMPLE",
+    "installation_fingerprint": "pod_example",
+    "domain": "example.com"
+  },
+  "release_id": "REL-POD-65-EXAMPLE",
+  "product": "vp3-pod",
+  "version": "65.0.0",
+  "channel": "stable",
+  "release_type": "standard",
+  "critical_security": false,
+  "recovery_update": false,
+  "minimum_php": "8.1.0",
+  "minimum_installed_version": "64.2.0",
+  "required_storage_bytes": 0,
+  "package": {
+    "url": "https://vp3.me/releases/vp3-pod-65.0.0.zip",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "size_bytes": 123456,
+    "signature": {
+      "alg": "EdDSA",
+      "kid": "vp3-update-example",
+      "value": "BASE64URL_SIGNATURE_PLACEHOLDER"
+    }
+  },
+  "migrations": [],
+  "delete_paths": [],
+  "release_notes": "Example shape only. This file is not a valid signed release.",
+  "published_at": "2026-07-29T00:00:00Z",
+  "signature": {
+    "alg": "EdDSA",
+    "kid": "vp3-update-example",
+    "value": "BASE64URL_SIGNATURE_PLACEHOLDER"
+  }
+}

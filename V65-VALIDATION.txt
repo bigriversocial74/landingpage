@@ -1,0 +1,41 @@
+VP3 POD SIGNED MANAGED UPDATE AGENT v65
+
+Certification status: PASSED
+Source head before certification record: 6051cb11e7f5f83ed395aec9aec7cc0c1b76c9bf
+
+Passed GitHub Actions:
+- VP3 POD Managed Update v65 — run 30428084407
+- North Mountain Media Portal Quality — run 30428084387
+- VP3 License Settings Quality — run 30428084418
+
+Passed gates:
+- PHP syntax across portal, API, cron, and tests
+- Real Ed25519 manifest verification
+- Real Ed25519 package-descriptor verification
+- Tampered manifest rejection
+- HMAC-authenticated release check contract
+- Manifest issuer, audience, time-window, and deployment-target binding
+- JWKS signing-key rotation retry
+- HTTPS streamed package download
+- Package byte-count and SHA-256 verification
+- Archive traversal, symlink, secret-file, config.php, and storage/ rejection
+- ZIP file-count and extracted-byte limits
+- Additive signed migration enforcement
+- Complete application and database backup architecture
+- Maintenance 503 and authenticated new-process health probe
+- Automatic rollback on activation or health failure
+- Administrator and worker operation locking
+- Encrypted worker token
+- Manual-install default and Security/Critical-only unattended policy
+- Retained v64 licensing and v64.1 managed-update boundaries
+- Full retained portal regression suite
+- Required source and repository safety
+- No live config.php or private credentials in repository
+
+Deployment verification still required after merge:
+- Import database/vp3_pod_managed_updates_v65.sql
+- Preserve live config.php and complete storage/
+- Verify Settings panel and Update Center on deployed hosting
+- Perform one signed Preview installation fixture
+- Perform one deliberate failed-health rollback fixture
+- Confirm config.php, storage/, customer uploads, database, and installation fingerprint remain intact
