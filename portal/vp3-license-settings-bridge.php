@@ -67,3 +67,4 @@ function vp3_register_admin_settings_panel(): void
 }
 
 vp3_register_admin_settings_panel();
+require_once __DIR__ . '/vp3-update-settings-bridge.php';
