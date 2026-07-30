@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: fix-activitypub-db-test-v66f
+  cancel-in-progress: false
+
 jobs:
   fix:
     if: github.head_ref == 'feature/activitypub-federation-v66f-20260730'
