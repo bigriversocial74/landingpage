@@ -1,0 +1,41 @@
+name: Fix Syndication Retained RSS v66E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/fix-syndication-retained-rss-v66e.py
+      - .github/workflows/fix-syndication-retained-rss-v66e.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'feature/public-syndication-feed-discovery-v66e-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply retained RSS compatibility repair
+        run: python3 tools/fix-syndication-retained-rss-v66e.py
+      - name: Validate retained regression
+        run: |
+          set -euo pipefail
+          php -l portal/public-syndication.php
+          php -l tests/rss-feed-reader-v62.php
+          php -l tests/public-syndication-v66e.php
+          php tests/rss-feed-reader-v62.php
+          grep -F "return blog_public_posts(\$category, null, \$limit, 0);" portal/public-syndication.php >/dev/null
+          grep -F "'syndication' => 'portal/public-syndication.php'" tests/rss-feed-reader-v62.php >/dev/null
+      - name: Commit retained compatibility repair
+        run: |
+          set -euo pipefail
+          rm -f tools/fix-syndication-retained-rss-v66e.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add portal/public-syndication.php tests/rss-feed-reader-v62.php tests/public-syndication-v66e.php tools/fix-syndication-retained-rss-v66e.py
+          git commit -m "Preserve retained RSS discovery compatibility v66E"
+          git push origin HEAD:${{ github.head_ref }}
