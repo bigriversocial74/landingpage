@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/feed-reader-core.php';
+require_once __DIR__ . '/feed-reader-media.php';
 
 $user = current_user();
 if (!$user) {
@@ -39,6 +40,32 @@ try {
         $state = trim((string)($payload['state'] ?? ''));
         $value = filter_var($payload['value'] ?? false, FILTER_VALIDATE_BOOL);
         $result = feed_reader_set_item_state($userId, $itemId, $state, $value);
+        json_response(['ok' => true, 'result' => $result]);
+    }
+
+    if ($action === 'playback_state') {
+        $result = feed_reader_save_playback(
+            $userId,
+            max(0, (int)($payload['item_id'] ?? 0)),
+            max(0, (int)($payload['position'] ?? 0)),
+            max(0, (int)($payload['duration'] ?? 0)),
+            filter_var($payload['listened'] ?? false, FILTER_VALIDATE_BOOL)
+        );
+        json_response(['ok' => true, 'result' => $result]);
+    }
+
+    if ($action === 'save_note') {
+        $result = feed_reader_save_note($userId, max(0, (int)($payload['item_id'] ?? 0)), (string)($payload['note'] ?? ''));
+        json_response(['ok' => true, 'result' => $result]);
+    }
+
+    if ($action === 'collection_toggle') {
+        $result = feed_reader_toggle_collection(
+            $userId,
+            max(0, (int)($payload['item_id'] ?? 0)),
+            max(0, (int)($payload['collection_id'] ?? 0)),
+            filter_var($payload['value'] ?? false, FILTER_VALIDATE_BOOL)
+        );
         json_response(['ok' => true, 'result' => $result]);
     }
 

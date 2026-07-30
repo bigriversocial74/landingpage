@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('fs');const path=require('path');const vm=require('vm');
+const code=fs.readFileSync(path.join(__dirname,'..','assets','js','feed-reader-social.js'),'utf8');
+const window={};const document={querySelector(){return null;}};
+const context={window,document,console,Math,Number};vm.createContext(context);vm.runInContext(code,context);
+const utils=context.window.NMM_FEED_MEDIA_UTILS;
+if(!utils)throw new Error('Feed media utilities were not exported.');
+if(utils.clampSeconds(-4)!==0||utils.clampSeconds(700000)!==604800)throw new Error('Playback clamping failed.');
+if(!utils.listenedFromProgress(90,100)||utils.listenedFromProgress(89,100))throw new Error('Listened threshold failed.');
+console.log('Feed Reader media player v66B runtime passed.');

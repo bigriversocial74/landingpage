@@ -141,7 +141,8 @@ header(
         ? "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
         : "script-src 'self'; style-src 'self' 'unsafe-inline'; ") .
     "img-src 'self' data: https: blob:; font-src 'self' data:; " .
-    "media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; " .
+    "media-src 'self' https: blob:; connect-src 'self'; worker-src 'self' blob:; " .
+    "frame-src https://www.youtube-nocookie.com https://player.vimeo.com; " .
     "form-action 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
 );
 

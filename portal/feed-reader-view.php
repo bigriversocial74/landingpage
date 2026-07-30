@@ -4,6 +4,7 @@ declare(strict_types=1);
 /* North Mountain Media build: 20260728-social-feed-reader-v62.2 */
 
 require_once __DIR__ . '/feed-reader-core.php';
+require_once __DIR__ . '/feed-reader-media.php';
 
 function feed_reader_portal_url(array $user, array $query = []): string
 {
@@ -48,6 +49,8 @@ function feed_reader_handle_portal_action(string $action, array $user): bool
         'refresh_all_feeds',
         'mark_all_feed_items_read',
         'import_feed_opml',
+        'save_feed_collection',
+        'delete_feed_collection',
     ];
 
     if (!in_array($action, $actions, true)) {
@@ -167,6 +170,18 @@ function feed_reader_handle_portal_action(string $action, array $user): bool
         feed_reader_redirect($user, $returnQuery);
     }
 
+    if ($action === 'save_feed_collection') {
+        $collectionId = feed_reader_save_collection($userId, int_input('collection_id'), input('collection_name'));
+        flash('success', 'Feed collection saved.');
+        feed_reader_redirect($user, ['collection' => $collectionId]);
+    }
+
+    if ($action === 'delete_feed_collection') {
+        feed_reader_delete_collection($userId, int_input('collection_id'));
+        flash('success', 'Feed collection removed.');
+        feed_reader_redirect($user);
+    }
+
     if ($action === 'import_feed_opml') {
         if (rate_limit_exceeded('feed_opml_import', (string)$userId, 2, 3600)) {
             throw new RuntimeException('OPML imports were attempted too frequently. Wait before trying again.');
@@ -264,6 +279,8 @@ function feed_reader_render_navigation(
             <a class="<?=$state==='unread'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'unread','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Unread</span><strong><?=(int)($counts['unread']??0)?></strong></a>
             <a class="<?=$state==='starred'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'starred','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Starred</span><strong><?=(int)($counts['starred']??0)?></strong></a>
             <a class="<?=$state==='saved'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'saved','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Saved</span><strong><?=(int)($counts['saved']??0)?></strong></a>
+            <a class="<?=$state==='listened'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'listened','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Listened</span><strong><?=(int)($counts['listened']??0)?></strong></a>
+            <a class="<?=$state==='notes'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'notes','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Notes</span><strong><?=(int)($counts['notes']??0)?></strong></a>
             <a class="<?=$state==='archived'?'active':''?>" href="<?=e(feed_reader_filter_url($user,['state'=>'archived','source'=>null,'folder'=>null,'item'=>null]))?>"><span>Archived</span><strong><?=(int)($counts['archived']??0)?></strong></a>
         </nav>
 
@@ -385,6 +402,12 @@ function feed_reader_render_settings_dialog(
                     </div>
                 </section>
 
+                <?php if($mediaReady):?><section class="feed-reader-settings-section">
+                    <header><div><span>Private organization</span><h3>Collections</h3></div><strong><?=count($collections)?> total</strong></header>
+                    <form method="post" class="form-grid"><?=csrf_field()?><input type="hidden" name="action" value="save_feed_collection"><label class="field"><span>New collection</span><input name="collection_name" maxlength="190" placeholder="Listen later" required></label><div class="form-footer"><button class="button" type="submit">Create collection</button></div></form>
+                    <div class="feed-reader-collections-grid"><?php foreach($collections as $collection):?><article class="feed-reader-collection-card"><strong><?=e($collection['name'])?></strong><p><?=(int)$collection['item_count']?> item(s)</p><form method="post"><?=csrf_field()?><input type="hidden" name="action" value="delete_feed_collection"><input type="hidden" name="collection_id" value="<?=(int)$collection['id']?>"><button class="button button-danger" type="submit">Delete</button></form></article><?php endforeach;?><?php if(!$collections):?><p>Create a collection to organize articles, podcasts, and videos.</p><?php endif;?></div>
+                </section><?php endif;?>
+
                 <section class="feed-reader-settings-section feed-reader-refresh-history">
                     <header><div><span>Evidence</span><h3>Recent refresh history</h3></div></header>
                     <?php if($recentRefreshes):?>
@@ -425,7 +448,8 @@ function feed_reader_render(array $user): void
         return;
     }
 
-    $state = in_array((string)($_GET['state'] ?? ''), ['unread', 'starred', 'saved', 'archived'], true)
+    $mediaReady = feed_reader_media_schema_available();
+    $state = in_array((string)($_GET['state'] ?? ''), ['unread', 'starred', 'saved', 'listened', 'notes', 'archived'], true)
         ? (string)$_GET['state']
         : 'all';
     $sourceId = max(0, (int)($_GET['source'] ?? 0));
@@ -441,9 +465,11 @@ function feed_reader_render(array $user): void
 
     $folders = feed_reader_folders($userId);
     $subscriptions = feed_reader_subscriptions($userId);
-    $counts = feed_reader_counts($userId);
-    $items = feed_reader_items($userId, $filters, 150);
-    $selected = $selectedItemId > 0 ? feed_reader_item_for_user($userId, $selectedItemId) : null;
+    $counts = feed_reader_counts($userId) + feed_reader_media_counts($userId);
+    $items = feed_reader_enrich_media_items($userId, feed_reader_items($userId, $filters, 150));
+    $selectedRows = $selectedItemId > 0 ? feed_reader_enrich_media_items($userId, array_filter([feed_reader_item_for_user($userId, $selectedItemId)])) : [];
+    $selected = $selectedRows[0] ?? null;
+    $collections = feed_reader_collections($userId);
     $recentRefreshes = feed_reader_recent_refreshes($userId, 20);
     $selectedId = (int)($selected['id'] ?? 0);
     $csrf = csrf_token();
@@ -467,12 +493,14 @@ function feed_reader_render(array $user): void
     }
     ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/feed-reader-social.css?v=20260728-social-feed-reader-v62-2'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/feed-reader-media-v66b.css?v=20260730-v66B'))?>">
 <div
     class="feed-reader-shell feed-reader-social-shell <?=$selectedId>0?'has-selected-item':''?>"
     data-social-feed-reader
     data-feed-api="<?=e($apiUrl)?>"
     data-feed-csrf="<?=e($csrf)?>"
     data-selected-item="<?=$selectedId?>"
+    data-feed-media-ready="<?=$mediaReady?'1':'0'?>"
 >
     <?php feed_reader_render_navigation($user, $state, $sourceId, $folderId, $folders, $subscriptions, $counts); ?>
 
@@ -495,6 +523,8 @@ function feed_reader_render(array $user): void
             <button class="button button-primary" type="button" data-feed-dialog-open>Add feed</button>
         </div>
     </header>
+
+    <?php if(!$mediaReady):?><div class="feed-reader-media-setup"><strong>Feed Reader Media migration required.</strong> Import <code>database/feed_reader_media_v66b.sql</code> to enable durable playback, listened state, notes, and collections. Base reading and subscriptions remain available.</div><?php endif;?>
 
     <?php if($selectedId>0 && $selected):?>
     <article class="feed-reader-article-page" data-feed-article>
@@ -519,12 +549,15 @@ function feed_reader_render(array $user): void
             <div class="feed-reader-article-body">
                 <?=$selected['content_html']?:('<p>'.e($selected['summary']?:'This feed item does not provide article content.').'</p>')?>
             </div>
-            <?php if($selected['enclosure_url']):?>
-                <?php if(str_starts_with((string)$selected['enclosure_type'],'audio/')):?>
-                    <audio controls preload="metadata" src="<?=e($selected['enclosure_url'])?>"></audio>
-                <?php else:?>
-                    <a class="button" href="<?=e($selected['enclosure_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Open attachment</a>
-                <?php endif;?>
+            <?=feed_reader_media_markup($selected,'article')?>
+            <?php if($mediaReady):?>
+            <section class="feed-reader-private-tools" data-item-id="<?=$selectedId?>">
+                <span class="eyebrow">Private workspace</span><h3>Notes and collections</h3><p>These notes and collection memberships are visible only to this portal account.</p>
+                <textarea data-feed-note maxlength="8000" placeholder="Add a private note about this item"><?=e($selected['note_text'])?></textarea>
+                <div class="feed-reader-private-actions"><button class="button" type="button" data-feed-note-save>Save note</button>
+                <select data-feed-collection-select><option value="">Choose collection</option><?php foreach($collections as $collection):?><option value="<?=(int)$collection['id']?>" <?=in_array((int)$collection['id'],$selected['collection_ids'],true)?'disabled':''?>><?=e($collection['name'])?><?=in_array((int)$collection['id'],$selected['collection_ids'],true)?' · added':''?></option><?php endforeach;?></select>
+                <button class="button" type="button" data-feed-collection-add <?=$collections?'':'disabled'?>>Add to collection</button></div>
+            </section>
             <?php endif;?>
             <footer class="feed-reader-article-footer">
                 <a class="button" href="<?=e($backUrl)?>">← Back to feed</a>
@@ -560,7 +593,7 @@ function feed_reader_render(array $user): void
             <div class="feed-reader-social-items" data-feed-items tabindex="-1">
                 <?php foreach($items as $item):?>
                 <?php $itemUrl=feed_reader_filter_url($user,['item'=>(int)$item['id']]); $published=$item['published_at']?:$item['discovered_at']; ?>
-                <article class="feed-reader-social-card <?=!(int)$item['is_read']?'unread':''?>" data-feed-item-row data-item-id="<?=(int)$item['id']?>">
+                <article class="feed-reader-social-card <?=!(int)$item['is_read']?'unread':''?> <?=(int)$item['is_listened']?'is-listened':''?> <?=$item['note_text']!==''?'has-note':''?>" data-feed-item-row data-item-id="<?=(int)$item['id']?>">
                     <header>
                         <?=feed_reader_source_avatar($item)?>
                         <div><strong><?=e($item['subscription_title'])?></strong><span><?=e($item['author_name']?:'Published feed')?> · <time><?=e(format_date($published,'M j, Y'))?></time></span></div>
@@ -569,8 +602,10 @@ function feed_reader_render(array $user): void
                     <a class="feed-reader-social-story" href="<?=e($itemUrl)?>" data-feed-item-link>
                         <h3><?=e($item['title'])?></h3>
                         <p><?=e($item['summary']?:'Open the article to continue reading.')?></p>
-                        <?php if($item['image_url']):?><img src="<?=e($item['image_url'])?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php endif;?>
+                        <?php if($item['image_url'] && ($item['media']['kind']??'')!=='video'):?><img src="<?=e($item['image_url'])?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php endif;?>
                     </a>
+                    <?=feed_reader_media_markup($item,'card')?>
+                    <?php if((int)$item['is_listened'] || $item['note_text']!==''):?><div class="feed-reader-media-badges"><?php if((int)$item['is_listened']):?><span>Listened</span><?php endif;?><?php if($item['note_text']!==''):?><span>Private note</span><?php endif;?></div><?php endif;?>
                     <footer data-item-id="<?=(int)$item['id']?>">
                         <a href="<?=e($itemUrl)?>" data-feed-item-link>Read article</a>
                         <div>
@@ -605,14 +640,23 @@ function feed_reader_render(array $user): void
             <?=csrf_field()?>
             <input type="hidden" name="action" value="add_feed_subscription">
             <header><div><span>New subscription</span><h2>Add RSS or Atom feed</h2></div><button type="button" data-feed-dialog-close aria-label="Close">×</button></header>
-            <p>Paste a public HTTP or HTTPS feed URL. The server validates DNS, redirects, response size, XML structure, and imported HTML before saving anything.</p>
-            <label class="field full"><span>Feed URL</span><input type="url" name="feed_url" maxlength="2000" placeholder="https://example.com/feed.xml" required></label>
+            <p>Paste an RSS/Atom URL, website URL, YouTube channel, handle, or playlist URL. The server validates DNS, redirects, response size, XML structure, and imported HTML before saving anything.</p>
+            <label class="field full"><span>Feed URL</span><input type="url" name="feed_url" maxlength="2000" placeholder="https://example.com/feed.xml or https://youtube.com/@channel" required></label>
             <label class="field full"><span>Display title <small>optional</small></span><input name="display_title" maxlength="255"></label>
             <label class="field full"><span>Folder</span><select name="folder_id"><option value="0">No folder</option><?php foreach($folders as $folder):?><option value="<?=(int)$folder['id']?>"><?=e($folder['name'])?></option><?php endforeach;?></select></label>
             <footer><button class="button" type="button" data-feed-dialog-close>Cancel</button><button class="button button-primary" type="submit">Validate and subscribe</button></footer>
         </form>
     </dialog>
+    <section class="feed-reader-player" data-feed-player-shell hidden aria-label="Feed audio player">
+        <img class="feed-reader-player-cover" data-feed-player-cover alt="" hidden>
+        <div class="feed-reader-player-copy"><strong data-feed-player-title>Feed audio</strong><span data-feed-player-source>Feed Reader</span></div>
+        <audio controls preload="metadata" data-feed-player-audio></audio>
+        <button type="button" data-feed-player-prev aria-label="Previous audio">←</button>
+        <select data-feed-player-speed aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+        <button type="button" data-feed-player-next aria-label="Next audio">→</button>
+        <button type="button" data-feed-player-close aria-label="Close player">×</button>
+    </section>
 </div>
-<script src="<?=e(app_url('assets/js/feed-reader-social.js?v=20260728-social-feed-reader-v62-2'))?>"></script>
+<script src="<?=e(app_url('assets/js/feed-reader-social.js?v=20260730-feed-reader-media-v66B'))?>"></script>
     <?php
 }
