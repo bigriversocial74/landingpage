@@ -1,6 +1,20 @@
 /* North Mountain Media build: 20260730-rich-blog-media-v66A */
 (() => {
   'use strict';
+
+  const storageGet = (key) => {
+    try { return window.localStorage?.getItem(key) || ''; }
+    catch { return ''; }
+  };
+  const storageSet = (key, value) => {
+    try { window.localStorage?.setItem(key, value); }
+    catch {}
+  };
+  const storageRemove = (key) => {
+    try { window.localStorage?.removeItem(key); }
+    catch {}
+  };
+
   document.querySelectorAll('[data-blog-audio-card]').forEach((card) => {
     const audio = card.querySelector('[data-blog-audio]');
     const tools = card.querySelector('[data-blog-audio-tools]');
@@ -22,20 +36,20 @@
     const resume = document.createElement('button');
     resume.type = 'button';
     resume.textContent = 'Start over';
-    resume.addEventListener('click', () => { audio.currentTime = 0; localStorage.removeItem(key); });
+    resume.addEventListener('click', () => { audio.currentTime = 0; storageRemove(key); });
     tools.append(label, resume);
 
     audio.addEventListener('loadedmetadata', () => {
-      const saved = Number(localStorage.getItem(key) || 0);
+      const saved = Number(storageGet(key) || 0);
       if (saved > 5 && Number.isFinite(audio.duration) && saved < audio.duration - 8) audio.currentTime = saved;
     }, { once: true });
     let lastSave = 0;
     audio.addEventListener('timeupdate', () => {
       if (Date.now() - lastSave < 1500) return;
       lastSave = Date.now();
-      localStorage.setItem(key, String(Math.floor(audio.currentTime)));
+      storageSet(key, String(Math.floor(audio.currentTime)));
     });
-    audio.addEventListener('ended', () => localStorage.removeItem(key));
+    audio.addEventListener('ended', () => storageRemove(key));
     audio.addEventListener('play', () => {
       window.NMMVisitorActivity?.track('blog_audio_play', {
         event_label: card.querySelector('strong')?.textContent || 'Blog audio',
