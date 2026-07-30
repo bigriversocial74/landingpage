@@ -1,9 +1,9 @@
 name: Apply Rich Blog Media v66A
 
 on:
-  push:
+  pull_request:
     branches:
-      - feature/rich-blog-media-v66a-20260730
+      - main
     paths:
       - tools/apply-rich-blog-media-v66a.py
       - .github/workflows/apply-rich-blog-media-v66a.yml
@@ -17,10 +17,12 @@ concurrency:
 
 jobs:
   apply:
+    if: github.head_ref == 'feature/rich-blog-media-v66a-20260730'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Apply deterministic patch
@@ -49,4 +51,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "Build Rich Blog Media v66A"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push origin HEAD:${{ github.head_ref }}
