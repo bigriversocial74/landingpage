@@ -86,7 +86,6 @@ jobs:
             database/federated_timeline_v66h.sql \
             database/north_mountain_portal.sql \
             portal/federated-timeline.php \
-            tests/federated-timeline-v66h.php \
-            tools/apply-federated-timeline-v66h.py
+            tests/federated-timeline-v66h.php
           git commit -m 'Repair Federated Timeline schema and regressions'
           git push origin HEAD:${{ github.head_ref }}
