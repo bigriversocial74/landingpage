@@ -1,0 +1,158 @@
+name: Content Interactions Quality
+
+on:
+  pull_request:
+    paths:
+      - portal/content-interactions.php
+      - portal/content-interactions-admin.php
+      - content-interactions-api.php
+      - blog-post.php
+      - portal/publishing-admin.php
+      - portal/publishing-workflow-view.php
+      - assets/js/content-interactions.js
+      - assets/css/content-interactions.css
+      - database/content_interactions_v66c.sql
+      - database/north_mountain_portal.sql
+      - tests/content-interactions-v66c.php
+      - tests/content-interactions-v66c.js
+      - CONTENT-INTERACTIONS-SETUP-v66C.md
+      - V66C-SCORECARD.md
+      - V66C-VALIDATION.txt
+      - .github/workflows/content-interactions-quality.yml
+  push:
+    branches: [main]
+    paths:
+      - portal/content-interactions.php
+      - portal/content-interactions-admin.php
+      - content-interactions-api.php
+      - blog-post.php
+      - portal/publishing-admin.php
+      - portal/publishing-workflow-view.php
+      - assets/js/content-interactions.js
+      - assets/css/content-interactions.css
+      - database/content_interactions_v66c.sql
+      - database/north_mountain_portal.sql
+      - tests/content-interactions-v66c.php
+      - tests/content-interactions-v66c.js
+      - .github/workflows/content-interactions-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/content-interactions.php
+          php -l portal/content-interactions-admin.php
+          php -l content-interactions-api.php
+          php -l blog-post.php
+          php -l portal/publishing-admin.php
+          php -l portal/publishing-workflow-view.php
+          php -l tests/content-interactions-v66c.php
+
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check assets/js/content-interactions.js
+          node --check tests/content-interactions-v66c.js
+
+      - name: Interaction regressions
+        run: |
+          set -euo pipefail
+          php tests/content-interactions-v66c.php
+          node tests/content-interactions-v66c.js
+
+      - name: Schema and cleanup contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          migration = Path('database/content_interactions_v66c.sql').read_text(encoding='utf-8')
+          schema = Path('database/north_mountain_portal.sql').read_text(encoding='utf-8')
+          tables = [
+              'content_interaction_settings','content_comments','content_comment_edits',
+              'content_reactions','content_comment_reports','content_moderation_events'
+          ]
+          for table in tables:
+              needle = f'CREATE TABLE IF NOT EXISTS {table}'
+              if migration.count(needle) != 1:
+                  raise SystemExit(f'v66C migration must define {table} exactly once')
+              if schema.count(needle) != 1:
+                  raise SystemExit(f'fresh schema must define {table} exactly once')
+          required = [
+              "status ENUM('open','resolved')", 'resolved_at DATETIME NULL',
+              "action ENUM('approved','hidden','spam','deleted','auto_hidden')",
+              'ON DELETE SET NULL', 'ON DELETE CASCADE'
+          ]
+          for needle in required:
+              if needle not in migration:
+                  raise SystemExit(f'Migration evidence missing: {needle}')
+          print('Content Interactions schema contract passed.')
+          PY
+          test -f CONTENT-INTERACTIONS-SETUP-v66C.md
+          test -f V66C-SCORECARD.md
+          test -f V66C-VALIDATION.txt
+          test ! -f tools/apply-content-interactions-v66c.py
+          test ! -f tools/fix-content-interactions-v66c.py
+          test ! -f tools/normalize-content-interactions-v66c-fixes.py
+          test ! -f .github/workflows/apply-content-interactions-v66c.yml
+          test ! -f .github/workflows/apply-content-interactions-v66c-fixes.yml
+
+  mysql-8-migration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import fresh schema and additive migration
+        run: |
+          set -euo pipefail
+          mysql --protocol=tcp -h127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql --protocol=tcp -h127.0.0.1 -uroot -proot nmm < database/content_interactions_v66c.sql
+          count=$(mysql --batch --skip-column-names --protocol=tcp -h127.0.0.1 -uroot -proot nmm -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nmm' AND table_name IN ('content_interaction_settings','content_comments','content_comment_edits','content_reactions','content_comment_reports','content_moderation_events')")
+          test "$count" = "6"
+
+  mariadb-migration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client
+        run: sudo apt-get update -qq && sudo apt-get install -y mariadb-client
+      - name: Import fresh schema and additive migration
+        run: |
+          set -euo pipefail
+          mariadb --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm < database/content_interactions_v66c.sql
+          count=$(mariadb --batch --skip-column-names --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nmm' AND table_name IN ('content_interaction_settings','content_comments','content_comment_edits','content_reactions','content_comment_reports','content_moderation_events')")
+          test "$count" = "6"

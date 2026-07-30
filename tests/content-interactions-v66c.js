@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('fs');const path=require('path');const vm=require('vm');
+const code=fs.readFileSync(path.join(__dirname,'..','assets','js','content-interactions.js'),'utf8');
+const window={};const document={querySelector(){return null;}};
+const context={window,document,console,Number,Math};vm.createContext(context);vm.runInContext(code,context);
+const utils=context.window.NMM_CONTENT_INTERACTION_UTILS;
+if(!utils)throw new Error('Interaction utilities were not exported.');
+if(utils.nextReactionCount(4,false,true)!==5)throw new Error('Reaction increment failed.');
+if(utils.nextReactionCount(4,true,false)!==3)throw new Error('Reaction decrement failed.');
+if(utils.nextReactionCount(0,true,false)!==0)throw new Error('Reaction count floor failed.');
+console.log('Content Interactions v66C runtime passed.');

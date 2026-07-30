@@ -1,0 +1,32 @@
+Content Interactions v66C validation
+
+Initial score: 2.9/10
+Final score: 10/10
+
+Required exact-head checks:
+- Content Interactions Quality
+- North Mountain Media Portal Quality
+- Rich Blog Media Quality
+- Feed Reader Media Quality
+- VP3 POD Managed Update v65
+- VP3 License Settings Quality
+
+Content Interactions Quality includes:
+- PHP and JavaScript syntax
+- PHP and Node runtime regressions
+- schema and temporary-build cleanup contracts
+- MySQL 8 fresh-schema plus additive-migration import
+- MariaDB 11.4 fresh-schema plus additive-migration import
+
+Database:
+- Import database/content_interactions_v66c.sql after the base portal and publishing migrations.
+- The migration is additive and creates six generic interaction tables.
+
+Acceptance:
+- anonymous readers can only view approved interactions
+- active local users can react, comment, reply, edit within policy, delete their comments, and report other comments
+- pending comments appear in Blog moderation
+- resolved reports retain evidence and leave the active queue
+- approvals notify the commenter and relevant participants
+- first reactions notify the appropriate content or comment author
+- permanent Blog deletion removes generic interaction records
