@@ -40,13 +40,13 @@ swap_block(
     "    '''        if ($cover !== '') {",
     '''replace_once(
     "portal/blog-feed-output.php",
-    '        $xml .= "</item>\\n";',
+    '        $xml .= "</item>\\\\n";',
     \'\'\'        if ($audio) {
-            $xml .= '<enclosure url="' . publishing_feed_xml($audio['url']) . '" length="' . (int)$audio['length'] . '" type="' . publishing_feed_xml($audio['type']) . '" />' . "\\n";
-            $xml .= '<media:content url="' . publishing_feed_xml($audio['url']) . '" medium="audio" type="' . publishing_feed_xml($audio['type']) . '"' . ($audio['duration_seconds'] ? ' duration="' . (int)$audio['duration_seconds'] . '"' : '') . '><media:title>' . publishing_feed_xml($audio['title']) . '</media:title></media:content>' . "\\n";
-            if ($audio['duration_seconds']) $xml .= '<itunes:duration>' . (int)$audio['duration_seconds'] . "</itunes:duration>\\n";
+            $xml .= '<enclosure url="' . publishing_feed_xml($audio['url']) . '" length="' . (int)$audio['length'] . '" type="' . publishing_feed_xml($audio['type']) . '" />' . "\\\\n";
+            $xml .= '<media:content url="' . publishing_feed_xml($audio['url']) . '" medium="audio" type="' . publishing_feed_xml($audio['type']) . '"' . ($audio['duration_seconds'] ? ' duration="' . (int)$audio['duration_seconds'] . '"' : '') . '><media:title>' . publishing_feed_xml($audio['title']) . '</media:title></media:content>' . "\\\\n";
+            if ($audio['duration_seconds']) $xml .= '<itunes:duration>' . (int)$audio['duration_seconds'] . "</itunes:duration>\\\\n";
         }
-        $xml .= "</item>\\n";\'\'\',
+        $xml .= "</item>\\\\n";\'\'\',
 )'''
 )
 
@@ -55,11 +55,11 @@ swap_block(
     "    '''        foreach ($post['tags'] as $tag) {",
     '''replace_once(
     "portal/blog-feed-output.php",
-    '        $xml .= "</entry>\\n";',
+    '        $xml .= "</entry>\\\\n";',
     \'\'\'        if ($audio) {
-            $xml .= '<link rel="enclosure" href="' . publishing_feed_xml($audio['url']) . '" type="' . publishing_feed_xml($audio['type']) . '" length="' . (int)$audio['length'] . '" title="' . publishing_feed_xml($audio['title']) . '" />' . "\\n";
+            $xml .= '<link rel="enclosure" href="' . publishing_feed_xml($audio['url']) . '" type="' . publishing_feed_xml($audio['type']) . '" length="' . (int)$audio['length'] . '" title="' . publishing_feed_xml($audio['title']) . '" />' . "\\\\n";
         }
-        $xml .= "</entry>\\n";\'\'\',
+        $xml .= "</entry>\\\\n";\'\'\',
 )'''
 )
 
