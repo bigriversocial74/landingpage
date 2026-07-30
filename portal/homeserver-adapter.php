@@ -22,19 +22,32 @@ function homeserver_adapter_setting(string $key, string $default = ''): string
 function homeserver_adapter_status(): array
 {
     $configured = function_exists('nmm_config') ? nmm_config('homeserver') : [];
+    $dynamic = [];
+    if (function_exists('homeserver_connector_status')) {
+        try {
+            $candidate = homeserver_connector_status();
+            if (is_array($candidate)) $dynamic = $candidate;
+        } catch (Throwable) {
+        }
+    }
+
     $paired = filter_var(
-        $configured['paired'] ?? homeserver_adapter_setting('homeserver_paired', '0'),
+        $dynamic['paired'] ?? $configured['paired'] ?? homeserver_adapter_setting('homeserver_paired', '0'),
         FILTER_VALIDATE_BOOL
     );
-    $endpoint = trim((string)($configured['endpoint'] ?? homeserver_adapter_setting('homeserver_endpoint')));
-    $lastSeen = trim((string)($configured['last_seen_at'] ?? homeserver_adapter_setting('homeserver_last_seen_at')));
-    $online = false;
-    if ($paired && $lastSeen !== '') {
+    $endpoint = trim((string)(
+        $dynamic['endpoint'] ?? $configured['endpoint'] ?? homeserver_adapter_setting('homeserver_endpoint')
+    ));
+    $lastSeen = trim((string)(
+        $dynamic['last_seen_at'] ?? $configured['last_seen_at'] ?? homeserver_adapter_setting('homeserver_last_seen_at')
+    ));
+    $online = filter_var($dynamic['online'] ?? false, FILTER_VALIDATE_BOOL);
+    if (!$online && $paired && $lastSeen !== '') {
         $seen = strtotime($lastSeen);
         $online = $seen !== false && $seen >= time() - 300;
     }
 
-    $capabilities = $configured['capabilities'] ?? [];
+    $capabilities = $dynamic['capabilities'] ?? $configured['capabilities'] ?? [];
     if (is_string($capabilities)) {
         $decoded = json_decode($capabilities, true);
         $capabilities = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $capabilities)));
@@ -64,8 +77,10 @@ function homeserver_capability_available(string $capability): bool
     if ($capability === '' || !homeserver_is_connected()) return false;
     $status = homeserver_adapter_status();
     return in_array($capability, $status['capabilities'], true)
-        || function_exists('homeserver_connector_capability_available')
-            && homeserver_connector_capability_available($capability);
+        || (
+            function_exists('homeserver_connector_capability_available')
+            && homeserver_connector_capability_available($capability)
+        );
 }
 
 function homeserver_request(string $capability, array $payload = []): array
@@ -96,7 +111,7 @@ function homeserver_request(string $capability, array $payload = []): array
         return is_array($result)
             ? $result + ['ok' => true, 'available' => true, 'capability' => $capability]
             : ['ok' => true, 'available' => true, 'capability' => $capability, 'result' => $result];
-    } catch (Throwable $exception) {
+    } catch (Throwable) {
         return [
             'ok' => false,
             'available' => true,
