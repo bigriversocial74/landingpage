@@ -6,7 +6,11 @@ require_once NMM_ROOT . '/portal/unified-inbox.php';
 
 $catalog = unified_inbox_source_catalog();
 $coreSources = ['communication','pod_message','content_comment','lead','call_center','notification'];
-if (array_slice(array_keys($catalog), 0, count($coreSources)) !== $coreSources) {
+$coreOrder = array_values(array_filter(
+    array_keys($catalog),
+    static fn(string $sourceType): bool => in_array($sourceType, $coreSources, true)
+));
+if ($coreOrder !== $coreSources) {
     fwrite(STDERR, "Unified core source catalog failed.\n"); exit(1);
 }
 foreach (['federated_comment','federated_reaction','federated_follow'] as $sourceType) {
