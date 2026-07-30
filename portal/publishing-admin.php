@@ -1053,6 +1053,7 @@ No blog posts have been created.
     }
 
     $media = $selected['media'] ?? [];
+    $richMediaTracks = blog_rich_media_tracks_for_admin();
 ?>
 <div class="page-actions">
 <a class="button" href="?view=blog">← All blog posts</a>
@@ -1230,6 +1231,19 @@ Use ## Heading, ### Subheading, and - List item.
 HTML is escaped for public safety.
 </small>
 </label>
+</div>
+</section>
+
+<section class="publishing-form-section blog-rich-media-composer" data-blog-rich-media-composer>
+<header><span>Rich media</span><h3>Video and audio blocks</h3><p>Insert approved media at the current cursor position in the article body.</p></header>
+<div class="form-grid">
+<label class="field full"><span>YouTube or Vimeo URL</span><input type="url" data-video-url placeholder="https://www.youtube.com/watch?v=..."></label>
+<label class="field full"><span>Video caption</span><input data-video-caption maxlength="500" placeholder="Optional accessible title or caption"></label>
+<div class="field full blog-rich-media-actions"><button class="button" type="button" data-insert-video>Insert video block</button></div>
+<label class="field full"><span>Music Library track</span><select data-track-select><option value="">Choose an active public track</option><?php foreach($richMediaTracks as $track):?><option value="<?=(int)$track['id']?>"><?=e($track['title'].' · '.$track['artist'].' · '.$track['duration_label'])?></option><?php endforeach;?></select></label>
+<label class="field full"><span>Audio caption</span><input data-track-caption maxlength="500" placeholder="Optional context for this recording"></label>
+<div class="field full blog-rich-media-actions"><button class="button" type="button" data-insert-track <?=$richMediaTracks?'':'disabled'?>>Insert audio player</button><a class="button" href="<?=e(app_url('portal/admin.php?view=knowledge&section=add'))?>" target="_blank" rel="noopener">Upload audio</a><a class="button" href="<?=e(app_url('portal/admin.php?view=music&section=tracks'))?>" target="_blank" rel="noopener">Manage Music Library</a></div>
+<small class="field full blog-rich-media-status" data-rich-media-status><?=$richMediaTracks?'Ready to insert media.':'Upload audio, adopt it into the Music Library, and set it Active/Public to make it selectable.'?></small>
 </div>
 </section>
 

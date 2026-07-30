@@ -28,12 +28,9 @@ The v51 Blog and Resume Posts data remains intact.
 function publishing_render_workflow_script(): void
 {
 ?>
-<script
-    src="<?=e(app_url(
-        'assets/js/publishing-workflow.js'
-        . '?v=20260727-site-controls-landing-v60'
-    ))?>"
-></script>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/blog-rich-media.css?v=20260730-v66A'))?>">
+<script src="<?=e(app_url('assets/js/publishing-workflow.js?v=20260727-site-controls-landing-v60'))?>"></script>
+<script src="<?=e(app_url('assets/js/blog-rich-media-admin.js?v=20260730-v66A'))?>"></script>
 <?php
 }
 

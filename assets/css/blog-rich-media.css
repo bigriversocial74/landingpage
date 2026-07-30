@@ -1,0 +1,24 @@
+/* North Mountain Media build: 20260730-rich-blog-media-v66A */
+.blog-rich-media{margin:2rem 0;border:1px solid rgba(18,32,48,.14);border-radius:22px;background:#fff;overflow:hidden;box-shadow:0 16px 44px rgba(18,32,48,.08)}
+.blog-video-frame{position:relative;aspect-ratio:16/9;background:#07111d}
+.blog-video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.blog-rich-media figcaption{padding:14px 18px 0;color:#536275;font-size:.94rem}
+.blog-rich-media-source{display:inline-block;margin:12px 18px 18px;font-weight:700}
+.blog-audio-card{display:grid;grid-template-columns:minmax(150px,220px) 1fr;align-items:stretch}
+.blog-audio-card>img{width:100%;height:100%;min-height:220px;object-fit:cover;background:#eef2f6}
+.blog-audio-copy{padding:24px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.blog-audio-copy>span{text-transform:uppercase;letter-spacing:.12em;font-size:.72rem;font-weight:800;color:#66758a}
+.blog-audio-copy>strong{font-size:1.45rem;color:#102033}
+.blog-audio-copy>p{margin:0;color:#5b6879}
+.blog-audio-copy audio{width:100%;margin-top:8px}
+.blog-audio-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.86rem}
+.blog-audio-tools select,.blog-audio-tools button{border:1px solid #ccd5df;border-radius:10px;background:#fff;padding:7px 9px;color:#152638}
+.blog-audio-transcript{grid-column:1/-1;border-top:1px solid #e3e8ee;padding:0 22px 20px}
+.blog-audio-transcript summary{cursor:pointer;padding:16px 0;font-weight:800}
+.blog-audio-transcript div{max-height:360px;overflow:auto;line-height:1.7;color:#344255}
+.blog-rich-media-unavailable{margin:1.5rem 0;padding:18px;border:1px dashed #c7d0da;border-radius:14px;background:#f7f9fb;color:#4d5d70}
+.blog-rich-media-composer{border:1px solid #d9e1e9;border-radius:18px;background:#f8fafc}
+.blog-rich-media-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.blog-rich-media-status{display:block;margin-top:10px;color:#516176;font-weight:700}
+.blog-rich-media-status.is-error{color:#a72b2b}
+@media(max-width:720px){.blog-audio-card{grid-template-columns:1fr}.blog-audio-card>img{max-height:320px}.blog-audio-transcript{grid-column:1}}

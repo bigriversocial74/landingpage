@@ -119,13 +119,16 @@ function publishing_render_rss_feed(): string
     $context = publishing_feed_context('rss');
     $settings = $context['settings'];
     $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-    $xml .= '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">' . "\n<channel>\n";
+    $xml .= '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">' . "\n<channel>\n";
     $xml .= '<title>' . publishing_feed_xml($context['title']) . "</title>\n";
     $xml .= '<link>' . publishing_feed_xml($context['blog_url']) . "</link>\n";
     $xml .= '<description>' . publishing_feed_xml($context['description']) . "</description>\n";
     $xml .= '<language>' . publishing_feed_xml($settings['feed_language']) . "</language>\n";
     $xml .= '<lastBuildDate>' . gmdate(DATE_RSS, $context['last_modified']) . "</lastBuildDate>\n";
-    $xml .= '<generator>North Mountain Media Portal v62</generator>' . "\n";
+    $xml .= '<generator>North Mountain Media Portal v66A</generator>' . "\n";
+    $xml .= '<itunes:author>North Mountain Media</itunes:author>' . "\n";
+    $xml .= '<itunes:summary>' . publishing_feed_xml($context['description']) . "</itunes:summary>\n";
+    $xml .= '<itunes:explicit>false</itunes:explicit>' . "\n";
     $xml .= '<atom:link href="' . publishing_feed_xml($context['self_url']) . '" rel="self" type="application/rss+xml" />' . "\n";
     if ($settings['atom_enabled']) {
         $xml .= '<atom:link href="' . publishing_feed_xml(publishing_absolute_url('blog-atom.php' . ($context['category'] !== '' ? '?category=' . rawurlencode($context['category']) : ''))) . '" rel="alternate" type="application/atom+xml" />' . "\n";
@@ -135,6 +138,7 @@ function publishing_render_rss_feed(): string
         $url = publishing_feed_post_url($post);
         $published = publishing_feed_timestamp($post, 'published_at', (string)($post['created_at'] ?? ''));
         $cover = publishing_feed_cover_url($post);
+        $audio = blog_rich_media_first_enclosure((string)$post['body']);
         $xml .= "<item>\n";
         $xml .= '<title>' . publishing_feed_xml($post['title']) . "</title>\n";
         $xml .= '<link>' . publishing_feed_xml($url) . "</link>\n";
@@ -155,6 +159,11 @@ function publishing_render_rss_feed(): string
             $xml .= '<media:content url="' . publishing_feed_xml($cover) . '" medium="image">';
             $xml .= '<media:title>' . publishing_feed_xml((string)($post['cover']['alt'] ?: $post['title'])) . '</media:title>';
             $xml .= "</media:content>\n";
+        }
+        if ($audio) {
+            $xml .= '<enclosure url="' . publishing_feed_xml($audio['url']) . '" length="' . (int)$audio['length'] . '" type="' . publishing_feed_xml($audio['type']) . '" />' . "\n";
+            $xml .= '<media:content url="' . publishing_feed_xml($audio['url']) . '" medium="audio" type="' . publishing_feed_xml($audio['type']) . '"' . ($audio['duration_seconds'] ? ' duration="' . (int)$audio['duration_seconds'] . '"' : '') . '><media:title>' . publishing_feed_xml($audio['title']) . '</media:title></media:content>' . "\n";
+            if ($audio['duration_seconds']) $xml .= '<itunes:duration>' . (int)$audio['duration_seconds'] . "</itunes:duration>\n";
         }
         $xml .= "</item>\n";
     }
@@ -192,6 +201,7 @@ function publishing_render_atom_feed(): string
         $url = publishing_feed_post_url($post);
         $published = publishing_feed_timestamp($post, 'published_at', (string)($post['created_at'] ?? ''));
         $updated = publishing_feed_timestamp($post, 'updated_at', (string)($post['published_at'] ?? ''));
+        $audio = blog_rich_media_first_enclosure((string)$post['body']);
         $xml .= "<entry>\n";
         $xml .= '<id>' . publishing_feed_xml(publishing_atom_id($post)) . "</id>\n";
         $xml .= '<title>' . publishing_feed_xml($post['title']) . "</title>\n";
@@ -206,6 +216,9 @@ function publishing_render_atom_feed(): string
         }
         foreach ($post['tags'] as $tag) {
             $xml .= '<category term="' . publishing_feed_xml($tag) . '" />' . "\n";
+        }
+        if ($audio) {
+            $xml .= '<link rel="enclosure" href="' . publishing_feed_xml($audio['url']) . '" type="' . publishing_feed_xml($audio['type']) . '" length="' . (int)$audio['length'] . '" title="' . publishing_feed_xml($audio['title']) . '" />' . "\n";
         }
         $xml .= "</entry>\n";
     }
