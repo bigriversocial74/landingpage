@@ -20,7 +20,19 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Apply deterministic integration
-        run: python3 tools/apply-federated-timeline-v66h.py
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/apply-federated-timeline-v66h.py')
+          content = path.read_text(encoding='utf-8')
+          old = '"] : [];\\n$actors = $schemaAvailable ? db()->query(\\n"'
+          new = '"], 150) : [];\\n$actors = $schemaAvailable ? db()->query(\\n"'
+          if content.count(old) != 1:
+              raise SystemExit(f'Page query patch anchor count: {content.count(old)}')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+          python3 tools/apply-federated-timeline-v66h.py
       - name: PHP syntax
         run: |
           set -euo pipefail
