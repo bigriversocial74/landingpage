@@ -333,7 +333,9 @@ function feed_reader_render_settings_dialog(
     array $subscriptions,
     array $recentRefreshes,
     array $config,
-    string $opmlUrl
+    string $opmlUrl,
+    bool $mediaReady,
+    array $collections
 ): void {
     $healthy = count(array_filter($subscriptions, static fn(array $source): bool => ($source['source_status'] ?? '') === 'active'));
     $errors = count(array_filter($subscriptions, static fn(array $source): bool => ($source['source_status'] ?? '') === 'error'));
@@ -633,7 +635,7 @@ function feed_reader_render(array $user): void
     </div>
     <?php endif;?>
 
-    <?php feed_reader_render_settings_dialog($folders, $subscriptions, $recentRefreshes, $config, $opmlUrl); ?>
+    <?php feed_reader_render_settings_dialog($folders, $subscriptions, $recentRefreshes, $config, $opmlUrl, $mediaReady, $collections); ?>
 
     <dialog class="feed-reader-dialog feed-reader-add-dialog" data-feed-dialog>
         <form method="post" class="feed-reader-dialog-card">

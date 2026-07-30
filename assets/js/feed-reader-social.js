@@ -75,23 +75,40 @@
   let currentTrigger = null;
   let lastSyncAt = 0;
 
-  const playbackPayload = (listened = false) => currentTrigger && player ? {
+  const playbackPayload = (
+    trigger = currentTrigger,
+    position = player?.currentTime,
+    duration = player?.duration,
+    listened = false
+  ) => trigger && player ? {
     action: 'playback_state',
-    item_id: Number(currentTrigger.dataset.itemId || 0),
-    position: clampSeconds(player.currentTime),
-    duration: clampSeconds(player.duration),
-    listened: listened || listenedFromProgress(player.currentTime, player.duration),
+    item_id: Number(trigger.dataset.itemId || 0),
+    position: clampSeconds(position),
+    duration: clampSeconds(duration),
+    listened: listened || listenedFromProgress(position, duration),
   } : null;
-  const syncPlayback = (keepalive = false, listened = false) => {
+  const syncPlayback = (
+    keepalive = false,
+    listened = false,
+    trigger = currentTrigger,
+    position = player?.currentTime,
+    duration = player?.duration
+  ) => {
     if (!mediaReady) return;
-    const payload = playbackPayload(listened);
+    const payload = playbackPayload(trigger, position, duration, listened);
     if (payload?.item_id) request(payload, keepalive).catch(() => {});
   };
   const loadQueue = (index, autoplay = true) => {
     if (!player || !playerShell || !queue.length) return;
+    const previousTrigger = currentTrigger;
+    const previousPosition = Number(player.currentTime) || 0;
+    const previousDuration = Number(player.duration) || 0;
+    if (previousTrigger && previousPosition > 0) {
+      syncPlayback(false, false, previousTrigger, previousPosition, previousDuration);
+    }
+    player.pause();
     queueIndex = (index + queue.length) % queue.length;
     currentTrigger = queue[queueIndex];
-    player.pause();
     player.src = currentTrigger.dataset.audioUrl || '';
     playerTitle.textContent = currentTrigger.dataset.audioTitle || 'Feed audio';
     playerSource.textContent = currentTrigger.dataset.audioSource || 'Feed Reader';
@@ -110,7 +127,9 @@
     lastSyncAt = Date.now();
     syncPlayback(false, false);
   });
-  player?.addEventListener('pause', () => syncPlayback(false, false));
+  player?.addEventListener('pause', () => {
+    if ((Number(player.currentTime) || 0) > 0) syncPlayback(false, false);
+  });
   player?.addEventListener('ended', () => { syncPlayback(false, true); loadQueue(queueIndex + 1, true); });
   speed?.addEventListener('change', () => { if (player) player.playbackRate = Number(speed.value) || 1; });
   window.addEventListener('pagehide', () => syncPlayback(true, false));
