@@ -38,6 +38,8 @@ return [
         // Encrypts the locally cached VP3 deployment credential and signed
         // entitlement token. Keep it private and stable through normal updates.
         'vp3_license_local_secret' => 'replace-with-a-long-random-vp3-license-local-secret',
+        // Encrypts the local ActivityPub RSA private key. Keep this private and stable.
+        'activitypub_secret' => 'replace-with-a-long-random-activitypub-private-key-secret',
 
         'session_idle_seconds' => 30 * 60,
         'session_absolute_seconds' => 12 * 60 * 60,

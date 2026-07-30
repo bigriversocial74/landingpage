@@ -8,6 +8,7 @@ nmm_require_public_module('blog');
 require_once __DIR__ . '/portal/publishing.php';
 require_once __DIR__ . '/portal/publishing-workflow.php';
 require_once __DIR__ . '/portal/public-syndication.php';
+require_once __DIR__ . '/portal/activitypub.php';
 require_once __DIR__ . '/portal/public-music-shell.php';
 
 $category = trim((string)($_GET['category'] ?? ''));
@@ -90,6 +91,7 @@ header(
 <meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
 <?=syndication_discovery_links(['category'=>$category,'tag'=>'','author'=>''])?>
+<?=activitypub_discovery_links()?>
 <meta property="og:type" content="website">
 <meta property="og:title" content="<?=e($archiveIntro)?>">
 <meta property="og:description" content="<?=e($archiveDescription)?>">

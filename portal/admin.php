@@ -28,9 +28,10 @@ require_once __DIR__ . '/menus-admin.php';
 require_once __DIR__ . '/feed-reader-view.php';
 require_once __DIR__ . '/unified-inbox.php';
 require_once __DIR__ . '/syndication-admin.php';
+require_once __DIR__ . '/activitypub-admin.php';
 $user=require_role('admin');
 $view=(string)($_GET['view']??'dashboard');
-$allowed=['dashboard','inbox','music','analytics','call-center','clients','administrators','crm','portfolio','blog','syndication','events','bookings','proposals','resume','projects','leads','communications','notifications','messages','files','knowledge','builder','menus','feeds','site-analytics','settings','account'];
+$allowed=['dashboard','inbox','music','analytics','call-center','clients','administrators','crm','portfolio','blog','syndication','federation','events','bookings','proposals','resume','projects','leads','communications','notifications','messages','files','knowledge','builder','menus','feeds','site-analytics','settings','account'];
 if(!in_array($view,$allowed,true))$view='dashboard';
 if($view==='messages')$view='communications';
 
@@ -46,6 +47,9 @@ if(is_post()){
     enforce_authenticated_action_limit($user);
     $action=input('action');
     try{
+        if(activitypub_handle_admin_action($action,$user)){
+            exit;
+        }
         if(syndication_handle_admin_action($action,$user)){
             exit;
         }
@@ -3098,6 +3102,12 @@ if($view==='inbox'){
 
 if($view==='syndication'){
     syndication_render_admin($user);
+    portal_footer();
+    exit;
+}
+
+if($view==='federation'){
+    activitypub_render_admin($user);
     portal_footer();
     exit;
 }

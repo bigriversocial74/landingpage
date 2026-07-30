@@ -6,6 +6,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/activitypub-http.php';
 require_once __DIR__ . '/notifications.php';
 
+function activitypub_valid_uuid(string $value): bool
+{
+    return (bool)preg_match(
+        '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+        trim($value)
+    );
+}
+
 function activitypub_uuid_from_seed(string $seed): string
 {
     $hex = substr(hash('sha256', $seed), 0, 32);
@@ -27,7 +35,7 @@ function activitypub_activity_uuid_from_uri(string $uri): string
     $query = [];
     parse_str((string)parse_url($uri, PHP_URL_QUERY), $query);
     $uuid = trim((string)($query['id'] ?? ''));
-    return pod_message_valid_uuid($uuid) ? strtolower($uuid) : '';
+    return activitypub_valid_uuid($uuid) ? strtolower($uuid) : '';
 }
 
 function activitypub_store_outbox_activity(
@@ -639,7 +647,7 @@ function activitypub_following_document(): array
 
 function activitypub_activity_document(string $uuid): ?array
 {
-    if (!activitypub_schema_available() || !pod_message_valid_uuid($uuid)) return null;
+    if (!activitypub_schema_available() || !activitypub_valid_uuid($uuid)) return null;
     $statement = db()->prepare(
         'SELECT payload_json FROM activitypub_outbox_activities
          WHERE activity_uuid=:uuid LIMIT 1'
