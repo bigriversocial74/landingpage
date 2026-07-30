@@ -1,0 +1,47 @@
+name: Apply Feed Reader Media v66B Resume Fix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/fix-feed-reader-media-v66b-resume.py
+      - .github/workflows/apply-feed-reader-media-v66b-resume.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: feed-reader-media-v66b-resume
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/feed-reader-media-v66b-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply same-track resume fix
+        run: python3 tools/fix-feed-reader-media-v66b-resume.py
+
+      - name: Validate resume behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check assets/js/feed-reader-social.js
+          php tests/feed-reader-media-v66b.php
+          node tests/feed-reader-media-player-v66b.js
+
+      - name: Commit resume fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f tools/fix-feed-reader-media-v66b-resume.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix Feed Reader same-track resume"
+          git push origin HEAD:${{ github.head_ref }}
