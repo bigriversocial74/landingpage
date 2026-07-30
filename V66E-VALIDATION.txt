@@ -1,32 +1,34 @@
 Public Syndication & Feed Discovery v66E validation
 
 Initial score: 7.1/10
-Provisional implementation score: 9.5/10
-Final score target: 10/10
+Final score: 10/10
 
-Required exact-head checks:
-- Public Syndication Quality
-- North Mountain Media Portal Quality
-- Rich Blog Media Quality
-- Content Interactions Quality
-- Unified Social Inbox Quality
-- Feed Reader Media Quality
-- VP3 POD Managed Update v65
-- VP3 License Settings Quality
+Certified source head:
+- 512f04b541a82cb360ca8fac7bcd76c81c1bfd90
 
-Public Syndication Quality must pass:
+Exact-head checks passed:
+- Public Syndication Quality — run 30570682055
+- North Mountain Media Portal Quality — run 30570682169
+- Rich Blog Media Quality — run 30570681752
+- Content Interactions Quality — run 30570682259
+- Unified Social Inbox Quality — run 30570682097
+- Feed Reader Media Quality — run 30570681898
+- VP3 POD Managed Update v65 — run 30570681940
+- VP3 License Settings Quality — run 30570682477
+
+Public Syndication Quality passed:
 - PHP syntax for every new and integrated source file
 - pure protocol, URL, Webmention parsing, security, discovery, and cleanup regressions
 - fresh-schema plus additive-migration import on MySQL 8.4
 - fresh-schema plus additive-migration import on MariaDB 11.4
 - live category, tag, and author feed queries
-- JSON Feed 1.1 rendering
+- JSON Feed 1.1 rendering with native WebSub hub metadata
 - filtered RSS and Atom rendering
-- podcast channel rendering
+- podcast channel rendering and empty-owner suppression
 - approved Webmention retrieval
 - WebSub topic discovery
 
-Security acceptance:
+Security acceptance passed:
 - public POST-only Webmention receiver
 - public-request rate limiting
 - private, reserved, localhost, link-local, credentialed, and unsupported URL rejection
@@ -39,6 +41,13 @@ Security acceptance:
 - approved-only public display
 - bounded WebSub retry and delivery receipts
 
+Continuity acceptance passed:
+- established all-post and category feed queries retain blog_public_posts()
+- tag and author feeds use the new filtered query path
+- retained RSS and Atom discovery tests inspect the centralized syndication renderer
+- Portal Quality passes without weakening the legacy regression suite
+- every temporary integration and repair workflow is removed
+
 Database:
 - import database/public_syndication_v66e.sql after the existing portal schema
 - migration defines syndication_webmentions and syndication_websub_deliveries exactly once
@@ -50,3 +59,5 @@ Deployment:
 - preserve the complete storage/ directory
 - preserve the existing database
 - schedule php cron/process-syndication.php 20 when WebSub is enabled
+
+The final documentation head must repeat all exact-head checks before merge.
