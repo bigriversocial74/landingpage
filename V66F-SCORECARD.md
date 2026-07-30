@@ -2,23 +2,51 @@
 
 ## Initial score: 2.6/10
 
-The POD has a stable local identity, RSS, Atom, JSON Feed, WebSub, Webmentions, Blog interactions, and a Unified Social Inbox. It does not yet expose an ActivityPub actor, federation inbox/outbox, follower graph, signed deliveries, or fediverse discovery.
+The POD had a stable local identity, RSS, Atom, JSON Feed, WebSub, Webmentions, Blog interactions, and a Unified Social Inbox, but it did not participate directly in the fediverse.
 
-## Build target
+## Repairs completed
 
-- Reuse the primary POD identity as one local ActivityPub actor.
-- Add WebFinger and NodeInfo discovery.
-- Add Actor, Inbox, Outbox, Followers, and Following endpoints.
-- Federate published Blog posts as Create, Update, and Delete activities.
-- Moderate inbound Follow requests and support Accept, Reject, Undo, and removal.
-- Sign outbound deliveries and verify inbound HTTP signatures, Date, Host, Digest, and replay boundaries.
-- Encrypt the local ActivityPub private key at rest.
-- Fetch remote actors through public-address validation, DNS pinning, redirect revalidation, size limits, and strict JSON parsing.
-- Queue deliveries asynchronously with bounded retry and durable receipts.
-- Add administrator settings, key controls, follower moderation, inbox evidence, and delivery visibility.
-- Keep federation disabled by default and preserve complete standalone POD operation.
-- Add additive and fresh-install schema coverage plus PHP, MySQL 8.4, MariaDB 11.4, and retained portal regressions.
+- Reused the primary POD identity as one local ActivityPub actor.
+- Added WebFinger and NodeInfo 2.1 discovery.
+- Added public Actor, Inbox, Outbox, Followers, Following, Activity, and Object endpoints.
+- Added Blog `Create`, `Update`, and `Delete` federation with `Article` objects and `Tombstone` deletion evidence.
+- Added published-revision restore federation and scheduled-post backfill.
+- Added moderated inbound Follow requests with signed `Accept`, `Reject`, embedded `Undo`, string-form `Undo`, removal, and remote actor deletion handling.
+- Added immutable outbox activities, verified inbox evidence, asynchronous delivery queues, bounded retry, delivery receipts, and manual retry.
+- Added legacy fediverse HTTP `Signature` interoperability with required signed `(request-target)`, `host`, `date`, and `digest` components.
+- Added SHA-256 Digest verification, five-minute Date freshness, Host validation, actor/signer ownership, replay evidence, and key refresh on signer-key mismatch.
+- Added 2048-bit RSA signing keys with versioned key IDs, AES-256-GCM encrypted private-key storage, administrator-only initialization, and retained retirement evidence.
+- Added HTTPS-only remote actor retrieval and delivery on port 443 with public-address validation, DNS pinning, proxy bypass prevention, manual redirect validation, TLS verification, strict JSON parsing, and one-megabyte limits.
+- Added administrator federation settings, key rotation, follower moderation, Blog backfill, inbox evidence, delivery visibility, queue processing, retry, and actor refresh.
+- Added ActivityPub capability discovery to the POD identity document while preserving standalone operation with federation disabled by default.
+- Added additive migration and corrected fresh-install schema dependency ordering.
+- Added permanent protocol, cryptography, security, cleanup, MySQL 8.4, and MariaDB 11.4 certification.
+- Removed all temporary integration, hardening, repair, and fixture workflows and scripts.
 
-## Current score: 2.6/10
+## Provisional implementation score: 9.5/10
 
-Final 10/10 requires complete implementation, source/security review, clean temporary-file removal, and exact-head workflow certification.
+The dedicated ActivityPub Federation Quality workflow passed:
+
+- PHP syntax
+- protocol, cryptography, security, schema, and cleanup regressions
+- MySQL 8.4 fresh-schema and repeat-safe additive-migration imports
+- MariaDB 11.4 fresh-schema and repeat-safe additive-migration imports
+- live key rotation, Actor, WebFinger, NodeInfo, Create, Update, Delete, follower approval, Accept delivery, collections, retry reset, and Tombstone behavior
+
+## Final score target: 10/10
+
+| Area | Current score |
+|---|---:|
+| POD actor and discovery | 10/10 |
+| ActivityPub public documents | 10/10 |
+| Blog Create, Update, Delete, and Tombstones | 10/10 |
+| Follower moderation and relationship handling | 10/10 |
+| HTTP signature and Digest validation | 10/10 |
+| Remote actor and SSRF boundaries | 10/10 |
+| Encrypted key management and rotation | 10/10 |
+| Asynchronous delivery and receipts | 10/10 |
+| Administrator controls | 10/10 |
+| MySQL and MariaDB compatibility | 10/10 |
+| Deployment and external acceptance readiness | 9/10 |
+
+Final 10/10 requires every retained and dedicated workflow to pass on the same documentation head, followed by the final source review and PR certification record.
