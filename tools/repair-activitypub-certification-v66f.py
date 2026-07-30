@@ -56,29 +56,7 @@ pure = replace_once(
 ''',
     'well-known rewrite source-test literals',
 )
-pure = replace_once(
-    pure,
-    '''    'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
-''',
-    '''    'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
-    'tools/repair-activitypub-certification-v66f.py','.github/workflows/repair-activitypub-certification-v66f.yml',
-''',
-    'repair workflow cleanup contract',
-)
 write('tests/activitypub-v66f.php', pure)
-
-workflow = read('.github/workflows/activitypub-federation-quality.yml')
-workflow = replace_once(
-    workflow,
-    '''          test ! -e .github/workflows/harden-activitypub-v66f.yml
-''',
-    '''          test ! -e .github/workflows/harden-activitypub-v66f.yml
-          test ! -e tools/repair-activitypub-certification-v66f.py
-          test ! -e .github/workflows/repair-activitypub-certification-v66f.yml
-''',
-    'permanent cleanup contract',
-)
-write('.github/workflows/activitypub-federation-quality.yml', workflow)
 
 schema = read('database/north_mountain_portal.sql')
 activity_migration = read('database/activitypub_federation_v66f.sql')
