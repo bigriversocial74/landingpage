@@ -35,6 +35,7 @@ function status_label(string $value): string { return ucwords(str_replace('_',' 
 
 require_once NMM_ROOT . '/portal/public-syndication.php';
 require_once NMM_ROOT . '/portal/blog-feed-output.php';
+require_once NMM_ROOT . '/portal/webmention-service.php';
 
 $fail=static function(string $message): never { fwrite(STDERR,$message."\n"); exit(1); };
 $pdo=db();
@@ -81,11 +82,13 @@ try {
     $expected=[$alphaId,$betaId]; sort($expected);
     if($authorIds!==$expected) $fail('Author feed filtering failed.');
 
+    $pdo->prepare('INSERT INTO settings(setting_key,setting_value) VALUES("blog_websub_hub_url","https://hub.example.test/"),("blog_websub_enabled","1") ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)')->execute();
     $json=syndication_render_json_feed(['category'=>'','tag'=>'open-web','author'=>'']);
     $decoded=json_decode($json,true,512,JSON_THROW_ON_ERROR);
     if(($decoded['version']??'')!=='https://jsonfeed.org/version/1.1') $fail('JSON Feed version failed.');
     if(count($decoded['items']??[])!==1 || ($decoded['items'][0]['title']??'')!=='Open Web Alpha') $fail('JSON Feed item rendering failed.');
     if(!str_contains((string)($decoded['feed_url']??''),'tag=open-web')) $fail('JSON Feed self URL filter failed.');
+    if(($decoded['hubs'][0]['type']??'')!=='WebSub' || ($decoded['hubs'][0]['url']??'')!=='https://hub.example.test/') $fail('JSON Feed WebSub hub rendering failed.');
 
     $_GET=['tag'=>'open-web'];
     $rss=publishing_render_rss_feed();
@@ -97,6 +100,7 @@ try {
     $podcast=syndication_render_podcast_feed();
     if(!str_contains($podcast,'xmlns:itunes=') || !str_contains($podcast,'xmlns:podcast=')) $fail('Podcast namespace rendering failed.');
     if(!str_contains($podcast,'<itunes:type>episodic</itunes:type>')) $fail('Podcast channel metadata failed.');
+    if(str_contains($podcast,'<podcast:locked owner="">')) $fail('Empty podcast owner metadata rendered.');
 
     $pdo->prepare(
         'INSERT INTO syndication_webmentions

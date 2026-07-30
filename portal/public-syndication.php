@@ -218,6 +218,7 @@ function syndication_render_json_feed(?array $filter = null): string
     }
     $feed = [
         'version'=>'https://jsonfeed.org/version/1.1',
+        'user_comment'=>'This feed can be added to a compatible reader using its feed_url.',
         'title'=>$context['title'],
         'home_page_url'=>$context['blog_url'],
         'feed_url'=>$context['self_url'],
@@ -226,6 +227,12 @@ function syndication_render_json_feed(?array $filter = null): string
         'authors'=>[['name'=>$context['settings']['podcast_author']]],
         'items'=>$items,
     ];
+    if ($context['settings']['websub_enabled']) {
+        $feed['hubs'] = [[
+            'type'=>'WebSub',
+            'url'=>$context['settings']['websub_hub_url'],
+        ]];
+    }
     return json_encode($feed, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR) . "\n";
 }
 
@@ -266,8 +273,8 @@ function syndication_render_podcast_feed(): string
     $xml .= '<itunes:explicit>' . ($settings['podcast_explicit'] ? 'true' : 'false') . "</itunes:explicit>\n";
     $xml .= '<itunes:type>' . syndication_xml($settings['podcast_type']) . "</itunes:type>\n";
     $xml .= '<itunes:category text="' . syndication_xml($settings['podcast_category']) . '" />' . "\n";
-    $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
     if ($settings['podcast_owner_email'] !== '') {
+        $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
         $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\n";
     }
     if ($image !== '') $xml .= '<itunes:image href="' . syndication_xml($image) . '" />' . "\n";

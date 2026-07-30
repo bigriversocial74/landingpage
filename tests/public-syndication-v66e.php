@@ -64,6 +64,7 @@ foreach ($files as $key=>$path) {
 $checks = [
     ['JSON Feed 1.1','https://jsonfeed.org/version/1.1',$source['core']],
     ['JSON MIME','application/feed+json',$source['core'].$source['json']],
+    ['JSON WebSub hubs','$feed[\'hubs\']',$source['core']],
     ['tag filter',"'tag'",$source['core']],
     ['author filter',"'author'",$source['core']],
     ['podcast RSS','xmlns:podcast=',$source['core']],
@@ -95,6 +96,7 @@ foreach (['syndication_webmentions','syndication_websub_deliveries'] as $table) 
 foreach ([
     'tools/apply-public-syndication-v66e.py','.github/workflows/apply-public-syndication-v66e.yml',
     'tools/fix-public-syndication-security-v66e.py','.github/workflows/fix-public-syndication-security-v66e.yml',
+    'tools/refine-public-syndication-v66e.py','.github/workflows/refine-public-syndication-v66e.yml',
 ] as $temporary) {
     if (is_file($root.'/'.$temporary)) $fail('Temporary builder remains: '.$temporary);
 }
