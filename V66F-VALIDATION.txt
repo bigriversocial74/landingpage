@@ -1,0 +1,88 @@
+ActivityPub Federation & Federated Social Publishing v66F validation
+
+Initial score: 2.6/10
+Provisional implementation score: 9.5/10
+Final score target: 10/10
+
+Required exact-head checks:
+- ActivityPub Federation Quality
+- North Mountain Media Portal Quality
+- Public Syndication Quality
+- Rich Blog Media Quality
+- Feed Reader Media Quality
+- Content Interactions Quality
+- Unified Social Inbox Quality
+- VP3 POD Managed Update v65
+- VP3 License Settings Quality
+
+ActivityPub Federation Quality must pass:
+- PHP syntax for every new and integrated source file
+- pure protocol, UUID, Digest, Signature, encryption, URL, Article, security, schema, and cleanup regressions
+- fresh-schema plus repeat-safe additive-migration import on MySQL 8.4
+- fresh-schema plus repeat-safe additive-migration import on MariaDB 11.4
+- encrypted RSA key generation and versioned key rotation
+- Actor, WebFinger, and NodeInfo rendering
+- deterministic and idempotent Blog Create activity
+- moderated follower approval and signed Accept queueing
+- Blog Update and follower delivery queueing
+- public Outbox, Followers, and Article object collections
+- delivery retry reset
+- Blog Delete and Tombstone rendering
+- removed-follower privacy
+
+Protocol acceptance:
+- one local Actor backed by the primary POD identity
+- application/activity+json Actor, Inbox, Outbox, Activity, Object, Followers, and Following documents
+- JRD WebFinger discovery through the resource query parameter
+- NodeInfo 2.1 discovery and ActivityPub protocol declaration
+- published Blog content represented as Article objects
+- Create, Update, Delete, Accept, Reject, Follow, and Undo handling
+- Tombstones for archived, unpublished, or deleted public Blog posts
+- federation disabled by default
+- standalone POD operation preserved when disabled
+
+Security acceptance:
+- stable private activitypub_secret required before administrator enablement
+- AES-256-GCM encrypted local RSA private key
+- public requests cannot create or rotate local keys
+- versioned key IDs and retained retirement evidence
+- POST-only rate-limited public Inbox
+- one-megabyte inbound activity limit
+- HTTPS-only remote actor and inbox URLs on standard port 443
+- credentialed URL rejection
+- public DNS validation before every request and redirect
+- cURL DNS pinning
+- proxy bypass prevention
+- TLS peer and hostname verification
+- no automatic redirect following
+- one-megabyte remote actor response limit
+- strict JSON object parsing
+- remote actor identifier, inbox, public-key owner, and public-key validation
+- signed (request-target), host, date, and digest components
+- five-minute Date freshness window
+- case-insensitive SHA-256 Digest verification
+- actor/signer key ownership enforcement
+- unique activity ID and request-digest replay evidence
+- manual follower approval by default
+- no remote avatar requests in the administrator workspace
+- bounded delivery retry and durable receipts
+
+Database acceptance:
+- import database/activitypub_federation_v66f.sql after the existing POD identity and publishing migrations
+- migration defines all six ActivityPub tables exactly once
+- fresh schema defines the POD identity dependency before ActivityPub foreign-key tables
+- fresh schema defines all six ActivityPub tables exactly once
+- additive migration is safe to import repeatedly
+
+Deployment acceptance:
+- preserve live config.php
+- preserve the complete storage/ directory
+- preserve the existing database
+- configure an HTTPS app.base_url on port 443
+- configure a stable private security.activitypub_secret of at least 32 characters
+- preserve Host, Date, Digest, Signature, and Authorization headers through the reverse proxy
+- import database/activitypub_federation_v66f.sql
+- schedule php cron/process-activitypub.php 20 at least once per minute when federation is enabled
+- complete external fediverse browser/network acceptance after deployment
+
+Final certification requires every listed workflow to pass on the same final head after documentation and scorecard updates.
