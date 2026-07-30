@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260728-rss-feed-reader-v62 */
+/* North Mountain Media build: 20260730-rich-blog-media-v66A */
 
 function publishing_feed_xml(mixed $value): string
 {
@@ -37,6 +37,15 @@ function publishing_feed_cover_url(array $post): string
     return !empty($post['cover']['id'])
         ? publishing_absolute_url('blog-media.php?id=' . (int)$post['cover']['id'])
         : '';
+}
+
+function publishing_feed_audio_enclosure(array $post): ?array
+{
+    if (!function_exists('blog_rich_media_first_enclosure')) {
+        return null;
+    }
+
+    return blog_rich_media_first_enclosure((string)($post['body'] ?? ''));
 }
 
 function publishing_feed_timestamp(array $post, string $field, string $fallback = ''): int
@@ -138,7 +147,7 @@ function publishing_render_rss_feed(): string
         $url = publishing_feed_post_url($post);
         $published = publishing_feed_timestamp($post, 'published_at', (string)($post['created_at'] ?? ''));
         $cover = publishing_feed_cover_url($post);
-        $audio = blog_rich_media_first_enclosure((string)$post['body']);
+        $audio = publishing_feed_audio_enclosure($post);
         $xml .= "<item>\n";
         $xml .= '<title>' . publishing_feed_xml($post['title']) . "</title>\n";
         $xml .= '<link>' . publishing_feed_xml($url) . "</link>\n";
@@ -194,14 +203,14 @@ function publishing_render_atom_feed(): string
     if ($settings['rss_enabled']) {
         $xml .= '<link rel="alternate" type="application/rss+xml" href="' . publishing_feed_xml(publishing_absolute_url($rssPath)) . '" />' . "\n";
     }
-    $xml .= '<generator uri="' . publishing_feed_xml(publishing_absolute_url('index.php')) . '">North Mountain Media Portal v62</generator>' . "\n";
+    $xml .= '<generator uri="' . publishing_feed_xml(publishing_absolute_url('index.php')) . '">North Mountain Media Portal v66A</generator>' . "\n";
     $xml .= '<rights>' . publishing_feed_xml($settings['feed_copyright']) . "</rights>\n";
 
     foreach ($context['posts'] as $post) {
         $url = publishing_feed_post_url($post);
         $published = publishing_feed_timestamp($post, 'published_at', (string)($post['created_at'] ?? ''));
         $updated = publishing_feed_timestamp($post, 'updated_at', (string)($post['published_at'] ?? ''));
-        $audio = blog_rich_media_first_enclosure((string)$post['body']);
+        $audio = publishing_feed_audio_enclosure($post);
         $xml .= "<entry>\n";
         $xml .= '<id>' . publishing_feed_xml(publishing_atom_id($post)) . "</id>\n";
         $xml .= '<title>' . publishing_feed_xml($post['title']) . "</title>\n";
