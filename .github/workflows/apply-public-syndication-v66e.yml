@@ -44,7 +44,8 @@ jobs:
           php -l cron/process-syndication.php
           grep -F "'syndication' => 'Syndication'" portal/bootstrap.php >/dev/null
           grep -F "syndication_render_admin" portal/admin.php >/dev/null
-          grep -F "application/feed+json" blog.php >/dev/null
+          grep -F "syndication_discovery_links" blog.php >/dev/null
+          grep -F "application/feed+json" portal/public-syndication.php >/dev/null
           grep -F "CREATE TABLE IF NOT EXISTS syndication_webmentions" database/north_mountain_portal.sql >/dev/null
       - name: Commit integrated application source
         run: |
