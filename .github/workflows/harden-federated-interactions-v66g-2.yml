@@ -20,7 +20,25 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Apply policy and reliability hardening
-        run: python3 tools/harden-federated-interactions-v66g-2.py
+        run: |
+          set -euo pipefail
+          python3 tools/harden-federated-interactions-v66g-2.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/federated-interactions-v66g.php')
+          content = path.read_text(encoding='utf-8')
+          content = content.replace(
+              "federated_interactions_local_comment_event($commentId, \\'Create\\'",
+              "federated_interactions_safe_comment_event($commentId, \\'Create\\'",
+          ).replace(
+              "federated_interactions_local_comment_event($commentId, \\'Update\\'",
+              "federated_interactions_safe_comment_event($commentId, \\'Update\\'",
+          ).replace(
+              "federated_interactions_local_comment_event($commentId, \\'Delete\\'",
+              "federated_interactions_safe_comment_event($commentId, \\'Delete\\'",
+          )
+          path.write_text(content, encoding='utf-8')
+          PY
       - name: Validate hardening
         run: |
           set -euo pipefail
