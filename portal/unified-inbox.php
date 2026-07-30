@@ -55,7 +55,7 @@ function unified_inbox_item(array $values): array
     $catalog = unified_inbox_source_catalog();
     $sourceType = (string)($values['source_type'] ?? 'notification');
     $definition = $catalog[$sourceType] ?? $catalog['notification'];
-    $priority = (string)($values['priority'] ?? 'normal');
+    $priority = (string)($values['native_priority'] ?? $values['priority'] ?? 'normal');
     if (!in_array($priority, ['low', 'normal', 'high', 'urgent'], true)) $priority = 'normal';
     $occurredAt = trim((string)($values['occurred_at'] ?? '')) ?: gmdate('Y-m-d H:i:s');
 
