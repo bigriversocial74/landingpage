@@ -1,0 +1,53 @@
+name: Fix ActivityPub Database Test v66F
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-activitypub-db-test-v66f.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'feature/activitypub-federation-v66f-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Repair native prepared-statement fixture
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/activitypub-db-v66f.php')
+          content = path.read_text(encoding='utf-8')
+          old = '''            (:actor_uri,"alex","Alex Rivera","Remote follower.",:actor_uri,
+             "https://remote.example/users/alex/inbox","https://remote.example/inbox",
+             "https://remote.example/users/alex#main-key",:public_key,"active",UTC_TIMESTAMP())'
+    )->execute(['actor_uri' => $remoteActorUri, 'public_key' => $remotePublicKey]);
+'''
+          new = '''            (:actor_uri,"alex","Alex Rivera","Remote follower.",:profile_url,
+             "https://remote.example/users/alex/inbox","https://remote.example/inbox",
+             "https://remote.example/users/alex#main-key",:public_key,"active",UTC_TIMESTAMP())'
+    )->execute([
+        'actor_uri' => $remoteActorUri,
+        'profile_url' => $remoteActorUri,
+        'public_key' => $remotePublicKey,
+    ]);
+'''
+          if content.count(old) != 1:
+              raise SystemExit(f'ActivityPub DB fixture anchor count: {content.count(old)}')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+          php -l tests/activitypub-db-v66f.php
+      - name: Commit database-test repair
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/activitypub-db-v66f.php
+          git commit -m "Repair ActivityPub native prepared-statement fixture v66F"
+          git push origin HEAD:${{ github.head_ref }}
