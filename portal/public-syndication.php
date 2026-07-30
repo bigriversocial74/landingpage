@@ -3,9 +3,18 @@ declare(strict_types=1);
 
 /* North Mountain Media build: 20260730-public-syndication-v66E */
 
-require_once __DIR__ . '/publishing.php';
-require_once __DIR__ . '/publishing-workflow.php';
-require_once __DIR__ . '/blog-rich-media.php';
+if (!function_exists('blog_public_posts')) {
+    require_once __DIR__ . '/publishing.php';
+}
+if (
+    !function_exists('publishing_blog_settings')
+    || !function_exists('publishing_absolute_url')
+) {
+    require_once __DIR__ . '/publishing-workflow.php';
+}
+if (!function_exists('blog_rich_media_first_enclosure')) {
+    require_once __DIR__ . '/blog-rich-media.php';
+}
 
 function syndication_schema_available(): bool
 {
@@ -93,16 +102,19 @@ function syndication_filter_suffix(array $filter): string
 
 function syndication_public_posts(array $filter, int $limit = 30): array
 {
-    if (!publishing_schema_available()) return [];
     $limit = max(1, min(100, $limit));
+    $category = trim((string)($filter['category'] ?? ''));
+    $tag = trim((string)($filter['tag'] ?? ''));
+    $author = trim((string)($filter['author'] ?? ''));
+    if ($tag === '' && $author === '' && function_exists('blog_public_posts')) {
+        return blog_public_posts($category, null, $limit, 0);
+    }
+    if (!publishing_schema_available()) return [];
     $where = [
         'post.status="published"',
         '(post.published_at IS NULL OR post.published_at<=UTC_TIMESTAMP())',
     ];
     $params = [];
-    $category = trim((string)($filter['category'] ?? ''));
-    $tag = trim((string)($filter['tag'] ?? ''));
-    $author = trim((string)($filter['author'] ?? ''));
     if ($category !== '') {
         $where[] = 'post.category=:category';
         $params['category'] = $category;

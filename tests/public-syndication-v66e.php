@@ -97,6 +97,7 @@ foreach ([
     'tools/apply-public-syndication-v66e.py','.github/workflows/apply-public-syndication-v66e.yml',
     'tools/fix-public-syndication-security-v66e.py','.github/workflows/fix-public-syndication-security-v66e.yml',
     'tools/refine-public-syndication-v66e.py','.github/workflows/refine-public-syndication-v66e.yml',
+    'tools/fix-syndication-retained-rss-v66e.py','.github/workflows/fix-syndication-retained-rss-v66e.yml',
 ] as $temporary) {
     if (is_file($root.'/'.$temporary)) $fail('Temporary builder remains: '.$temporary);
 }
