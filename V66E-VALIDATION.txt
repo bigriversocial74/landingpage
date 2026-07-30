@@ -1,0 +1,52 @@
+Public Syndication & Feed Discovery v66E validation
+
+Initial score: 7.1/10
+Provisional implementation score: 9.5/10
+Final score target: 10/10
+
+Required exact-head checks:
+- Public Syndication Quality
+- North Mountain Media Portal Quality
+- Rich Blog Media Quality
+- Content Interactions Quality
+- Unified Social Inbox Quality
+- Feed Reader Media Quality
+- VP3 POD Managed Update v65
+- VP3 License Settings Quality
+
+Public Syndication Quality must pass:
+- PHP syntax for every new and integrated source file
+- pure protocol, URL, Webmention parsing, security, discovery, and cleanup regressions
+- fresh-schema plus additive-migration import on MySQL 8.4
+- fresh-schema plus additive-migration import on MariaDB 11.4
+- live category, tag, and author feed queries
+- JSON Feed 1.1 rendering
+- filtered RSS and Atom rendering
+- podcast channel rendering
+- approved Webmention retrieval
+- WebSub topic discovery
+
+Security acceptance:
+- public POST-only Webmention receiver
+- public-request rate limiting
+- private, reserved, localhost, link-local, credentialed, and unsupported URL rejection
+- public DNS validation for every source and redirect
+- cURL DNS pinning for Webmention and WebSub requests
+- no automatic redirect following
+- 1 MB Webmention response limit
+- exact published article or canonical target requirement
+- pending moderation by default
+- approved-only public display
+- bounded WebSub retry and delivery receipts
+
+Database:
+- import database/public_syndication_v66e.sql after the existing portal schema
+- migration defines syndication_webmentions and syndication_websub_deliveries exactly once
+- fresh schema defines both tables exactly once
+- additive migration is re-import safe
+
+Deployment:
+- preserve live config.php
+- preserve the complete storage/ directory
+- preserve the existing database
+- schedule php cron/process-syndication.php 20 when WebSub is enabled
