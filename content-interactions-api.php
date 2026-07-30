@@ -22,12 +22,18 @@ $action = trim((string)($payload['action'] ?? ''));
 $userId = (int)$user['id'];
 $contentType = trim((string)($payload['content_type'] ?? 'blog_post'));
 $contentId = max(0, (int)($payload['content_id'] ?? 0));
-$ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 64);
+$ip = client_ip();
+
+$enforceLimit = static function(string $actionKey, string $identity, int $limit, int $window): void {
+    if (rate_limit_exceeded($actionKey, $identity, $limit, $window)) {
+        throw new RuntimeException('Too many interaction requests. Try again later.');
+    }
+};
 
 try {
     if ($action === 'comment_create') {
-        rate_limit('content-comment-user:' . $userId, 8, 300);
-        rate_limit('content-comment-ip:' . $ip, 20, 3600);
+        $enforceLimit('content_comment_user', (string)$userId, 8, 300);
+        $enforceLimit('content_comment_ip', $ip, 20, 3600);
         $result = content_interactions_create_comment(
             $userId,
             $contentType,
@@ -40,7 +46,7 @@ try {
     }
 
     if ($action === 'comment_edit') {
-        rate_limit('content-comment-edit:' . $userId, 12, 600);
+        $enforceLimit('content_comment_edit', (string)$userId, 12, 600);
         $result = content_interactions_edit_comment(
             max(0, (int)($payload['comment_id'] ?? 0)),
             $user,
@@ -55,7 +61,7 @@ try {
     }
 
     if ($action === 'reaction_toggle') {
-        rate_limit('content-reaction-user:' . $userId, 60, 3600);
+        $enforceLimit('content_reaction_user', (string)$userId, 60, 3600);
         $result = content_interactions_toggle_reaction(
             $userId,
             trim((string)($payload['target_type'] ?? 'content')),
@@ -67,7 +73,7 @@ try {
     }
 
     if ($action === 'comment_report') {
-        rate_limit('content-report-user:' . $userId, 10, 86400);
+        $enforceLimit('content_report_user', (string)$userId, 10, 86400);
         $result = content_interactions_report_comment(
             max(0, (int)($payload['comment_id'] ?? 0)),
             $userId,

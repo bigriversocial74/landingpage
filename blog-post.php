@@ -8,11 +8,12 @@ nmm_require_public_module('blog');
 require_once __DIR__ . '/portal/publishing.php';
 require_once __DIR__ . '/portal/publishing-workflow.php';
 require_once __DIR__ . '/portal/public-music-shell.php';
+require_once __DIR__ . '/portal/content-interactions.php';
 
 $slug = trim((string)($_GET['slug'] ?? ''));
 $previewRequested = !empty($_GET['preview']);
 $previewId = max(0, (int)($_GET['id'] ?? 0));
-$viewer = $previewRequested ? current_user() : null;
+$viewer = current_user();
 $isAdminPreview = (
     $previewRequested
     && $previewId > 0
@@ -23,6 +24,9 @@ $post = $isAdminPreview
     ? publishing_blog_preview_post($previewId)
     : blog_public_post_by_slug($slug);
 $shell = music_public_shell_context();
+$interactionContext = $post && !$isAdminPreview
+    ? content_interactions_context('blog_post', (int)$post['id'], $viewer)
+    : ['schema_ready'=>false,'settings'=>[],'comments'=>[],'comment_count'=>0,'reactions'=>[],'viewer_reaction'=>''];
 
 if (!$post) {
     http_response_code(404);
@@ -71,6 +75,12 @@ $structuredData = $post
         ],
         'image' => $ogImage !== '' ? [$ogImage] : null,
         'hasPart' => blog_rich_media_structured_objects((string)$post['body']) ?: null,
+        'commentCount' => (int)$interactionContext['comment_count'],
+        'interactionStatistic' => [
+            '@type' => 'InteractionCounter',
+            'interactionType' => 'https://schema.org/LikeAction',
+            'userInteractionCount' => array_sum($interactionContext['reactions']),
+        ],
     ]
     : null;
 
@@ -133,6 +143,7 @@ header(
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260728-content-controls-v62.1'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260728-content-controls-v62.1'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/blog-rich-media.css?v=20260730-v66A'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/content-interactions.css?v=20260730-v66C'))?>">
 </head>
 <body class="blog-body">
 <div class="music-public-shell">
@@ -222,6 +233,8 @@ The requested article is not published or could not be found.
 </section>
 <?php endif;?>
 
+<?php if(!$isAdminPreview):?><?php content_interactions_render_public($post,$viewer,$interactionContext);?><?php endif;?>
+
 <footer class="blog-post-footer">
 <a href="<?=e(app_url('blog.php'))?>">← Back to Blog</a>
 </footer>
@@ -234,6 +247,7 @@ The requested article is not published or could not be found.
 <script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260728-content-controls-v62.1'))?>"></script>
 <script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260728-content-controls-v62.1'))?>"></script>
 <script src="<?=e(app_url('assets/js/blog-rich-media.js?v=20260730-v66A'))?>"></script>
+<script src="<?=e(app_url('assets/js/content-interactions.js?v=20260730-v66C'))?>"></script>
 <?php if($post&&!$isAdminPreview):?>
 <script>
 window.NMMVisitorActivity?.track(

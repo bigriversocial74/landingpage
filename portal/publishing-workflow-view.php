@@ -29,6 +29,7 @@ function publishing_render_workflow_script(): void
 {
 ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/blog-rich-media.css?v=20260730-v66A'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/content-interactions.css?v=20260730-v66C'))?>">
 <script src="<?=e(app_url('assets/js/publishing-workflow.js?v=20260727-site-controls-landing-v60'))?>"></script>
 <script src="<?=e(app_url('assets/js/blog-rich-media-admin.js?v=20260730-v66A'))?>"></script>
 <?php

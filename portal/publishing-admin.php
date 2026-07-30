@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260727-site-controls-landing-v60 */
+/* North Mountain Media build: 20260730-content-interactions-v66C */
+
+require_once __DIR__ . '/content-interactions-admin.php';
 
 function publishing_handle_admin_action(
     string $action,
@@ -16,6 +18,8 @@ function publishing_handle_admin_action(
         'save_blog_settings',
         'duplicate_blog_post',
         'restore_blog_revision',
+        'save_content_interaction_settings',
+        'moderate_content_comment',
     ];
     $resumeActions = [
         'save_resume_post',
@@ -36,6 +40,10 @@ function publishing_handle_admin_action(
         throw new RuntimeException(
             'Import database/publishing_systems_v51.sql and database/publishing_workflow_v56.sql before managing the complete publishing workflow.'
         );
+    }
+
+    if (content_interactions_handle_admin_action($action, $user)) {
+        return true;
     }
 
     if ($action === 'save_blog_post') {
@@ -407,6 +415,7 @@ function publishing_handle_admin_action(
         $mediaStatement->execute(['post_id' => $id]);
         $media = $mediaStatement->fetchAll();
 
+        content_interactions_cleanup('blog_post', $id);
         db()->prepare(
             'DELETE FROM blog_posts
              WHERE id=:id'
@@ -968,6 +977,7 @@ function publishing_render_blog_admin(
 );?>
 
 <?php publishing_render_analytics_panel('blog',30);?>
+<?php content_interactions_render_admin_summary();?>
 
 <?php if($posts):?>
 <div class="publishing-admin-grid">
@@ -1091,6 +1101,7 @@ Duplicate post
     $selected,
     'blog'
 );?>
+<?php content_interactions_render_post_settings($selected);?>
 <?php endif;?>
 
 <div class="publishing-editor-layout">

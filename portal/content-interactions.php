@@ -65,7 +65,7 @@ function content_interactions_settings(string $contentType, int $contentId): arr
          WHERE content_type=:content_type AND content_id=:content_id LIMIT 1'
     );
     $statement->execute(['content_type' => $contentType, 'content_id' => $contentId]);
-    return $defaults + ($statement->fetch() ?: []);
+    return array_replace($defaults, $statement->fetch() ?: []);
 }
 
 function content_interactions_blog_post(int $postId, bool $publishedOnly = true): ?array
@@ -216,7 +216,7 @@ function content_interactions_context(string $contentType, int $contentId, ?arra
     ];
 }
 
-function content_interactions_validate_comment_body(int $userId, string $body): string
+function content_interactions_validate_comment_body(int $userId, string $body, int $exclude_comment_id = 0): string
 {
     $body = content_interactions_clean_body($body);
     if (mb_strlen($body) < 2) throw new RuntimeException('Enter a comment with at least two characters.');
@@ -225,10 +225,11 @@ function content_interactions_validate_comment_body(int $userId, string $body): 
     $duplicate = db()->prepare(
         'SELECT id FROM content_comments
          WHERE author_user_id=:user_id AND body_hash=:body_hash
+           AND id<>:exclude_comment_id
            AND created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 HOUR)
            AND status<>"deleted" LIMIT 1'
     );
-    $duplicate->execute(['user_id' => $userId, 'body_hash' => $hash]);
+    $duplicate->execute(['user_id' => $userId, 'body_hash' => $hash, 'exclude_comment_id' => $exclude_comment_id]);
     if ($duplicate->fetchColumn()) throw new RuntimeException('That comment was already submitted recently.');
     return $body;
 }
@@ -338,7 +339,7 @@ function content_interactions_edit_comment(int $commentId, array $user, string $
 {
     $comment = content_interactions_comment($commentId);
     if (!$comment || !content_interactions_can_edit($comment, $user)) throw new RuntimeException('This comment can no longer be edited.');
-    $body = content_interactions_validate_comment_body((int)$user['id'], $body);
+    $body = content_interactions_validate_comment_body((int)$user['id'], $body, $commentId);
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -437,7 +438,13 @@ function content_interactions_save_settings(string $contentType, int $contentId,
     $mode = in_array((string)($values['moderation_mode'] ?? ''), ['pre_moderated', 'registered_auto'], true)
         ? (string)$values['moderation_mode'] : 'pre_moderated';
     $closedAt = trim((string)($values['comments_closed_at'] ?? ''));
-    $closedAt = $closedAt !== '' ? date('Y-m-d H:i:s', strtotime($closedAt) ?: time()) : null;
+    if ($closedAt !== '') {
+        $closedTimestamp = strtotime($closedAt);
+        if ($closedTimestamp === false) throw new RuntimeException('Enter a valid comment closing date.');
+        $closedAt = gmdate('Y-m-d H:i:s', $closedTimestamp);
+    } else {
+        $closedAt = null;
+    }
     db()->prepare(
         'INSERT INTO content_interaction_settings
            (content_type,content_id,comments_enabled,replies_enabled,reactions_enabled,moderation_mode,comments_closed_at,updated_by)
@@ -465,12 +472,14 @@ function content_interactions_moderate_comment(int $commentId, string $status, i
     if (!$comment) throw new RuntimeException('Comment not found.');
     db()->prepare(
         'UPDATE content_comments SET status=:status,moderated_at=UTC_TIMESTAMP(),moderated_by=:moderated_by,
-           deleted_at=CASE WHEN :status_deleted="deleted" THEN UTC_TIMESTAMP() ELSE deleted_at END,
-           deleted_by=CASE WHEN :status_deleted="deleted" THEN :moderated_by ELSE deleted_by END
+           deleted_at=CASE WHEN :deleted_status_at="deleted" THEN UTC_TIMESTAMP() ELSE deleted_at END,
+           deleted_by=CASE WHEN :deleted_status_by="deleted" THEN :deleted_by_user ELSE deleted_by END
          WHERE id=:id'
     )->execute([
         'status' => $status,
-        'status_deleted' => $status,
+        'deleted_status_at' => $status,
+        'deleted_status_by' => $status,
+        'deleted_by_user' => $moderatorId,
         'moderated_by' => $moderatorId,
         'id' => $commentId,
     ]);
@@ -599,9 +608,12 @@ function content_interactions_render_public(array $post, ?array $viewer, array $
     $viewer = $viewer ?: [];
     $settings = $context['settings'];
     $types = content_interactions_reaction_types();
+    if (!$context['schema_ready']) {
+        echo '<section class="content-interactions"><div class="content-interaction-unavailable">Comments and reactions are being configured.</div></section>';
+        return;
+    }
     ?>
     <section class="content-interactions" data-content-interactions data-api="<?=e(app_url('content-interactions-api.php'))?>" data-csrf="<?=e(csrf_token())?>" data-content-type="blog_post" data-content-id="<?=(int)$post['id']?>" data-authenticated="<?=$viewer?'1':'0'?>">
-        <?php if(!$context['schema_ready']):?><div class="content-interaction-unavailable">Comments and reactions are being configured.</div><?php return; endif;?>
         <?php if((int)$settings['reactions_enabled']):?>
         <div class="content-reaction-bar" data-reaction-target="content" data-target-id="<?=(int)$post['id']?>">
             <div><span>React to this article</span><strong data-total-reactions><?=array_sum($context['reactions'])?></strong></div>
