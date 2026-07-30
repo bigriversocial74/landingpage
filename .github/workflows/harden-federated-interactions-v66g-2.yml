@@ -36,6 +36,9 @@ jobs:
           ).replace(
               "federated_interactions_local_comment_event($commentId, \\'Delete\\'",
               "federated_interactions_safe_comment_event($commentId, \\'Delete\\'",
+          ).replace(
+              'federated_interactions_local_reaction_event(',
+              'federated_interactions_safe_reaction_event(',
           )
           path.write_text(content, encoding='utf-8')
           PY
