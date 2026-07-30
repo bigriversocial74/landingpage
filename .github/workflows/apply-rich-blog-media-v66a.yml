@@ -25,6 +25,17 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
+      - name: Normalize deterministic patch boundary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('tools/apply-rich-blog-media-v66a.py')
+          source=path.read_text(encoding='utf-8')
+          source=source.replace('"Body content supports plain paragraphs, ## headings, ### subheadings,\\n    and - list items."','"    Body content supports plain paragraphs, ## headings, ### subheadings,\\n    and - list items."')
+          path.write_text(source,encoding='utf-8')
+          PY
+
       - name: Apply deterministic patch
         run: python3 tools/apply-rich-blog-media-v66a.py
 
