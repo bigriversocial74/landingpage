@@ -70,7 +70,7 @@ $checks = [
     ['leads adapter','unified_inbox_lead_items',$source['core']],
     ['calls adapter','unified_inbox_call_items',$source['core']],
     ['notifications adapter','unified_inbox_notification_items',$source['core']],
-    ['native priority preservation',"native_priority'] ?? $values['priority']",$source['core']],
+    ['native priority preservation',"native_priority'] ?? \$values['priority']",$source['core']],
     ['workflow state','unified_inbox_workflow',$source['migration'].$source['schema']],
     ['user state','unified_inbox_user_state',$source['migration'].$source['schema']],
     ['HomeServer boundary','homeserver_capability_available',$source['adapter'].$source['core']],
