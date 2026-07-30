@@ -27,6 +27,28 @@ jobs:
       - name: Apply deterministic patch
         run: python3 tools/apply-feed-reader-media-v66b.py
 
+      - name: Correct generated regression source map
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/feed-reader-media-v66b.php')
+          source = path.read_text(encoding='utf-8')
+          source = source.replace(
+              " 'core'=>'portal/feed-reader-core.php','view'=>'portal/feed-reader-view.php','api'=>'portal/feed-reader-api.php',",
+              " 'media'=>'portal/feed-reader-media.php','core'=>'portal/feed-reader-core.php','view'=>'portal/feed-reader-view.php','api'=>'portal/feed-reader-api.php',"
+          )
+          source = source.replace(
+              "['inline audio cards','data-feed-audio-source',$source['view']],",
+              "['inline audio cards','data-feed-audio-source',$source['view'].$source['media']],"
+          )
+          source = source.replace(
+              "['privacy video loader','data-feed-video-load',$source['view'].$source['script']],",
+              "['privacy video loader','data-feed-video-load',$source['view'].$source['media'].$source['script']],"
+          )
+          path.write_text(source, encoding='utf-8')
+          PY
+
       - name: Focused validation
         shell: bash
         run: |
