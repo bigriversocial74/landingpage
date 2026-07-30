@@ -1,0 +1,41 @@
+name: Fix Public Syndication Security v66E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/fix-public-syndication-security-v66e.py
+      - .github/workflows/fix-public-syndication-security-v66e.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'feature/public-syndication-feed-discovery-v66e-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply syndication security hardening
+        run: python3 tools/fix-public-syndication-security-v66e.py
+      - name: Validate security hardening
+        run: |
+          set -euo pipefail
+          php -l portal/webmention-service.php
+          php -l portal/websub-service.php
+          grep -F 'CURLOPT_RESOLVE' portal/webmention-service.php >/dev/null
+          grep -F 'syndication_public_url_resolution' portal/webmention-service.php >/dev/null
+          grep -F 'array_values(array_unique($allowed))' portal/webmention-service.php >/dev/null
+          grep -F 'CURLOPT_RESOLVE=>syndication_curl_resolve($resolution)' portal/websub-service.php >/dev/null
+      - name: Commit security hardening
+        run: |
+          set -euo pipefail
+          rm -f tools/fix-public-syndication-security-v66e.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add portal/webmention-service.php portal/websub-service.php tools/fix-public-syndication-security-v66e.py
+          git commit -m "Harden public syndication outbound requests"
+          git push origin HEAD:${{ github.head_ref }}
