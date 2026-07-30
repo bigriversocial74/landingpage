@@ -750,7 +750,8 @@ function federated_interactions_follow_actor(string $actorUri, int $userId): int
     if (activitypub_normalize_url($actorUri) === activitypub_normalize_url(activitypub_actor_url())) {
         throw new RuntimeException('The POD cannot follow its own ActivityPub actor.');
     }
-    $remote = activitypub_remote_actor($actorUri, true);
+    // Reuse a recently verified actor and refresh automatically when the 24-hour cache expires.
+    $remote = activitypub_remote_actor($actorUri, false);
     if (!$remote || !federated_interactions_actor_allowed($remote)) throw new RuntimeException('The remote actor is unavailable or blocked.');
     $existing = db()->prepare('SELECT * FROM activitypub_following WHERE remote_actor_id=:actor_id LIMIT 1');
     $existing->execute(['actor_id' => (int)$remote['id']]);

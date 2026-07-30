@@ -58,6 +58,7 @@ $checks = [
     ['public remote conversation', 'federated_interactions_render_public($post)', $source['content']],
     ['real Following collection', 'federated_interactions_following_document()', $source['activitypub']],
     ['signed outbound Follow', "'type' => 'Follow'", $source['core']],
+    ['verified actor cache reuse', 'activitypub_remote_actor($actorUri, false)', $source['core']],
     ['signed outbound Unfollow', "'type' => 'Undo'", $source['core']],
     ['actor block containment', 'activitypub_remote_comments SET status="hidden"', $source['core']],
     ['Unified Inbox remote comments', "'federated_comment'", $source['inbox']],
