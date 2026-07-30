@@ -1,0 +1,38 @@
+North Mountain Media Federated Timeline, Discovery & Remote Content v66H
+Final score: 10/10
+
+Certified implementation head:
+0c9b85d269179cba3a0557efeb102ebd0f3c5f84
+
+Passed exact-head workflows:
+- Federated Timeline Quality — run 30587516187
+  - source/privacy/security regression: passed
+  - fresh schema and repeat-safe migration: passed
+  - MySQL 8.4 live integration: passed
+  - MariaDB 11.4 live integration: passed
+- ActivityPub Federation Quality — run 30587516175
+- Federated Interactions Quality — run 30587516339
+- Public Syndication Quality — run 30587516269
+- Content Interactions Quality — run 30587516317
+- Unified Social Inbox Quality — run 30587516313
+- Feed Reader Media Quality — run 30587516154
+- North Mountain Media Portal Quality — run 30587516207
+- VP3 POD Managed Update v65 — run 30587516223
+- VP3 License Settings Quality — run 30587516141
+
+Dedicated runtime coverage:
+- followed Note and Article ingestion
+- Announce/boost entries without remote dereferencing
+- unsolicited direct-mention quarantine
+- Update, Delete, Tombstone, and Undo behavior
+- read, save, hide, queue, search, and actor filters
+- WebFinger JRD and actor discovery security
+- signed Like, Boost, Reply, Undo, and reply deletion
+- dereferenceable local reply Notes
+- delivery failure synchronization and retry reset
+- saved/action-aware retention
+- actor deletion and block containment
+- no automatic remote image, audio, video, iframe, or attachment loading
+
+All temporary v66H integration and repair files were removed before certification.
+Production deployment and two-server fediverse acceptance remain operational post-merge gates.
