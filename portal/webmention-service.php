@@ -14,20 +14,45 @@ function syndication_public_ip(string $ip): bool
     ) !== false;
 }
 
+function syndication_public_url_resolution(string $url): ?array
+{
+    if (!syndication_http_url($url)) return null;
+    $parts = parse_url($url);
+    if (!is_array($parts)) return null;
+    $scheme = strtolower((string)($parts['scheme'] ?? ''));
+    $host = strtolower((string)($parts['host'] ?? ''));
+    if ($host === '' || $host === 'localhost' || str_ends_with($host, '.localhost')) return null;
+    $port = (int)($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
+    if ($port <= 0 || $port > 65535) return null;
+    $ips = [];
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        $ips[] = $host;
+    } else {
+        $records = @dns_get_record($host, DNS_A | DNS_AAAA) ?: [];
+        foreach ($records as $record) {
+            if (!empty($record['ip'])) $ips[] = (string)$record['ip'];
+            if (!empty($record['ipv6'])) $ips[] = (string)$record['ipv6'];
+        }
+        if (!$ips) $ips = @gethostbynamel($host) ?: [];
+    }
+    $ips = array_values(array_unique(array_filter(array_map('strval', $ips))));
+    if ($ips === [] || count(array_filter($ips, 'syndication_public_ip')) !== count($ips)) return null;
+    return ['scheme'=>$scheme,'host'=>$host,'port'=>$port,'ips'=>$ips];
+}
+
 function syndication_public_url_host(string $url): bool
 {
-    if (!syndication_http_url($url)) return false;
-    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
-    if ($host === '' || $host === 'localhost' || str_ends_with($host, '.localhost')) return false;
-    if (filter_var($host, FILTER_VALIDATE_IP)) return syndication_public_ip($host);
-    $records = @dns_get_record($host, DNS_A | DNS_AAAA) ?: [];
-    $ips = [];
-    foreach ($records as $record) {
-        if (!empty($record['ip'])) $ips[] = (string)$record['ip'];
-        if (!empty($record['ipv6'])) $ips[] = (string)$record['ipv6'];
-    }
-    if (!$ips) $ips = @gethostbynamel($host) ?: [];
-    return $ips !== [] && count(array_filter($ips, 'syndication_public_ip')) === count($ips);
+    return syndication_public_url_resolution($url) !== null;
+}
+
+function syndication_curl_resolve(array $resolution): array
+{
+    $host = (string)($resolution['host'] ?? '');
+    $port = (int)($resolution['port'] ?? 0);
+    $ip = (string)(($resolution['ips'][0] ?? ''));
+    if ($host === '' || $port <= 0 || $ip === '') return [];
+    $address = str_contains($ip, ':') ? '[' . $ip . ']' : $ip;
+    return [$host . ':' . $port . ':' . $address];
 }
 
 function syndication_absolute_location(string $base, string $location): string
@@ -52,8 +77,9 @@ function syndication_fetch_public_html(string $url, int $maxRedirects = 3): arra
     }
     $current = $url;
     for ($redirect = 0; $redirect <= $maxRedirects; $redirect++) {
-        if (!syndication_public_url_host($current)) {
-            throw new RuntimeException('The Webmention source must resolve to a public HTTP or HTTPS address.');
+        $resolution = syndication_public_url_resolution($current);
+        if (!$resolution) {
+            throw new RuntimeException('The Webmention source must resolve only to public HTTP or HTTPS addresses.');
         }
         $headers = [];
         $body = '';
@@ -66,6 +92,7 @@ function syndication_fetch_public_html(string $url, int $maxRedirects = 3): arra
             CURLOPT_TIMEOUT => 10,
             CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_RESOLVE => syndication_curl_resolve($resolution),
             CURLOPT_USERAGENT => 'NorthMountainMedia-Webmention/1.0',
             CURLOPT_HTTPHEADER => ['Accept: text/html,application/xhtml+xml;q=0.9'],
             CURLOPT_HEADERFUNCTION => static function ($curl, string $line) use (&$headers): int {
@@ -126,7 +153,22 @@ function syndication_webmention_target_post(string $target): ?array
     $query = [];
     parse_str((string)($parts['query'] ?? ''), $query);
     $slug = trim((string)($query['slug'] ?? ''));
-    if ($slug !== '') return blog_public_post_by_slug($slug);
+    if ($slug !== '') {
+        $post = blog_public_post_by_slug($slug);
+        if (!$post) return null;
+        $allowed = [
+            syndication_normalize_url(
+                publishing_absolute_url('blog-post.php?slug=' . rawurlencode((string)$post['slug']))
+            ),
+        ];
+        $canonical = trim((string)($post['canonical_url'] ?? ''));
+        if ($canonical !== '' && syndication_http_url($canonical)) {
+            $allowed[] = syndication_normalize_url($canonical);
+        }
+        return in_array(syndication_normalize_url($target), array_values(array_unique($allowed)), true)
+            ? $post
+            : null;
+    }
     try {
         $statement = db()->prepare(
             'SELECT post.*,user.display_name AS author_name

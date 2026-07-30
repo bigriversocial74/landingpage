@@ -63,7 +63,8 @@ function syndication_websub_deliver(array $delivery): array
 {
     $hub = (string)$delivery['hub_url'];
     $topic = (string)$delivery['topic_url'];
-    if (!syndication_public_url_host($hub) || !syndication_http_url($topic)) {
+    $resolution = syndication_public_url_resolution($hub);
+    if (!$resolution || !syndication_http_url($topic)) {
         return ['ok'=>false,'status'=>0,'body'=>'','error'=>'The hub or topic URL is not valid for public delivery.'];
     }
     if (!function_exists('curl_init')) {
@@ -80,6 +81,7 @@ function syndication_websub_deliver(array $delivery): array
         CURLOPT_CONNECTTIMEOUT=>5,
         CURLOPT_TIMEOUT=>10,
         CURLOPT_PROTOCOLS=>CURLPROTO_HTTP|CURLPROTO_HTTPS,
+        CURLOPT_RESOLVE=>syndication_curl_resolve($resolution),
         CURLOPT_HTTPHEADER=>['Content-Type: application/x-www-form-urlencoded','Accept: application/json,text/plain,*/*'],
         CURLOPT_USERAGENT=>'NorthMountainMedia-WebSub/1.0',
         CURLOPT_WRITEFUNCTION=>static function ($curl, string $chunk) use (&$body): int {
