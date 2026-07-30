@@ -5,6 +5,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/activitypub-http.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/content-interactions.php';
+require_once __DIR__ . '/federated-interactions.php';
 
 function activitypub_valid_uuid(string $value): bool
 {
@@ -50,7 +52,7 @@ function activitypub_store_outbox_activity(
     $activityUri = trim((string)($activity['id'] ?? ''));
     $uuid = activitypub_activity_uuid_from_uri($activityUri);
     if ($uuid === '') throw new RuntimeException('The ActivityPub activity ID is invalid.');
-    if (!in_array($activityType, ['Create', 'Update', 'Delete', 'Accept', 'Reject'], true)) {
+    if (!in_array($activityType, ['Create', 'Update', 'Delete', 'Accept', 'Reject', 'Follow', 'Undo', 'Like', 'Announce'], true)) {
         throw new RuntimeException('The ActivityPub activity type is not supported.');
     }
     $payload = json_encode(
@@ -413,6 +415,8 @@ function activitypub_receive_inbox(
                 );
             }
             activitypub_update_inbox_status($inboxId, 'accepted');
+        } elseif (federated_interactions_process_inbound($inboxId, $payload, $remote)) {
+            activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif ($activityType === 'Undo') {
             $undo = is_array($object) ? $object : [];
             $undoType = trim((string)($undo['type'] ?? ''));
@@ -453,6 +457,14 @@ function activitypub_receive_inbox(
                 'UPDATE activitypub_followers SET status="removed",moderated_at=UTC_TIMESTAMP()
                  WHERE remote_actor_id=:actor_id'
             )->execute(['actor_id' => (int)$remote['id']]);
+            if (federated_interactions_schema_available()) {
+                db()->prepare('UPDATE activitypub_following SET status="removed",removed_at=UTC_TIMESTAMP() WHERE remote_actor_id=:actor_id')
+                    ->execute(['actor_id' => (int)$remote['id']]);
+                db()->prepare('UPDATE activitypub_remote_comments SET status="deleted",deleted_at=UTC_TIMESTAMP() WHERE remote_actor_id=:actor_id')
+                    ->execute(['actor_id' => (int)$remote['id']]);
+                db()->prepare('UPDATE activitypub_remote_reactions SET status="deleted" WHERE remote_actor_id=:actor_id')
+                    ->execute(['actor_id' => (int)$remote['id']]);
+            }
             activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif (in_array($activityType, ['Like', 'Announce', 'Create', 'Update', 'Accept', 'Reject'], true)) {
             activitypub_update_inbox_status($inboxId, 'accepted');
@@ -651,6 +663,10 @@ function activitypub_followers_document(): array
 
 function activitypub_following_document(): array
 {
+    if (function_exists('federated_interactions_following_document')
+        && federated_interactions_schema_available()) {
+        return federated_interactions_following_document();
+    }
     return [
         '@context' => 'https://www.w3.org/ns/activitystreams',
         'id' => activitypub_following_url(),

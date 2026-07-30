@@ -8,6 +8,7 @@ require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/homeserver-adapter.php';
 if (is_file(__DIR__ . '/pod-messaging.php')) require_once __DIR__ . '/pod-messaging.php';
 if (is_file(__DIR__ . '/content-interactions.php')) require_once __DIR__ . '/content-interactions.php';
+if (is_file(__DIR__ . '/federated-interactions.php')) require_once __DIR__ . '/federated-interactions.php';
 
 function unified_inbox_source_catalog(): array
 {
@@ -15,6 +16,9 @@ function unified_inbox_source_catalog(): array
         'communication' => ['label' => 'Communications', 'category' => 'messages', 'icon' => '✉'],
         'pod_message' => ['label' => 'POD Messages', 'category' => 'messages', 'icon' => '◈'],
         'content_comment' => ['label' => 'Blog Activity', 'category' => 'social', 'icon' => '♥'],
+        'federated_comment' => ['label' => 'Federated Reply', 'category' => 'social', 'icon' => '◌'],
+        'federated_reaction' => ['label' => 'Federated Reaction', 'category' => 'social', 'icon' => '↻'],
+        'federated_follow' => ['label' => 'Federated Follow', 'category' => 'social', 'icon' => '◎'],
         'lead' => ['label' => 'Inquiries', 'category' => 'inquiries', 'icon' => '◎'],
         'call_center' => ['label' => 'Calls & Voicemail', 'category' => 'calls', 'icon' => '☎'],
         'notification' => ['label' => 'Notifications', 'category' => 'system', 'icon' => '●'],
@@ -294,7 +298,7 @@ function unified_inbox_call_items(): array
 function unified_inbox_notification_items(int $userId): array
 {
     if (!unified_inbox_table_exists('portal_notifications')) return [];
-    $duplicateEntities = ['content_comment', 'communication_call', 'communication_thread', 'call_center_request', 'pod_message', 'pod_message_thread'];
+    $duplicateEntities = ['content_comment', 'federated_comment', 'federated_reaction', 'federated_follow', 'communication_call', 'communication_thread', 'call_center_request', 'pod_message', 'pod_message_thread'];
     try {
         $statement = db()->prepare(
             'SELECT * FROM portal_notifications WHERE recipient_user_id=:user_id
@@ -360,6 +364,7 @@ function unified_inbox_collect(array $user): array
         unified_inbox_communication_items($user),
         unified_inbox_pod_items(),
         unified_inbox_comment_items((int)$user['id']),
+        function_exists('federated_interactions_inbox_items') ? federated_interactions_inbox_items() : [],
         unified_inbox_lead_items(),
         unified_inbox_call_items(),
         unified_inbox_notification_items((int)$user['id'])

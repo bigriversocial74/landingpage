@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 /* North Mountain Media build: 20260730-federated-interactions-v66G */
 
-require_once __DIR__ . '/content-interactions.php';
-
 function federated_interactions_schema_available(): bool
 {
     static $available = null;

@@ -4,6 +4,9 @@ declare(strict_types=1);
 /* North Mountain Media build: 20260730-content-interactions-v66C */
 
 require_once __DIR__ . '/notifications.php';
+if (defined('NMM_BOOTSTRAPPED') && is_file(__DIR__ . '/activitypub-service.php')) {
+    require_once __DIR__ . '/activitypub-service.php';
+}
 
 function content_interactions_schema_available(): bool
 {
@@ -364,6 +367,9 @@ function content_interactions_create_comment(
         );
     } else {
         content_interactions_notify_participants($comment);
+        if (function_exists('federated_interactions_local_comment_event')) {
+            federated_interactions_local_comment_event($commentId, 'Create', $userId);
+        }
     }
     log_activity('content_comment_created', 'content_comment', $commentId, ['content_type' => $contentType, 'content_id' => $contentId, 'status' => $status]);
     return ['id' => $commentId, 'status' => $status, 'message' => $status === 'approved' ? 'Comment published.' : 'Comment submitted for moderation.'];
@@ -404,6 +410,8 @@ function content_interactions_edit_comment(int $commentId, array $user, string $
     }
     if (($user['role'] ?? '') !== 'admin') {
         content_interactions_notify_admins('Edited Blog comment awaiting moderation', mb_substr($body, 0, 240), 'portal/admin.php?view=blog&moderation=1', $commentId);
+    } elseif ((string)$comment['status'] === 'approved' && function_exists('federated_interactions_local_comment_event')) {
+        federated_interactions_local_comment_event($commentId, 'Update', (int)$user['id']);
     }
     return ['id' => $commentId, 'status' => ($user['role'] ?? '') === 'admin' ? (string)$comment['status'] : 'pending'];
 }
@@ -417,6 +425,9 @@ function content_interactions_delete_comment(int $commentId, array $user): void
     db()->prepare(
         'UPDATE content_comments SET status="deleted",body="",deleted_at=UTC_TIMESTAMP(),deleted_by=:deleted_by WHERE id=:id'
     )->execute(['deleted_by' => (int)$user['id'], 'id' => $commentId]);
+    if ((string)$comment['status'] === 'approved' && function_exists('federated_interactions_local_comment_event')) {
+        federated_interactions_local_comment_event($commentId, 'Delete', (int)$user['id'], $comment);
+    }
     log_activity('content_comment_deleted', 'content_comment', $commentId, ['admin' => $isAdmin]);
 }
 
@@ -454,6 +465,11 @@ function content_interactions_toggle_reaction(
         if ($isFirstReaction) {
             content_interactions_notify_reaction($userId, $targetType, $contentType, $targetId, $reactionType);
         }
+    }
+    if (function_exists('federated_interactions_local_reaction_event')) {
+        federated_interactions_local_reaction_event(
+            $userId, $targetType, $contentType, $targetId, $existing, $active
+        );
     }
     return ['active' => $active, 'counts' => content_interactions_reaction_summary($targetType, $contentType, $targetId)];
 }
@@ -591,6 +607,14 @@ function content_interactions_moderate_comment(int $commentId, string $status, i
             );
         }
     }
+    if (function_exists('federated_interactions_local_comment_event')) {
+        if ($status === 'approved') {
+            $event = federated_interactions_local_map('comment', (string)$commentId) ? 'Update' : 'Create';
+            federated_interactions_local_comment_event($commentId, $event, $moderatorId);
+        } elseif ((string)$comment['status'] === 'approved') {
+            federated_interactions_local_comment_event($commentId, 'Delete', $moderatorId, $comment);
+        }
+    }
     log_activity('content_comment_moderated', 'content_comment', $commentId, ['status' => $status]);
 }
 
@@ -714,4 +738,7 @@ function content_interactions_render_public(array $post, ?array $viewer, array $
         <div class="content-comments-list"><?php foreach($context['comments'] as $comment) echo content_interactions_comment_markup($comment,$viewer,$settings);?><?php if(!$context['comments']):?><p class="content-comments-empty">No comments yet. Start the conversation.</p><?php endif;?></div>
     </section>
     <?php
+    if (function_exists('federated_interactions_render_public')) {
+        federated_interactions_render_public($post);
+    }
 }

@@ -1,3 +1,4 @@
+@import url('federated-interactions.css');
 /* North Mountain Media build: 20260730-content-interactions-v66C */
 .content-interactions{margin:48px 0 18px;padding-top:32px;border-top:1px solid rgba(25,43,65,.14)}
 .content-reaction-bar{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:20px;border:1px solid #dbe3eb;border-radius:20px;background:#f8fafc}

@@ -4,9 +4,11 @@ declare(strict_types=1);
 /* North Mountain Media build: 20260730-activitypub-admin-v66F */
 
 require_once __DIR__ . '/activitypub-service.php';
+require_once __DIR__ . '/federated-interactions-admin.php';
 
 function activitypub_handle_admin_action(string $action, array $user): bool
 {
+    if (federated_interactions_handle_admin_action($action, $user)) return true;
     $actions = [
         'save_activitypub_settings','rotate_activitypub_key','moderate_activitypub_follower',
         'process_activitypub_queue','retry_activitypub_delivery','backfill_activitypub_posts',
@@ -195,6 +197,8 @@ function activitypub_render_admin(array $user): void
 </article>
 <?php endforeach;?></div><?php endif;?>
 </section>
+
+<?php federated_interactions_render_admin($user); ?>
 
 <section class="panel" id="deliveries">
 <header class="panel-header"><div><span>Signed asynchronous delivery</span><h2>Delivery receipts</h2></div><form method="post"><?=csrf_field()?><input type="hidden" name="action" value="process_activitypub_queue"><button>Process queue</button></form></header>
