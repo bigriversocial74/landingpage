@@ -83,6 +83,9 @@ try {
     }
 
     json_response(['ok' => false, 'message' => 'Unsupported interaction action.'], 400);
-} catch (Throwable $exception) {
+} catch (RuntimeException $exception) {
     json_response(['ok' => false, 'message' => $exception->getMessage()], 422);
+} catch (Throwable $exception) {
+    error_log('Content interaction API failure: ' . $exception->getMessage());
+    json_response(['ok' => false, 'message' => 'The interaction could not be saved.'], 500);
 }

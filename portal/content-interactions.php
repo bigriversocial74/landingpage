@@ -158,12 +158,14 @@ function content_interactions_comments(
          FROM content_comments comment
          JOIN users user ON user.id=comment.author_user_id
          WHERE ' . implode(' AND ', $where) . '
-         ORDER BY COALESCE(comment.parent_id,comment.id),comment.depth,comment.created_at,comment.id'
+         ORDER BY COALESCE(comment.parent_id,comment.id),comment.depth,comment.created_at,comment.id
+         LIMIT 500'
     );
     $statement->execute($parameters);
     $rows = $statement->fetchAll();
     $ids = array_map(static fn(array $row): int => (int)$row['id'], $rows);
     $reactionMap = [];
+    $viewerReactionMap = [];
     if ($ids) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $reaction = db()->prepare(
@@ -175,15 +177,23 @@ function content_interactions_comments(
         foreach ($reaction->fetchAll() as $row) {
             $reactionMap[(int)$row['target_id']][(string)$row['reaction_type']] = (int)$row['total'];
         }
+        if ($viewerId > 0) {
+            $viewerReaction = db()->prepare(
+                'SELECT target_id,reaction_type FROM content_reactions
+                 WHERE user_id=? AND target_type="comment" AND content_type=? AND target_id IN (' . $placeholders . ')'
+            );
+            $viewerReaction->execute([$viewerId, $contentType, ...$ids]);
+            foreach ($viewerReaction->fetchAll() as $row) {
+                $viewerReactionMap[(int)$row['target_id']] = (string)$row['reaction_type'];
+            }
+        }
     }
     $roots = [];
     $children = [];
     foreach ($rows as &$row) {
         $row['reactions'] = array_fill_keys(array_keys(content_interactions_reaction_types()), 0);
         foreach ($reactionMap[(int)$row['id']] ?? [] as $type => $count) $row['reactions'][$type] = $count;
-        $row['viewer_reaction'] = $viewerId > 0
-            ? content_interactions_viewer_reaction($viewerId, 'comment', $contentType, (int)$row['id'])
-            : '';
+        $row['viewer_reaction'] = $viewerReactionMap[(int)$row['id']] ?? '';
         if ((int)$row['depth'] === 0) $roots[(int)$row['id']] = $row + ['replies' => []];
         else $children[(int)$row['parent_id']][] = $row;
     }
@@ -266,6 +276,39 @@ function content_interactions_notify_participants(array $comment): void
     }
 }
 
+function content_interactions_notify_reaction(
+    int $actorUserId,
+    string $targetType,
+    string $contentType,
+    int $targetId,
+    string $reactionType
+): void {
+    if ($contentType !== 'blog_post') return;
+    $recipientId = 0;
+    $post = null;
+    if ($targetType === 'content') {
+        $post = content_interactions_blog_post($targetId, false);
+        $recipientId = (int)($post['author_user_id'] ?? 0);
+    } else {
+        $comment = content_interactions_comment($targetId);
+        if (!$comment) return;
+        $recipientId = (int)$comment['author_user_id'];
+        $post = content_interactions_blog_post((int)$comment['content_id'], false);
+    }
+    if (!$post || $recipientId <= 0 || $recipientId === $actorUserId) return;
+    $label = content_interactions_reaction_types()[$reactionType]['label'] ?? 'Reaction';
+    notification_create(
+        $recipientId,
+        'message',
+        $targetType === 'content' ? 'New reaction on your Blog post' : 'New reaction on your Blog comment',
+        $label . ': ' . (string)$post['title'],
+        'blog-post.php?slug=' . rawurlencode((string)$post['slug']) . ($targetType === 'comment' ? '#comment-' . $targetId : ''),
+        'content_reaction',
+        $targetId,
+        'normal'
+    );
+}
+
 function content_interactions_create_comment(
     int $userId,
     string $contentType,
@@ -330,7 +373,9 @@ function content_interactions_can_edit(array $comment, array $user): bool
 {
     if (($user['role'] ?? '') === 'admin') return true;
     if ((int)($comment['author_user_id'] ?? 0) !== (int)($user['id'] ?? 0)) return false;
-    if (($comment['status'] ?? '') === 'pending') return true;
+    $status = (string)($comment['status'] ?? '');
+    if (!in_array($status, ['pending', 'approved'], true)) return false;
+    if ($status === 'pending') return true;
     $created = strtotime((string)($comment['created_at'] ?? '')) ?: 0;
     return $created > 0 && $created >= time() - 900;
 }
@@ -393,6 +438,7 @@ function content_interactions_toggle_reaction(
         if (!$comment || $comment['status'] !== 'approved' || $comment['content_type'] !== $contentType) throw new RuntimeException('The comment is unavailable for reactions.');
     }
     $existing = content_interactions_viewer_reaction($userId, $targetType, $contentType, $targetId);
+    $isFirstReaction = $existing === '';
     if ($existing === $reactionType) {
         db()->prepare(
             'DELETE FROM content_reactions WHERE user_id=:user_id AND target_type=:target_type AND content_type=:content_type AND target_id=:target_id'
@@ -405,6 +451,9 @@ function content_interactions_toggle_reaction(
              ON DUPLICATE KEY UPDATE reaction_type=VALUES(reaction_type),updated_at=UTC_TIMESTAMP()'
         )->execute(['target_type' => $targetType, 'content_type' => $contentType, 'target_id' => $targetId, 'user_id' => $userId, 'reaction_type' => $reactionType]);
         $active = $reactionType;
+        if ($isFirstReaction) {
+            content_interactions_notify_reaction($userId, $targetType, $contentType, $targetId, $reactionType);
+        }
     }
     return ['active' => $active, 'counts' => content_interactions_reaction_summary($targetType, $contentType, $targetId)];
 }
@@ -416,20 +465,39 @@ function content_interactions_report_comment(int $commentId, int $userId, string
     if ((int)$comment['author_user_id'] === $userId) throw new RuntimeException('You cannot report your own comment.');
     $reason = mb_substr(trim($reason), 0, 1000);
     if ($reason === '') $reason = 'Reported by reader';
-    $statement = db()->prepare(
-        'INSERT IGNORE INTO content_comment_reports (comment_id,reporter_user_id,reason)
-         VALUES (:comment_id,:reporter_user_id,:reason)'
+    $existing = db()->prepare(
+        'SELECT id,status FROM content_comment_reports
+         WHERE comment_id=:comment_id AND reporter_user_id=:reporter_user_id LIMIT 1'
     );
-    $statement->execute(['comment_id' => $commentId, 'reporter_user_id' => $userId, 'reason' => $reason]);
-    if ($statement->rowCount() > 0) {
-        db()->prepare('UPDATE content_comments SET report_count=report_count+1 WHERE id=:id')->execute(['id' => $commentId]);
-        $count = (int)db()->query('SELECT report_count FROM content_comments WHERE id=' . $commentId)->fetchColumn();
-        if ($count >= 5) {
-            db()->prepare('UPDATE content_comments SET status="hidden" WHERE id=:id AND status="approved"')->execute(['id' => $commentId]);
-        }
-        content_interactions_notify_admins('Blog comment reported', $reason, 'portal/admin.php?view=blog&moderation=1', $commentId);
+    $existing->execute(['comment_id' => $commentId, 'reporter_user_id' => $userId]);
+    $report = $existing->fetch();
+    if ($report && $report['status'] === 'open') return ['reported' => true, 'duplicate' => true];
+    if ($report) {
+        db()->prepare(
+            'UPDATE content_comment_reports SET reason=:reason,status="open",resolved_at=NULL,resolved_by=NULL,created_at=UTC_TIMESTAMP()
+             WHERE id=:id'
+        )->execute(['reason' => $reason, 'id' => (int)$report['id']]);
+    } else {
+        db()->prepare(
+            'INSERT INTO content_comment_reports (comment_id,reporter_user_id,reason,status)
+             VALUES (:comment_id,:reporter_user_id,:reason,"open")'
+        )->execute(['comment_id' => $commentId, 'reporter_user_id' => $userId, 'reason' => $reason]);
     }
-    return ['reported' => true];
+    db()->prepare('UPDATE content_comments SET report_count=report_count+1 WHERE id=:id')->execute(['id' => $commentId]);
+    $countStatement = db()->prepare('SELECT report_count,status FROM content_comments WHERE id=:id LIMIT 1');
+    $countStatement->execute(['id' => $commentId]);
+    $reported = $countStatement->fetch() ?: ['report_count' => 0, 'status' => ''];
+    $count = (int)$reported['report_count'];
+    if ($count >= 5 && $reported['status'] === 'approved') {
+        db()->prepare('UPDATE content_comments SET status="hidden",moderated_at=UTC_TIMESTAMP() WHERE id=:id')->execute(['id' => $commentId]);
+        db()->prepare(
+            'INSERT INTO content_moderation_events (comment_id,moderator_user_id,action,note,previous_status,new_status)
+             VALUES (:comment_id,NULL,"auto_hidden",:note,"approved","hidden")'
+        )->execute(['comment_id' => $commentId, 'note' => 'Automatically hidden after five open reader reports.']);
+        log_activity('content_comment_auto_hidden', 'content_comment', $commentId, ['open_reports' => $count]);
+    }
+    content_interactions_notify_admins('Blog comment reported', $reason, 'portal/admin.php?view=blog&moderation=1', $commentId);
+    return ['reported' => true, 'duplicate' => false, 'open_reports' => $count];
 }
 
 function content_interactions_save_settings(string $contentType, int $contentId, array $values, int $userId): void
@@ -470,31 +538,44 @@ function content_interactions_moderate_comment(int $commentId, string $status, i
     if (!in_array($status, ['approved', 'hidden', 'spam', 'deleted'], true)) throw new RuntimeException('Unsupported moderation status.');
     $comment = content_interactions_comment($commentId);
     if (!$comment) throw new RuntimeException('Comment not found.');
-    db()->prepare(
-        'UPDATE content_comments SET status=:status,moderated_at=UTC_TIMESTAMP(),moderated_by=:moderated_by,
-           deleted_at=CASE WHEN :deleted_status_at="deleted" THEN UTC_TIMESTAMP() ELSE deleted_at END,
-           deleted_by=CASE WHEN :deleted_status_by="deleted" THEN :deleted_by_user ELSE deleted_by END
-         WHERE id=:id'
-    )->execute([
-        'status' => $status,
-        'deleted_status_at' => $status,
-        'deleted_status_by' => $status,
-        'deleted_by_user' => $moderatorId,
-        'moderated_by' => $moderatorId,
-        'id' => $commentId,
-    ]);
-    db()->prepare(
-        'INSERT INTO content_moderation_events (comment_id,moderator_user_id,action,note,previous_status,new_status)
-         VALUES (:comment_id,:moderator_user_id,:action,:note,:previous_status,:new_status)'
-    )->execute([
-        'comment_id' => $commentId,
-        'moderator_user_id' => $moderatorId,
-        'action' => $status,
-        'note' => mb_substr(trim($note), 0, 1000) ?: null,
-        'previous_status' => (string)$comment['status'],
-        'new_status' => $status,
-    ]);
-    if ($status === 'approved') {
+    $transitionedToApproved = $status === 'approved' && $comment['status'] !== 'approved';
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare(
+            'UPDATE content_comments SET status=:status,report_count=0,moderated_at=UTC_TIMESTAMP(),moderated_by=:moderated_by,
+               deleted_at=CASE WHEN :deleted_status_at="deleted" THEN UTC_TIMESTAMP() ELSE deleted_at END,
+               deleted_by=CASE WHEN :deleted_status_by="deleted" THEN :deleted_by_user ELSE deleted_by END
+             WHERE id=:id'
+        )->execute([
+            'status' => $status,
+            'deleted_status_at' => $status,
+            'deleted_status_by' => $status,
+            'deleted_by_user' => $moderatorId,
+            'moderated_by' => $moderatorId,
+            'id' => $commentId,
+        ]);
+        $pdo->prepare(
+            'UPDATE content_comment_reports SET status="resolved",resolved_at=UTC_TIMESTAMP(),resolved_by=:resolved_by
+             WHERE comment_id=:comment_id AND status="open"'
+        )->execute(['resolved_by' => $moderatorId, 'comment_id' => $commentId]);
+        $pdo->prepare(
+            'INSERT INTO content_moderation_events (comment_id,moderator_user_id,action,note,previous_status,new_status)
+             VALUES (:comment_id,:moderator_user_id,:action,:note,:previous_status,:new_status)'
+        )->execute([
+            'comment_id' => $commentId,
+            'moderator_user_id' => $moderatorId,
+            'action' => $status,
+            'note' => mb_substr(trim($note), 0, 1000) ?: null,
+            'previous_status' => (string)$comment['status'],
+            'new_status' => $status,
+        ]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $exception;
+    }
+    if ($transitionedToApproved) {
         $approved = content_interactions_comment($commentId);
         if ($approved) {
             content_interactions_notify_participants($approved);
@@ -577,12 +658,16 @@ function content_interactions_comment_markup(array $comment, array $viewer, arra
     if ($status !== 'approved') $html .= '<span class="content-comment-status">' . e(status_label($status)) . '</span>';
     $html .= '</header><div class="content-comment-body">' . $body . '</div>';
     if (!$deleted) {
-        $html .= '<footer><div class="content-comment-reactions" data-reaction-target="comment" data-target-id="' . (int)$comment['id'] . '">';
-        foreach (content_interactions_reaction_types() as $type => $meta) {
-            $active = $comment['viewer_reaction'] === $type;
-            $html .= '<button type="button" data-content-reaction="' . e($type) . '" class="' . ($active ? 'active' : '') . '" aria-pressed="' . ($active ? 'true' : 'false') . '"><span>' . e($meta['icon']) . '</span><b data-reaction-count="' . e($type) . '">' . (int)($comment['reactions'][$type] ?? 0) . '</b></button>';
+        $html .= '<footer>';
+        if ($status === 'approved') {
+            $html .= '<div class="content-comment-reactions" data-reaction-target="comment" data-target-id="' . (int)$comment['id'] . '">';
+            foreach (content_interactions_reaction_types() as $type => $meta) {
+                $active = $comment['viewer_reaction'] === $type;
+                $html .= '<button type="button" data-content-reaction="' . e($type) . '" class="' . ($active ? 'active' : '') . '" aria-pressed="' . ($active ? 'true' : 'false') . '"><span>' . e($meta['icon']) . '</span><b data-reaction-count="' . e($type) . '">' . (int)($comment['reactions'][$type] ?? 0) . '</b></button>';
+            }
+            $html .= '</div>';
         }
-        $html .= '</div><div class="content-comment-actions">';
+        $html .= '<div class="content-comment-actions">';
         if ($viewerId > 0 && (int)$comment['depth'] === 0 && (int)$settings['replies_enabled'] && $status === 'approved') $html .= '<button type="button" data-comment-reply-toggle>Reply</button>';
         if ($isOwn || $isAdmin) {
             if (content_interactions_can_edit($comment, $viewer)) $html .= '<button type="button" data-comment-edit data-comment-body="' . e((string)$comment['body']) . '">Edit</button>';

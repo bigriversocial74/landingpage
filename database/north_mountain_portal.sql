@@ -2987,20 +2987,25 @@ CREATE TABLE IF NOT EXISTS content_comment_reports (
     comment_id BIGINT UNSIGNED NOT NULL,
     reporter_user_id BIGINT UNSIGNED NOT NULL,
     reason VARCHAR(1000) NOT NULL,
+    status ENUM('open','resolved') NOT NULL DEFAULT 'open',
+    resolved_at DATETIME NULL,
+    resolved_by BIGINT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_content_comment_reporter (comment_id,reporter_user_id),
-    KEY idx_content_comment_reports_created (created_at,id),
+    KEY idx_content_comment_reports_status (status,created_at,id),
     KEY idx_content_comment_reports_reporter (reporter_user_id,created_at,id),
+    KEY idx_content_comment_reports_resolved_by (resolved_by),
     CONSTRAINT fk_content_comment_reports_comment FOREIGN KEY (comment_id) REFERENCES content_comments(id) ON DELETE CASCADE,
-    CONSTRAINT fk_content_comment_reports_user FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_content_comment_reports_user FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_content_comment_reports_resolver FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS content_moderation_events (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     comment_id BIGINT UNSIGNED NOT NULL,
-    moderator_user_id BIGINT UNSIGNED NOT NULL,
-    action ENUM('approved','hidden','spam','deleted') NOT NULL,
+    moderator_user_id BIGINT UNSIGNED NULL,
+    action ENUM('approved','hidden','spam','deleted','auto_hidden') NOT NULL,
     note VARCHAR(1000) NULL,
     previous_status ENUM('pending','approved','hidden','spam','deleted') NOT NULL,
     new_status ENUM('pending','approved','hidden','spam','deleted') NOT NULL,
@@ -3009,5 +3014,5 @@ CREATE TABLE IF NOT EXISTS content_moderation_events (
     KEY idx_content_moderation_comment (comment_id,created_at,id),
     KEY idx_content_moderation_user (moderator_user_id,created_at,id),
     CONSTRAINT fk_content_moderation_comment FOREIGN KEY (comment_id) REFERENCES content_comments(id) ON DELETE CASCADE,
-    CONSTRAINT fk_content_moderation_user FOREIGN KEY (moderator_user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_content_moderation_user FOREIGN KEY (moderator_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

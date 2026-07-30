@@ -13,9 +13,9 @@ The portal already had authenticated users, CSRF and action limiting, Blog publi
 - Per-post comments, replies, reactions, and close-time controls.
 - Comment edit history and 15-minute approved-comment edit window.
 - Owner/admin deletion with soft deleted placeholders for reply continuity.
-- Reader reports, unique reporter enforcement, and five-report automatic hiding.
+- Reader reports, unique reporter enforcement, durable resolution evidence, and five-report automatic hiding.
 - Administrator moderation queue and immutable moderation events.
-- Notifications for pending moderation, approvals, post comments, and replies.
+- Notifications for pending moderation, approvals, post comments, replies, and first reactions.
 - Rate limits, duplicate-comment prevention, URL limits, CSRF, same-origin, ownership, and status checks.
 - Cleanup when a Blog post is permanently deleted.
 - Additive migration and fresh-install schema coverage.

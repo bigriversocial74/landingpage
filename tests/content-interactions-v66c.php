@@ -12,6 +12,8 @@ $now = gmdate('Y-m-d H:i:s');
 if (!content_interactions_can_edit(['author_user_id'=>7,'status'=>'approved','created_at'=>$now], ['id'=>7,'role'=>'client'])) { fwrite(STDERR, "Owner edit window failed.\n"); exit(1); }
 if (content_interactions_can_edit(['author_user_id'=>7,'status'=>'approved','created_at'=>'2020-01-01 00:00:00'], ['id'=>7,'role'=>'client'])) { fwrite(STDERR, "Expired edit window failed.\n"); exit(1); }
 if (!content_interactions_can_edit(['author_user_id'=>7,'status'=>'approved','created_at'=>'2020-01-01 00:00:00'], ['id'=>1,'role'=>'admin'])) { fwrite(STDERR, "Administrator edit override failed.\n"); exit(1); }
+if (content_interactions_can_edit(['author_user_id'=>7,'status'=>'hidden','created_at'=>$now], ['id'=>7,'role'=>'client'])) { fwrite(STDERR, "Hidden comment edit bypass detected.\n"); exit(1); }
+if (content_interactions_can_edit(['author_user_id'=>7,'status'=>'spam','created_at'=>$now], ['id'=>7,'role'=>'client'])) { fwrite(STDERR, "Spam comment edit bypass detected.\n"); exit(1); }
 
 $root = dirname(__DIR__);
 $paths = [
@@ -32,10 +34,17 @@ $checks = [
  ['one-level replies','(int)$parent[\'depth\'] !== 0',$source['core']],
  ['edit history','content_comment_edits',$source['core'].$source['migration']],
  ['reports','content_comment_reports',$source['core'].$source['migration']],
+ ['report resolution fields','resolved_at',$source['migration'].$source['schema']],
  ['five-report auto hide','$count >= 5',$source['core']],
  ['post/comment reactions','target_type',$source['core'].$source['migration']],
  ['moderation events','content_moderation_events',$source['core'].$source['migration']],
  ['participant notifications','content_interactions_notify_participants',$source['core']],
+ ['reaction notifications','content_interactions_notify_reaction',$source['core']],
+ ['batch viewer reactions','$viewerReactionMap',$source['core']],
+ ['resolved report evidence','status="resolved"',$source['core']],
+ ['automatic moderation evidence','auto_hidden',$source['core'].$source['migration']],
+ ['approved-only reaction controls',"$status === 'approved'",$source['core']],
+ ['generic internal error boundary','Content interaction API failure',$source['api']],
  ['admin moderation queue','content_interactions_render_admin_summary',$source['publishingAdmin']],
  ['per-post settings','content_interactions_render_post_settings',$source['publishingAdmin']],
  ['delete cleanup','content_interactions_cleanup',$source['publishingAdmin']],
