@@ -57,8 +57,13 @@ jobs:
           done
           test ! -e tools/apply-federated-interactions-v66g.py
           test ! -e .github/workflows/apply-federated-interactions-v66g.yml
+          test ! -e tools/harden-federated-interactions-v66g.py
+          test ! -e .github/workflows/harden-federated-interactions-v66g.yml
+          test ! -e tools/harden-federated-interactions-v66g-2.py
+          test ! -e .github/workflows/harden-federated-interactions-v66g-2.yml
           grep -F "federated_interactions_process_inbound" portal/activitypub-service.php >/dev/null
-          grep -F "federated_interactions_local_comment_event" portal/content-interactions.php >/dev/null
+          grep -F "federated_interactions_safe_comment_event" portal/content-interactions.php >/dev/null
+          grep -F "federated_interactions_safe_reaction_event" portal/content-interactions.php >/dev/null
           grep -F "federated_interactions_following_document" portal/activitypub-service.php >/dev/null
 
   mysql-8-integration:
