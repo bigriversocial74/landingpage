@@ -966,6 +966,12 @@ function federated_interactions_set_actor_control(int $remoteActorId, string $st
         db()->prepare('UPDATE activitypub_following SET status="blocked",removed_at=UTC_TIMESTAMP() WHERE remote_actor_id=:id')->execute(['id' => $remoteActorId]);
         db()->prepare('UPDATE activitypub_remote_comments SET status="hidden",moderated_at=UTC_TIMESTAMP(),moderated_by_user_id=:user_id WHERE remote_actor_id=:id AND status IN ("pending","approved")')->execute(['user_id' => $userId, 'id' => $remoteActorId]);
         db()->prepare('UPDATE activitypub_remote_reactions SET status="undone",updated_at=UTC_TIMESTAMP() WHERE remote_actor_id=:id AND status="active"')->execute(['id' => $remoteActorId]);
+        if (function_exists('federated_timeline_schema_available') && federated_timeline_schema_available()) {
+            db()->prepare('UPDATE activitypub_remote_posts SET status="hidden",moderation_note="Remote actor blocked",moderated_by_user_id=:user_id,moderated_at=UTC_TIMESTAMP() WHERE remote_actor_id=:id AND status IN ("pending","active")')
+                ->execute(['user_id' => $userId, 'id' => $remoteActorId]);
+            db()->prepare('UPDATE activitypub_remote_post_actions action JOIN activitypub_remote_posts post ON post.id=action.remote_post_id SET action.status="failed",action.last_error="Remote actor blocked" WHERE post.remote_actor_id=:id AND action.status="active"')
+                ->execute(['id' => $remoteActorId]);
+        }
     } elseif ($status === 'active') {
         db()->prepare('UPDATE activitypub_remote_actors SET status="active" WHERE id=:id AND status="blocked"')->execute(['id' => $remoteActorId]);
         db()->prepare('UPDATE activitypub_following SET status="removed" WHERE remote_actor_id=:id AND status="blocked"')->execute(['id' => $remoteActorId]);

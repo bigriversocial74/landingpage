@@ -1,0 +1,135 @@
+name: Federated Timeline Quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/federated-timeline-quality.yml'
+      - 'portal/federated-timeline.php'
+      - 'portal/federated-feed.php'
+      - 'portal/activitypub-http.php'
+      - 'portal/activitypub-service.php'
+      - 'portal/federated-interactions.php'
+      - 'portal/unified-inbox.php'
+      - 'portal/activitypub-admin.php'
+      - 'activitypub-timeline-reply.php'
+      - 'assets/css/federated-timeline.css'
+      - 'cron/process-activitypub.php'
+      - 'database/federated_timeline_v66h.sql'
+      - 'database/north_mountain_portal.sql'
+      - 'tests/federated-timeline-v66h.php'
+      - 'tests/federated-timeline-db-v66h.php'
+      - 'V66H-SCORECARD.md'
+      - 'V66H-VALIDATION.txt'
+      - 'FEDERATED-TIMELINE-SETUP-v66H.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/federated-timeline.php portal/federated-feed.php \
+            portal/activitypub-http.php portal/activitypub-service.php \
+            portal/federated-interactions.php portal/unified-inbox.php \
+            portal/activitypub-admin.php activitypub-timeline-reply.php \
+            cron/process-activitypub.php tests/federated-timeline-v66h.php \
+            tests/federated-timeline-db-v66h.php; do
+              php -l "$file"
+          done
+      - name: Source, privacy, and security regression
+        run: php tests/federated-timeline-v66h.php
+      - name: Schema and cleanup contract
+        run: |
+          set -euo pipefail
+          for table in \
+            activitypub_remote_posts activitypub_timeline_user_state \
+            activitypub_remote_post_actions; do
+              test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/federated_timeline_v66h.sql)" = "1"
+              test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/north_mountain_portal.sql)" = "1"
+          done
+          test ! -e tools/apply-federated-timeline-v66h.py
+          test ! -e .github/workflows/apply-federated-timeline-v66h.yml
+          grep -F 'application/jrd+json' portal/activitypub-http.php >/dev/null
+          grep -F 'federated_timeline_process_inbound' portal/activitypub-service.php >/dev/null
+          grep -F 'federated_timeline_sync_delivery' portal/activitypub-service.php >/dev/null
+          grep -F 'federated_timeline_actions_for_posts' portal/federated-feed.php >/dev/null
+          grep -F 'federated_timeline_cleanup' cron/process-activitypub.php >/dev/null
+          if grep -F '<img' portal/federated-feed.php; then exit 1; fi
+          if grep -F '<audio' portal/federated-feed.php; then exit 1; fi
+          if grep -F '<video' portal/federated-feed.php; then exit 1; fi
+          if grep -F '<iframe' portal/federated-feed.php; then exit 1; fi
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe additive migration
+        run: |
+          set -euo pipefail
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/federated_timeline_v66h.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/federated_timeline_v66h.sql
+      - name: Live Federated Timeline database integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/federated-timeline-db-v66h.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe additive migration
+        run: |
+          set -euo pipefail
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/federated_timeline_v66h.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/federated_timeline_v66h.sql
+      - name: Live Federated Timeline database integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/federated-timeline-db-v66h.php

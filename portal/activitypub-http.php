@@ -223,7 +223,7 @@ function activitypub_fetch_json(string $url, int $maxRedirects = 3): array
         if ($status < 200 || $status >= 300) {
             throw new RuntimeException('The remote ActivityPub resource returned HTTP ' . $status . '.');
         }
-        $allowedTypes = ['application/activity+json', 'application/ld+json', 'application/json'];
+        $allowedTypes = ['application/activity+json', 'application/ld+json', 'application/json', 'application/jrd+json'];
         if ($contentType !== '' && !count(array_filter($allowedTypes, static fn(string $type): bool => str_contains($contentType, $type)))) {
             throw new RuntimeException('The remote ActivityPub resource is not JSON.');
         }

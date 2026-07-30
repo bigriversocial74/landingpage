@@ -7,6 +7,7 @@ require_once __DIR__ . '/activitypub-http.php';
 require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/content-interactions.php';
 require_once __DIR__ . '/federated-interactions.php';
+require_once __DIR__ . '/federated-timeline.php';
 
 function activitypub_valid_uuid(string $value): bool
 {
@@ -417,6 +418,8 @@ function activitypub_receive_inbox(
             activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif (federated_interactions_process_inbound($inboxId, $payload, $remote)) {
             activitypub_update_inbox_status($inboxId, 'accepted');
+        } elseif (federated_timeline_process_inbound($inboxId, $payload, $remote)) {
+            activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif ($activityType === 'Undo') {
             $undo = is_array($object) ? $object : [];
             $undoType = trim((string)($undo['type'] ?? ''));
@@ -463,6 +466,12 @@ function activitypub_receive_inbox(
                 db()->prepare('UPDATE activitypub_remote_comments SET status="deleted",deleted_at=UTC_TIMESTAMP() WHERE remote_actor_id=:actor_id')
                     ->execute(['actor_id' => (int)$remote['id']]);
                 db()->prepare('UPDATE activitypub_remote_reactions SET status="deleted" WHERE remote_actor_id=:actor_id')
+                    ->execute(['actor_id' => (int)$remote['id']]);
+            }
+            if (federated_timeline_schema_available()) {
+                db()->prepare('UPDATE activitypub_remote_posts SET status="deleted",deleted_at=UTC_TIMESTAMP() WHERE remote_actor_id=:actor_id')
+                    ->execute(['actor_id' => (int)$remote['id']]);
+                db()->prepare('UPDATE activitypub_remote_post_actions action JOIN activitypub_remote_posts post ON post.id=action.remote_post_id SET action.status="failed",action.last_error="Remote actor deleted" WHERE post.remote_actor_id=:actor_id AND action.status="active"')
                     ->execute(['actor_id' => (int)$remote['id']]);
             }
             activitypub_update_inbox_status($inboxId, 'accepted');
@@ -560,6 +569,7 @@ function activitypub_process_delivery_queue(int $limit = 10): array
                 ]);
             }
         }
+        federated_timeline_sync_delivery($delivery, $result);
         $processed[] = ['id' => (int)$delivery['id']] + $result;
     }
     return $processed;
@@ -574,6 +584,7 @@ function activitypub_retry_delivery(int $deliveryId): void
              response_code=NULL,response_excerpt=NULL,last_error=NULL,delivered_at=NULL
          WHERE id=:id'
     )->execute(['id' => $deliveryId]);
+    federated_timeline_reset_delivery($deliveryId);
 }
 
 function activitypub_followers(bool $all = true, int $limit = 100): array
