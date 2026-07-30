@@ -162,10 +162,14 @@ try {
             (actor_uri,preferred_username,display_name,summary,profile_url,inbox_url,
              shared_inbox_url,public_key_id,public_key_pem,status,fetched_at)
          VALUES
-            (:actor_uri,"alex","Alex Rivera","Remote follower.",:actor_uri,
+            (:actor_uri,"alex","Alex Rivera","Remote follower.",:profile_url,
              "https://remote.example/users/alex/inbox","https://remote.example/inbox",
              "https://remote.example/users/alex#main-key",:public_key,"active",UTC_TIMESTAMP())'
-    )->execute(['actor_uri' => $remoteActorUri, 'public_key' => $remotePublicKey]);
+    )->execute([
+        'actor_uri' => $remoteActorUri,
+        'profile_url' => $remoteActorUri,
+        'public_key' => $remotePublicKey,
+    ]);
     $remoteActorId = (int)$pdo->lastInsertId();
 
     $followId = 'https://remote.example/activities/follow-v66f';
