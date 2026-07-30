@@ -329,7 +329,9 @@ try {
         'actor' => $remoteActorUri,
         'object' => (string)$following['follow_activity_uri'],
     ];
-    if (!federated_interactions_process_follow_response($accept)) $fail('Outbound Follow Accept processing failed.');
+    if (!federated_interactions_process_follow_response($accept, $remoteActor)) {
+        $fail('Outbound Follow Accept processing failed.');
+    }
     $followingDocument = federated_interactions_following_document();
     if (($followingDocument['totalItems'] ?? 0) !== 1
         || ($followingDocument['orderedItems'][0] ?? '') !== $remoteActorUri) {

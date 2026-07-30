@@ -367,8 +367,8 @@ function content_interactions_create_comment(
         );
     } else {
         content_interactions_notify_participants($comment);
-        if (function_exists('federated_interactions_local_comment_event')) {
-            federated_interactions_local_comment_event($commentId, 'Create', $userId);
+        if (function_exists('federated_interactions_safe_comment_event')) {
+            federated_interactions_safe_comment_event($commentId, 'Create', $userId);
         }
     }
     log_activity('content_comment_created', 'content_comment', $commentId, ['content_type' => $contentType, 'content_id' => $contentId, 'status' => $status]);
@@ -410,8 +410,8 @@ function content_interactions_edit_comment(int $commentId, array $user, string $
     }
     if (($user['role'] ?? '') !== 'admin') {
         content_interactions_notify_admins('Edited Blog comment awaiting moderation', mb_substr($body, 0, 240), 'portal/admin.php?view=blog&moderation=1', $commentId);
-    } elseif ((string)$comment['status'] === 'approved' && function_exists('federated_interactions_local_comment_event')) {
-        federated_interactions_local_comment_event($commentId, 'Update', (int)$user['id']);
+    } elseif ((string)$comment['status'] === 'approved' && function_exists('federated_interactions_safe_comment_event')) {
+        federated_interactions_safe_comment_event($commentId, 'Update', (int)$user['id']);
     }
     return ['id' => $commentId, 'status' => ($user['role'] ?? '') === 'admin' ? (string)$comment['status'] : 'pending'];
 }
@@ -425,8 +425,8 @@ function content_interactions_delete_comment(int $commentId, array $user): void
     db()->prepare(
         'UPDATE content_comments SET status="deleted",body="",deleted_at=UTC_TIMESTAMP(),deleted_by=:deleted_by WHERE id=:id'
     )->execute(['deleted_by' => (int)$user['id'], 'id' => $commentId]);
-    if ((string)$comment['status'] === 'approved' && function_exists('federated_interactions_local_comment_event')) {
-        federated_interactions_local_comment_event($commentId, 'Delete', (int)$user['id'], $comment);
+    if ((string)$comment['status'] === 'approved' && function_exists('federated_interactions_safe_comment_event')) {
+        federated_interactions_safe_comment_event($commentId, 'Delete', (int)$user['id'], $comment);
     }
     log_activity('content_comment_deleted', 'content_comment', $commentId, ['admin' => $isAdmin]);
 }
@@ -466,8 +466,8 @@ function content_interactions_toggle_reaction(
             content_interactions_notify_reaction($userId, $targetType, $contentType, $targetId, $reactionType);
         }
     }
-    if (function_exists('federated_interactions_local_reaction_event')) {
-        federated_interactions_local_reaction_event(
+    if (function_exists('federated_interactions_safe_reaction_event')) {
+        federated_interactions_safe_reaction_event(
             $userId, $targetType, $contentType, $targetId, $existing, $active
         );
     }
@@ -510,6 +510,9 @@ function content_interactions_report_comment(int $commentId, int $userId, string
             'INSERT INTO content_moderation_events (comment_id,moderator_user_id,action,note,previous_status,new_status)
              VALUES (:comment_id,NULL,"auto_hidden",:note,"approved","hidden")'
         )->execute(['comment_id' => $commentId, 'note' => 'Automatically hidden after five open reader reports.']);
+        if (function_exists('federated_interactions_safe_comment_event')) {
+            federated_interactions_safe_comment_event($commentId, 'Delete', null, $comment);
+        }
         log_activity('content_comment_auto_hidden', 'content_comment', $commentId, ['open_reports' => $count]);
     }
     content_interactions_notify_admins('Blog comment reported', $reason, 'portal/admin.php?view=blog&moderation=1', $commentId);
@@ -607,12 +610,13 @@ function content_interactions_moderate_comment(int $commentId, string $status, i
             );
         }
     }
-    if (function_exists('federated_interactions_local_comment_event')) {
+    if (function_exists('federated_interactions_safe_comment_event')) {
         if ($status === 'approved') {
-            $event = federated_interactions_local_map('comment', (string)$commentId) ? 'Update' : 'Create';
-            federated_interactions_local_comment_event($commentId, $event, $moderatorId);
+            $map = federated_interactions_local_map('comment', (string)$commentId);
+            $event = !$map || (string)($map['status'] ?? '') === 'deleted' ? 'Create' : 'Update';
+            federated_interactions_safe_comment_event($commentId, $event, $moderatorId);
         } elseif ((string)$comment['status'] === 'approved') {
-            federated_interactions_local_comment_event($commentId, 'Delete', $moderatorId, $comment);
+            federated_interactions_safe_comment_event($commentId, 'Delete', $moderatorId, $comment);
         }
     }
     log_activity('content_comment_moderated', 'content_comment', $commentId, ['status' => $status]);

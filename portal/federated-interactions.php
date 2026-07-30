@@ -157,7 +157,12 @@ function federated_interactions_local_comment_id_from_uri(string $uri): int
     parse_str((string)($parts['query'] ?? ''), $query);
     $id = max(0, (int)($query['id'] ?? 0));
     $comment = $id > 0 ? content_interactions_comment($id) : null;
-    return $comment && ($comment['status'] ?? '') === 'approved' ? $id : 0;
+    return $comment
+        && ($comment['status'] ?? '') === 'approved'
+        && (string)($comment['content_type'] ?? '') === 'blog_post'
+        && (int)($comment['depth'] ?? 0) === 0
+        ? $id
+        : 0;
 }
 
 function federated_interactions_remote_comment_from_uri(string $uri): ?array
@@ -184,7 +189,12 @@ function federated_interactions_resolve_target(string $uri): ?array
     }
 
     $remoteComment = federated_interactions_remote_comment_from_uri($uri);
-    if ($remoteComment && ($remoteComment['status'] ?? '') === 'approved') {
+    if (
+        $remoteComment
+        && ($remoteComment['status'] ?? '') === 'approved'
+        && (int)($remoteComment['parent_remote_comment_id'] ?? 0) === 0
+        && (int)($remoteComment['parent_local_comment_id'] ?? 0) === 0
+    ) {
         return [
             'blog_post_id' => (int)$remoteComment['blog_post_id'],
             'local_comment_id' => null,
@@ -222,6 +232,16 @@ function federated_interactions_ingest_comment(int $inboxId, array $payload, arr
     }
     $target = federated_interactions_resolve_target($inReplyTo);
     if (!$target) return false;
+    $interactionSettings = content_interactions_settings('blog_post', (int)$target['blog_post_id']);
+    if (!(int)$interactionSettings['comments_enabled']) return false;
+    if (
+        $interactionSettings['comments_closed_at']
+        && strtotime((string)$interactionSettings['comments_closed_at']) <= time()
+    ) return false;
+    if (
+        ((int)($target['local_comment_id'] ?? 0) > 0 || (int)($target['remote_comment_id'] ?? 0) > 0)
+        && !(int)$interactionSettings['replies_enabled']
+    ) return false;
     $body = federated_interactions_clean_remote_text((string)($object['content'] ?? $object['summary'] ?? $object['name'] ?? ''));
     if ($body === '') throw new RuntimeException('The federated reply does not contain readable text.');
     $activityUri = trim((string)($payload['id'] ?? ''));
@@ -230,6 +250,16 @@ function federated_interactions_ingest_comment(int $inboxId, array $payload, arr
     $existing = federated_interactions_remote_comment_from_uri($objectUri);
     if ($existing && (int)$existing['remote_actor_id'] !== (int)$remoteActor['id']) {
         throw new RuntimeException('A federated reply object cannot change ownership.');
+    }
+    if (
+        $existing
+        && (
+            (int)$existing['blog_post_id'] !== (int)$target['blog_post_id']
+            || (int)($existing['parent_local_comment_id'] ?? 0) !== (int)($target['local_comment_id'] ?? 0)
+            || (int)($existing['parent_remote_comment_id'] ?? 0) !== (int)($target['remote_comment_id'] ?? 0)
+        )
+    ) {
+        throw new RuntimeException('A federated reply object cannot change its conversation target.');
     }
     $status = $existing && in_array((string)$existing['status'], ['hidden', 'spam', 'deleted'], true)
         ? (string)$existing['status'] : 'pending';
@@ -305,7 +335,26 @@ function federated_interactions_ingest_reaction(int $inboxId, array $payload, ar
     if (!activitypub_https_url($objectUri)) return false;
     $target = federated_interactions_resolve_target($objectUri);
     if (!$target) return false;
+    if (!(int)content_interactions_settings('blog_post', (int)$target['blog_post_id'])['reactions_enabled']) {
+        return false;
+    }
     $activityUri = trim((string)($payload['id'] ?? ''));
+    $existingStatement = db()->prepare(
+        'SELECT remote_actor_id,object_uri,reaction_type FROM activitypub_remote_reactions
+         WHERE activity_uri=:activity_uri LIMIT 1'
+    );
+    $existingStatement->execute(['activity_uri' => $activityUri]);
+    $existingReaction = $existingStatement->fetch();
+    if (
+        $existingReaction
+        && (
+            (int)$existingReaction['remote_actor_id'] !== (int)$remoteActor['id']
+            || activitypub_normalize_url((string)$existingReaction['object_uri']) !== activitypub_normalize_url($objectUri)
+            || (string)$existingReaction['reaction_type'] !== strtolower($type)
+        )
+    ) {
+        throw new RuntimeException('A federated reaction activity cannot change ownership, target, or type.');
+    }
     db()->prepare(
         'INSERT INTO activitypub_remote_reactions
             (inbox_activity_id,remote_actor_id,blog_post_id,local_comment_id,
@@ -368,7 +417,7 @@ function federated_interactions_delete_remote_object(string $objectUri, array $r
     return $comment->rowCount() > 0 || $reaction->rowCount() > 0;
 }
 
-function federated_interactions_process_follow_response(array $payload): bool
+function federated_interactions_process_follow_response(array $payload, array $remoteActor): bool
 {
     $type = (string)($payload['type'] ?? '');
     if (!in_array($type, ['Accept', 'Reject'], true) || !federated_interactions_schema_available()) return false;
@@ -380,9 +429,14 @@ function federated_interactions_process_follow_response(array $payload): bool
         'UPDATE activitypub_following
          SET status=:status,accepted_at=CASE WHEN :accepted="accepted" THEN UTC_TIMESTAMP() ELSE accepted_at END,
              updated_at=UTC_TIMESTAMP()
-         WHERE follow_activity_uri=:follow_uri AND status="pending"'
+         WHERE follow_activity_uri=:follow_uri AND remote_actor_id=:actor_id AND status="pending"'
     );
-    $statement->execute(['status' => $status, 'accepted' => $status, 'follow_uri' => $followUri]);
+    $statement->execute([
+        'status' => $status,
+        'accepted' => $status,
+        'follow_uri' => $followUri,
+        'actor_id' => (int)$remoteActor['id'],
+    ]);
     return $statement->rowCount() > 0;
 }
 
@@ -405,7 +459,9 @@ function federated_interactions_process_inbound(int $inboxId, array $payload, ar
         if (activitypub_normalize_url($objectUri) === activitypub_normalize_url((string)$remoteActor['actor_uri'])) return false;
         return federated_interactions_delete_remote_object($objectUri, $remoteActor);
     }
-    if (in_array($type, ['Accept', 'Reject'], true)) return federated_interactions_process_follow_response($payload);
+    if (in_array($type, ['Accept', 'Reject'], true)) {
+        return federated_interactions_process_follow_response($payload, $remoteActor);
+    }
     return false;
 }
 
@@ -667,6 +723,23 @@ function federated_interactions_local_comment_event(int $commentId, string $even
     return $outboxId;
 }
 
+function federated_interactions_safe_comment_event(
+    int $commentId,
+    string $eventType,
+    ?int $actorUserId = null,
+    ?array $snapshot = null
+): int {
+    try {
+        return federated_interactions_local_comment_event($commentId, $eventType, $actorUserId, $snapshot);
+    } catch (Throwable $exception) {
+        log_activity('federated_comment_delivery_deferred', 'content_comment', $commentId, [
+            'event_type' => $eventType,
+            'error' => mb_substr($exception->getMessage(), 0, 500),
+        ]);
+        return 0;
+    }
+}
+
 function federated_interactions_target_uri(string $targetType, string $contentType, int $targetId): string
 {
     if ($contentType !== 'blog_post' || $targetId <= 0) return '';
@@ -740,6 +813,26 @@ function federated_interactions_local_reaction_event(
         $targetType === 'comment' ? $targetId : null, $objectUri,
         (string)$like['id'], (string)$like['id'], hash('sha256', $payload), 'active', $userId
     );
+}
+
+function federated_interactions_safe_reaction_event(
+    int $userId,
+    string $targetType,
+    string $contentType,
+    int $targetId,
+    string $previousReaction,
+    string $activeReaction
+): void {
+    try {
+        federated_interactions_local_reaction_event(
+            $userId, $targetType, $contentType, $targetId, $previousReaction, $activeReaction
+        );
+    } catch (Throwable $exception) {
+        log_activity('federated_reaction_delivery_deferred', 'content_reaction', $targetId, [
+            'target_type' => $targetType,
+            'error' => mb_substr($exception->getMessage(), 0, 500),
+        ]);
+    }
 }
 
 function federated_interactions_follow_actor(string $actorUri, int $userId): int
