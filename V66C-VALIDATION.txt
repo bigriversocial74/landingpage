@@ -1,0 +1,21 @@
+Content Interactions v66C validation
+
+Initial score: 2.9/10
+Final score target: 10/10
+
+Required exact-head checks:
+- Content Interactions Quality
+- North Mountain Media Portal Quality
+- VP3 POD Managed Update v65
+- VP3 License Settings Quality
+
+Database:
+- Import database/content_interactions_v66c.sql after the base portal and publishing migrations.
+- The migration is additive and creates six generic interaction tables.
+
+Acceptance:
+- anonymous readers can only view approved interactions
+- active local users can react, comment, reply, edit within policy, delete their comments, and report other comments
+- pending comments appear in Blog moderation
+- approval notifies the commenter and relevant participants
+- permanent Blog deletion removes generic interaction records
