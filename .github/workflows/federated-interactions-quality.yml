@@ -61,10 +61,13 @@ jobs:
           test ! -e .github/workflows/harden-federated-interactions-v66g.yml
           test ! -e tools/harden-federated-interactions-v66g-2.py
           test ! -e .github/workflows/harden-federated-interactions-v66g-2.yml
+          test ! -e tools/fix-federated-interactions-delete-v66g.py
+          test ! -e .github/workflows/fix-federated-interactions-delete-v66g.yml
           grep -F "federated_interactions_process_inbound" portal/activitypub-service.php >/dev/null
           grep -F "federated_interactions_safe_comment_event" portal/content-interactions.php >/dev/null
           grep -F "federated_interactions_safe_reaction_event" portal/content-interactions.php >/dev/null
           grep -F "federated_interactions_following_document" portal/activitypub-service.php >/dev/null
+          grep -F "target_object_uri" portal/federated-interactions.php >/dev/null
 
   mysql-8-integration:
     runs-on: ubuntu-latest
