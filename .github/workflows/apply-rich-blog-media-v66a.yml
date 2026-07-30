@@ -25,14 +25,24 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Normalize deterministic patch boundary
+      - name: Normalize deterministic patch boundaries
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           path=Path('tools/apply-rich-blog-media-v66a.py')
           source=path.read_text(encoding='utf-8')
-          source=source.replace('"Body content supports plain paragraphs, ## headings, ### subheadings,\\n    and - list items."','"    Body content supports plain paragraphs, ## headings, ### subheadings,\\n    and - list items."')
+          for marker in [
+              'replace_once(\n    "portal/publishing-admin.php",\n    "Body content supports',
+              'replace_once(\n    "portal/publishing-admin.php",\n    "Use ## Heading',
+          ]:
+              start=source.find(marker)
+              if start < 0:
+                  continue
+              end=source.find('\nreplace_once(', start + len(marker))
+              if end < 0:
+                  raise SystemExit(f'Unable to close optional patch block: {marker}')
+              source=source[:start]+source[end+1:]
           path.write_text(source,encoding='utf-8')
           PY
 
