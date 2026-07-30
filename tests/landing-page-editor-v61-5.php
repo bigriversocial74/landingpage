@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 $root=dirname(__DIR__);
-$files=['editor'=>'portal/site-builder.php','core'=>'portal/site-builder-core.php','script'=>'assets/js/site-builder.js','bootstrap'=>'assets/js/site-builder-bootstrap.js','adminCss'=>'assets/css/site-builder-admin.css','publicCss'=>'assets/css/site-builder-public.css','publicJs'=>'assets/js/site-public.js'];
+$files=['editor'=>'portal/site-builder.php','core'=>'portal/site-builder-core.php','script'=>'assets/js/site-builder.js','bootstrap'=>'assets/js/site-builder-bootstrap.js','adminCss'=>'assets/css/site-builder-admin.css','publicCss'=>'assets/css/site-builder-public.css','publicJs'=>'assets/js/site-public.js','apache'=>'.htaccess'];
 $s=[];foreach($files as $name=>$file){$s[$name]=(string)file_get_contents($root.'/'.$file);if($s[$name]===''){fwrite(STDERR,"Unable to read {$file}\n");exit(1);}}
 $checks=[
  'v61.8 editor build'=>['20260727-visual-layout-system-v61.8',$s['editor'].$s['script'].$s['core']],
@@ -10,9 +10,12 @@ $checks=[
  'external bootstrap'=>['site-builder-bootstrap.js?v=20260727-v61.8',$s['editor']],
  'registry assignment'=>['window.NMM_SITE_BUILDER = payload;',$s['bootstrap']],
  'server registry recovery'=>['readServerRegistry',$s['bootstrap']],
+ 'partial registry merge'=>['mergeRegistry',$s['bootstrap']],
  'page identity recovery'=>['readPageFallback',$s['bootstrap']],
  'site and header recovery'=>['readSiteFallback',$s['bootstrap']],
  'boot recovery status'=>['window.NMM_SITE_BUILDER_BOOT_STATUS',$s['bootstrap']],
+ 'editor script cache boundary'=>['^(site-builder-bootstrap|site-builder|site-builder-advanced)\\.js$',$s['apache']],
+ 'editor no-store policy'=>['no-store, no-cache, must-revalidate, max-age=0',$s['apache']],
  'pages workspace'=>['data-editor-tab="pages"',$s['editor']],
  'sections workspace'=>['data-editor-tab="sections"',$s['editor']],
  'blocks workspace'=>['data-editor-tab="blocks"',$s['editor']],
@@ -46,4 +49,4 @@ $command='node '.escapeshellarg($runtime).' 2>&1';
 $output=[];$status=0;exec($command,$output,$status);
 if($status!==0){fwrite(STDERR,implode("\n",$output)."\n");exit($status?:1);}
 echo implode("\n",$output)."\n";
-echo "Visual Page Editor v61.8 retained regression with v65.1 boot recovery passed.\n";
+echo "Visual Page Editor v61.8 retained regression with v65.1 boot and cache recovery passed.\n";
