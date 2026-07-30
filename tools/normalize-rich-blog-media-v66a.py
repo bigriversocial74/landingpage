@@ -11,6 +11,8 @@ def remove_block(marker: str) -> None:
         return
     end = source.find('\nreplace_once(', start + len(marker))
     if end < 0:
+        end = source.find("\nprint('Rich Blog Media", start + len(marker))
+    if end < 0:
         raise SystemExit(f'Unable to close patch block: {marker}')
     source = source[:start] + source[end + 1:]
 
@@ -62,6 +64,10 @@ swap_block(
         $xml .= "</entry>\\\\n";\'\'\',
 )'''
 )
+
+workflow_marker = 'replace_once(\n    ".github/workflows/portal-quality.yml",\n'
+remove_block(workflow_marker)
+remove_block(workflow_marker)
 
 path.write_text(source, encoding='utf-8')
 print('Rich Blog Media patch boundaries normalized.')
