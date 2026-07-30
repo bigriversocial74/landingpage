@@ -67,6 +67,8 @@ $checks = [
     ['communications adapter','unified_inbox_communication_items',$source['core']],
     ['POD adapter','unified_inbox_pod_items',$source['core']],
     ['comments adapter','unified_inbox_comment_items',$source['core']],
+    ['comment notification unread source','notification.entity_type="content_comment"',$source['core']],
+    ['comment viewer state',"unified_inbox_comment_items((int)\$user['id'])",$source['core']],
     ['leads adapter','unified_inbox_lead_items',$source['core']],
     ['calls adapter','unified_inbox_call_items',$source['core']],
     ['notifications adapter','unified_inbox_notification_items',$source['core']],
@@ -100,6 +102,8 @@ foreach ([
     '.github/workflows/apply-unified-social-inbox-v66d.yml',
     'tools/fix-unified-inbox-priority-v66d.py',
     '.github/workflows/fix-unified-inbox-priority-v66d.yml',
+    'tools/fix-unified-inbox-comment-read-v66d.py',
+    '.github/workflows/fix-unified-inbox-comment-read-v66d.yml',
 ] as $temporary) {
     if (is_file($root.'/'.$temporary)) { fwrite(STDERR,"Temporary builder remains: {$temporary}\n"); exit(1); }
 }
