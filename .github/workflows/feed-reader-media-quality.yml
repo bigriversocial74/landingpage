@@ -90,4 +90,6 @@ jobs:
           test -f V66B-SCORECARD.md
           test -f V66B-VALIDATION.txt
           test ! -f tools/apply-feed-reader-media-v66b.py
+          test ! -f tools/fix-feed-reader-media-v66b.py
           test ! -f .github/workflows/apply-feed-reader-media-v66b.yml
+          test ! -f .github/workflows/apply-feed-reader-media-v66b-fixes.yml
