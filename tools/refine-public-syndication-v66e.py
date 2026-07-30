@@ -54,16 +54,16 @@ core = replace_once(
 )
 core = replace_once(
     core,
-    """    $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
+    r'''    $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
     if ($settings['podcast_owner_email'] !== '') {
         $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\n";
     }
-""",
-    """    if ($settings['podcast_owner_email'] !== '') {
+''',
+    r'''    if ($settings['podcast_owner_email'] !== '') {
         $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
         $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\n";
     }
-""",
+''',
     'podcast owner metadata',
 )
 write('portal/public-syndication.php', core)
