@@ -106,6 +106,8 @@ foreach ([
     '.github/workflows/harden-federated-interactions-v66g.yml',
     'tools/harden-federated-interactions-v66g-2.py',
     '.github/workflows/harden-federated-interactions-v66g-2.yml',
+    'tools/fix-federated-interactions-delete-v66g.py',
+    '.github/workflows/fix-federated-interactions-delete-v66g.yml',
 ] as $temporary) {
     if (file_exists($root . '/' . $temporary)) $fail('Temporary v66G integration file remains: ' . $temporary);
 }
