@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - portal/unified-inbox.php
+      - portal/unified-inbox-api.php
       - portal/homeserver-adapter.php
       - portal/admin.php
       - portal/bootstrap.php
@@ -21,6 +22,7 @@ on:
     branches: [main]
     paths:
       - portal/unified-inbox.php
+      - portal/unified-inbox-api.php
       - portal/homeserver-adapter.php
       - portal/admin.php
       - portal/bootstrap.php
@@ -44,6 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l portal/unified-inbox.php
+          php -l portal/unified-inbox-api.php
           php -l portal/homeserver-adapter.php
           php -l portal/admin.php
           php -l portal/bootstrap.php
@@ -58,13 +61,15 @@ jobs:
           set -euo pipefail
           php tests/unified-social-inbox-v66d.php
           node tests/unified-social-inbox-v66d.js
-      - name: Schema and cleanup contract
+      - name: Schema, security, and cleanup contract
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           migration = Path('database/unified_social_inbox_v66d.sql').read_text(encoding='utf-8')
           schema = Path('database/north_mountain_portal.sql').read_text(encoding='utf-8')
+          api = Path('portal/unified-inbox-api.php').read_text(encoding='utf-8')
+          script = Path('assets/js/unified-inbox.js').read_text(encoding='utf-8')
           for table in ['unified_inbox_workflow','unified_inbox_user_state']:
               needle = f'CREATE TABLE IF NOT EXISTS {table}'
               if migration.count(needle) != 1:
@@ -80,7 +85,13 @@ jobs:
           ]:
               if needle not in migration:
                   raise SystemExit(f'Migration evidence missing: {needle}')
-          print('Unified Social Inbox schema contract passed.')
+          for needle in ['require_role(\'admin\')','same_origin_request()','verify_csrf()','homeserver_capability_available','unified_inbox_collect']:
+              if needle not in api:
+                  raise SystemExit(f'HomeServer endpoint security missing: {needle}')
+          for needle in ['unified-inbox-api.php','X-CSRF-Token','suggest_reply','message_summary']:
+              if needle not in script and needle not in api:
+                  raise SystemExit(f'HomeServer browser contract missing: {needle}')
+          print('Unified Social Inbox schema and security contract passed.')
           PY
           test -f UNIFIED-INBOX-SETUP-v66D.md
           test -f V66D-SCORECARD.md
