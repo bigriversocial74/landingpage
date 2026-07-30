@@ -26,9 +26,10 @@ require_once __DIR__ . '/microgifter-connectors.php';
 require_once __DIR__ . '/site-analytics-view.php';
 require_once __DIR__ . '/menus-admin.php';
 require_once __DIR__ . '/feed-reader-view.php';
+require_once __DIR__ . '/unified-inbox.php';
 $user=require_role('admin');
 $view=(string)($_GET['view']??'dashboard');
-$allowed=['dashboard','music','analytics','call-center','clients','administrators','crm','portfolio','blog','events','bookings','proposals','resume','projects','leads','communications','notifications','messages','files','knowledge','builder','menus','feeds','site-analytics','settings','account'];
+$allowed=['dashboard','inbox','music','analytics','call-center','clients','administrators','crm','portfolio','blog','events','bookings','proposals','resume','projects','leads','communications','notifications','messages','files','knowledge','builder','menus','feeds','site-analytics','settings','account'];
 if(!in_array($view,$allowed,true))$view='dashboard';
 if($view==='messages')$view='communications';
 
@@ -44,6 +45,9 @@ if(is_post()){
     enforce_authenticated_action_limit($user);
     $action=input('action');
     try{
+        if(unified_inbox_handle_admin_action($action,$user)){
+            exit;
+        }
         if(publishing_handle_admin_action($action,$user)){
             exit;
         }
@@ -3078,6 +3082,12 @@ if($view==='menus'){
 
 if($view==='site-analytics'){
     site_analytics_render_admin();
+    portal_footer();
+    exit;
+}
+
+if($view==='inbox'){
+    unified_inbox_render($user);
     portal_footer();
     exit;
 }
