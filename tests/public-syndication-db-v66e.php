@@ -36,6 +36,7 @@ function status_label(string $value): string { return ucwords(str_replace('_',' 
 require_once NMM_ROOT . '/portal/public-syndication.php';
 require_once NMM_ROOT . '/portal/blog-feed-output.php';
 require_once NMM_ROOT . '/portal/webmention-service.php';
+require_once NMM_ROOT . '/portal/websub-service.php';
 
 $fail=static function(string $message): never { fwrite(STDERR,$message."\n"); exit(1); };
 $pdo=db();
