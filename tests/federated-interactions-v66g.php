@@ -52,6 +52,7 @@ $checks = [
     ['remote object ownership', 'cannot change ownership', $source['core']],
     ['remote target immutability', 'cannot change its conversation target', $source['core']],
     ['remote reaction ownership', 'cannot change ownership, target, or type', $source['core']],
+    ['native PDO Delete placeholders', 'target_object_uri', $source['core']],
     ['verified Follow response actor', 'remote_actor_id=:actor_id', $source['core']],
     ['post comment policy', "content_interactions_settings('blog_post'", $source['core']],
     ['nonblocking local federation', 'federated_interactions_safe_comment_event', $source['content'] . $source['core']],

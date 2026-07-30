@@ -411,9 +411,15 @@ function federated_interactions_delete_remote_object(string $objectUri, array $r
     $comment->execute(['actor_id' => (int)$remoteActor['id'], 'object_uri' => $objectUri]);
     $reaction = db()->prepare(
         'UPDATE activitypub_remote_reactions SET status="deleted",updated_at=UTC_TIMESTAMP()
-         WHERE remote_actor_id=:actor_id AND (activity_uri=:object_uri OR object_uri=:object_uri) AND status<>"deleted"'
+         WHERE remote_actor_id=:actor_id
+           AND (activity_uri=:activity_uri OR object_uri=:target_object_uri)
+           AND status<>"deleted"'
     );
-    $reaction->execute(['actor_id' => (int)$remoteActor['id'], 'object_uri' => $objectUri]);
+    $reaction->execute([
+        'actor_id' => (int)$remoteActor['id'],
+        'activity_uri' => $objectUri,
+        'target_object_uri' => $objectUri,
+    ]);
     return $comment->rowCount() > 0 || $reaction->rowCount() > 0;
 }
 
