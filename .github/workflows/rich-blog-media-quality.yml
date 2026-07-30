@@ -1,0 +1,65 @@
+name: Rich Blog Media Quality
+
+on:
+  pull_request:
+    paths:
+      - portal/blog-rich-media.php
+      - portal/publishing.php
+      - portal/publishing-admin.php
+      - portal/publishing-workflow-view.php
+      - portal/blog-feed-output.php
+      - blog-post.php
+      - assets/js/blog-rich-media-admin.js
+      - assets/js/blog-rich-media.js
+      - assets/css/blog-rich-media.css
+      - tests/rich-blog-media-v66a.php
+      - .github/workflows/rich-blog-media-quality.yml
+  push:
+    branches: [main]
+    paths:
+      - portal/blog-rich-media.php
+      - portal/publishing.php
+      - portal/publishing-admin.php
+      - portal/publishing-workflow-view.php
+      - portal/blog-feed-output.php
+      - blog-post.php
+      - assets/js/blog-rich-media-admin.js
+      - assets/js/blog-rich-media.js
+      - assets/css/blog-rich-media.css
+      - tests/rich-blog-media-v66a.php
+      - .github/workflows/rich-blog-media-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  rich-blog-media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/blog-rich-media.php
+          php -l portal/publishing.php
+          php -l portal/publishing-admin.php
+          php -l portal/publishing-workflow-view.php
+          php -l portal/blog-feed-output.php
+          php -l blog-post.php
+
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check assets/js/blog-rich-media-admin.js
+          node --check assets/js/blog-rich-media.js
+
+      - name: Rich media regression
+        run: php tests/rich-blog-media-v66a.php
+
+      - name: Temporary build files removed
+        run: |
+          set -euo pipefail
+          test ! -f tools/apply-rich-blog-media-v66a.py
+          test ! -f tools/normalize-rich-blog-media-v66a.py
+          test ! -f .github/workflows/apply-rich-blog-media-v66a.yml
