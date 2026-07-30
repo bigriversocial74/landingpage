@@ -1,0 +1,37 @@
+Unified Social Inbox v66D validation
+
+Initial score: 6.7/10
+Final score: 10/10
+Certified implementation head: 7b0e18e811c197d735cff51662f2c146722de53e
+
+Exact-head checks passed:
+- Unified Social Inbox Quality — run 30566015624
+- North Mountain Media Portal Quality — run 30566015559
+- Content Interactions Quality — run 30566015424
+- Feed Reader Media Quality — run 30566015534
+- VP3 POD Managed Update v65 — run 30566015515
+- VP3 License Settings Quality — run 30566015425
+
+Unified Social Inbox Quality passed:
+- PHP syntax
+- JavaScript syntax
+- synthetic filtering, sorting, HomeServer fallback, security, and cleanup regressions
+- schema duplication and foreign-key contracts
+- fresh-schema plus additive-migration import on MySQL 8.4
+- fresh-schema plus additive-migration import on MariaDB 11.4
+
+Database:
+- Import database/unified_social_inbox_v66d.sql after the base portal schema.
+- The additive migration creates unified_inbox_workflow and unified_inbox_user_state.
+
+Acceptance:
+- all six sources render through one normalized operator list
+- source content remains in its original table and source screen
+- search, queue, channel, unread, needs-response, pinned, snoozed, resolved, and archived views work
+- workflow state stores assignment, priority, response status, pin, snooze, and private note
+- per-administrator state stores read override and archive state
+- duplicate portal notifications are suppressed when the source item is already represented
+- auto-approved Blog comments retain unread evidence without duplicate rows
+- native high and urgent priorities survive normalization
+- the inbox works with no HomeServer paired or while it is offline
+- HomeServer summary and suggested-reply requests require administrator authentication, same-origin, CSRF, capability authorization, and server-side source reconstruction

@@ -1,0 +1,152 @@
+name: Unified Social Inbox Quality
+
+on:
+  pull_request:
+    paths:
+      - portal/unified-inbox.php
+      - portal/unified-inbox-api.php
+      - portal/homeserver-adapter.php
+      - portal/admin.php
+      - portal/bootstrap.php
+      - assets/js/unified-inbox.js
+      - assets/css/unified-inbox.css
+      - database/unified_social_inbox_v66d.sql
+      - database/north_mountain_portal.sql
+      - tests/unified-social-inbox-v66d.php
+      - tests/unified-social-inbox-v66d.js
+      - UNIFIED-INBOX-SETUP-v66D.md
+      - V66D-SCORECARD.md
+      - V66D-VALIDATION.txt
+      - .github/workflows/unified-social-inbox-quality.yml
+  push:
+    branches: [main]
+    paths:
+      - portal/unified-inbox.php
+      - portal/unified-inbox-api.php
+      - portal/homeserver-adapter.php
+      - portal/admin.php
+      - portal/bootstrap.php
+      - assets/js/unified-inbox.js
+      - assets/css/unified-inbox.css
+      - database/unified_social_inbox_v66d.sql
+      - database/north_mountain_portal.sql
+      - tests/unified-social-inbox-v66d.php
+      - tests/unified-social-inbox-v66d.js
+      - .github/workflows/unified-social-inbox-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/unified-inbox.php
+          php -l portal/unified-inbox-api.php
+          php -l portal/homeserver-adapter.php
+          php -l portal/admin.php
+          php -l portal/bootstrap.php
+          php -l tests/unified-social-inbox-v66d.php
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check assets/js/unified-inbox.js
+          node --check tests/unified-social-inbox-v66d.js
+      - name: Unified inbox regressions
+        run: |
+          set -euo pipefail
+          php tests/unified-social-inbox-v66d.php
+          node tests/unified-social-inbox-v66d.js
+      - name: Schema, security, and cleanup contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          migration = Path('database/unified_social_inbox_v66d.sql').read_text(encoding='utf-8')
+          schema = Path('database/north_mountain_portal.sql').read_text(encoding='utf-8')
+          api = Path('portal/unified-inbox-api.php').read_text(encoding='utf-8')
+          script = Path('assets/js/unified-inbox.js').read_text(encoding='utf-8')
+          for table in ['unified_inbox_workflow','unified_inbox_user_state']:
+              needle = f'CREATE TABLE IF NOT EXISTS {table}'
+              if migration.count(needle) != 1:
+                  raise SystemExit(f'v66D migration must define {table} exactly once')
+              if schema.count(needle) != 1:
+                  raise SystemExit(f'fresh schema must define {table} exactly once')
+          for needle in [
+              "workflow_status ENUM('open','waiting','resolved')",
+              "read_override ENUM('inherit','read','unread')",
+              'UNIQUE KEY uq_unified_inbox_workflow_source',
+              'FOREIGN KEY (assigned_user_id) REFERENCES users(id)',
+              'FOREIGN KEY (user_id) REFERENCES users(id)'
+          ]:
+              if needle not in migration:
+                  raise SystemExit(f'Migration evidence missing: {needle}')
+          for needle in ['require_role(\'admin\')','same_origin_request()','verify_csrf()','homeserver_capability_available','unified_inbox_collect']:
+              if needle not in api:
+                  raise SystemExit(f'HomeServer endpoint security missing: {needle}')
+          for needle in ['unified-inbox-api.php','X-CSRF-Token','suggest_reply','message_summary']:
+              if needle not in script and needle not in api:
+                  raise SystemExit(f'HomeServer browser contract missing: {needle}')
+          print('Unified Social Inbox schema and security contract passed.')
+          PY
+          test -f UNIFIED-INBOX-SETUP-v66D.md
+          test -f V66D-SCORECARD.md
+          test -f V66D-VALIDATION.txt
+          test ! -f tools/apply-unified-social-inbox-v66d.py
+          test ! -f .github/workflows/apply-unified-social-inbox-v66d.yml
+
+  mysql-8-migration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import fresh schema and additive migration
+        run: |
+          set -euo pipefail
+          mysql --protocol=tcp -h127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql --protocol=tcp -h127.0.0.1 -uroot -proot nmm < database/unified_social_inbox_v66d.sql
+          count=$(mysql --batch --skip-column-names --protocol=tcp -h127.0.0.1 -uroot -proot nmm -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nmm' AND table_name IN ('unified_inbox_workflow','unified_inbox_user_state')")
+          test "$count" = "2"
+
+  mariadb-migration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client
+        run: sudo apt-get update -qq && sudo apt-get install -y mariadb-client
+      - name: Import fresh schema and additive migration
+        run: |
+          set -euo pipefail
+          mariadb --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm < database/unified_social_inbox_v66d.sql
+          count=$(mariadb --batch --skip-column-names --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nmm' AND table_name IN ('unified_inbox_workflow','unified_inbox_user_state')")
+          test "$count" = "2"
