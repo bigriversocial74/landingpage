@@ -1,0 +1,37 @@
+name: Harden Federated Interactions v66G
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/harden-federated-interactions-v66g.yml'
+      - 'tools/harden-federated-interactions-v66g.py'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.head_ref == 'feature/federated-interactions-social-graph-v66g-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply verified-actor cache repair
+        run: python3 tools/harden-federated-interactions-v66g.py
+      - name: Validate repair
+        run: |
+          set -euo pipefail
+          php -l portal/federated-interactions.php
+          php -l tests/federated-interactions-v66g.php
+          php tests/federated-interactions-v66g.php
+      - name: Commit repair
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add portal/federated-interactions.php tests/federated-interactions-v66g.php
+          git commit -m "Reuse verified actor cache for outbound Follow v66G"
+          git push origin HEAD:${{ github.head_ref }}
