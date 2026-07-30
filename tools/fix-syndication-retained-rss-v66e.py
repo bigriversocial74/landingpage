@@ -21,6 +21,27 @@ def replace_once(content: str, old: str, new: str, label: str) -> str:
 core = read('portal/public-syndication.php')
 core = replace_once(
     core,
+    """require_once __DIR__ . '/publishing.php';
+require_once __DIR__ . '/publishing-workflow.php';
+require_once __DIR__ . '/blog-rich-media.php';
+""",
+    """if (!function_exists('blog_public_posts')) {
+    require_once __DIR__ . '/publishing.php';
+}
+if (
+    !function_exists('publishing_blog_settings')
+    || !function_exists('publishing_absolute_url')
+) {
+    require_once __DIR__ . '/publishing-workflow.php';
+}
+if (!function_exists('blog_rich_media_first_enclosure')) {
+    require_once __DIR__ . '/blog-rich-media.php';
+}
+""",
+    'conditional syndication dependencies',
+)
+core = replace_once(
+    core,
     '''function syndication_public_posts(array $filter, int $limit = 30): array
 {
     if (!publishing_schema_available()) return [];
