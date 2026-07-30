@@ -11,6 +11,12 @@ if (array_keys($catalog) !== ['communication','pod_message','content_comment','l
 
 $preview = unified_inbox_clean_preview("  Hello\n\n  <b>world</b>  ", 40);
 if ($preview !== 'Hello world') { fwrite(STDERR, "Preview normalization failed.\n"); exit(1); }
+$urgentItem = unified_inbox_item([
+    'source_type'=>'lead','source_id'=>99,'title'=>'Urgent inquiry','native_priority'=>'urgent'
+]);
+if (($urgentItem['native_priority'] ?? '') !== 'urgent') {
+    fwrite(STDERR, "Native priority preservation failed.\n"); exit(1);
+}
 
 $base = [
     'source_label' => 'Test', 'category' => 'messages', 'icon' => 'x', 'participant' => 'Person',
@@ -64,9 +70,11 @@ $checks = [
     ['leads adapter','unified_inbox_lead_items',$source['core']],
     ['calls adapter','unified_inbox_call_items',$source['core']],
     ['notifications adapter','unified_inbox_notification_items',$source['core']],
+    ['native priority preservation',"native_priority'] ?? $values['priority']",$source['core']],
     ['workflow state','unified_inbox_workflow',$source['migration'].$source['schema']],
     ['user state','unified_inbox_user_state',$source['migration'].$source['schema']],
     ['HomeServer boundary','homeserver_capability_available',$source['adapter'].$source['core']],
+    ['dynamic HomeServer status','homeserver_connector_status',$source['adapter']],
     ['standalone mode','standalone',$source['adapter'].$source['core']],
     ['secure HomeServer API',"require_role('admin')",$source['api']],
     ['same-origin HomeServer API','same_origin_request()',$source['api']],
@@ -87,7 +95,12 @@ foreach (['unified_inbox_workflow','unified_inbox_user_state'] as $table) {
     if (substr_count($source['migration'],$needle)!==1) { fwrite(STDERR,"Migration must define {$table} exactly once.\n"); exit(1); }
     if (substr_count($source['schema'],$needle)!==1) { fwrite(STDERR,"Fresh schema must define {$table} exactly once.\n"); exit(1); }
 }
-foreach (['tools/apply-unified-social-inbox-v66d.py','.github/workflows/apply-unified-social-inbox-v66d.yml'] as $temporary) {
+foreach ([
+    'tools/apply-unified-social-inbox-v66d.py',
+    '.github/workflows/apply-unified-social-inbox-v66d.yml',
+    'tools/fix-unified-inbox-priority-v66d.py',
+    '.github/workflows/fix-unified-inbox-priority-v66d.yml',
+] as $temporary) {
     if (is_file($root.'/'.$temporary)) { fwrite(STDERR,"Temporary builder remains: {$temporary}\n"); exit(1); }
 }
 
