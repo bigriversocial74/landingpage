@@ -48,6 +48,16 @@ pure = replace_once(
 )
 pure = replace_once(
     pure,
+    '''    ['WebFinger rewrite','^.well-known/webfinger',$source['htaccess']],
+    ['NodeInfo rewrite','^.well-known/nodeinfo',$source['htaccess']],
+''',
+    '''    ['WebFinger rewrite','^\\\\.well-known/webfinger',$source['htaccess']],
+    ['NodeInfo rewrite','^\\\\.well-known/nodeinfo',$source['htaccess']],
+''',
+    'well-known rewrite source-test literals',
+)
+pure = replace_once(
+    pure,
     '''    'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
 ''',
     '''    'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
