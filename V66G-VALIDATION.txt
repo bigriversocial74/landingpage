@@ -1,0 +1,46 @@
+Federated Interactions, Replies & Social Graph v66G
+Provisional repository validation
+Date: 2026-07-30
+
+Initial score: 3.2/10
+Provisional score after implementation and repair: 9.5/10
+
+Pre-certification head:
+3500338fe6bb9dac32e51e371eaf67b9e12d04b3
+
+Passed exact-head workflows:
+- Federated Interactions Quality — run 30583315295
+- ActivityPub Federation Quality — run 30583315300
+- North Mountain Media Portal Quality — run 30583315271
+- Public Syndication Quality — run 30583315282
+- Content Interactions Quality — run 30583315301
+- Unified Social Inbox Quality — run 30583315311
+- Feed Reader Media Quality — run 30583315352
+- VP3 POD Managed Update v65 — run 30583315278
+- VP3 License Settings Quality — run 30583315340
+
+Dedicated v66G certification passed:
+- PHP syntax
+- source, moderation, ownership, and security regressions
+- fresh-install schema uniqueness
+- temporary builder and repair cleanup
+- complete fresh schema import
+- repeat-safe additive migration imports
+- live MySQL 8.4 integration
+- live MariaDB 11.4 integration
+
+Live database coverage:
+- remote Note reply ingestion and sanitization
+- pre-moderation and approval
+- public rendering and counts
+- remote Update returns to moderation
+- remote Like and Announce
+- remote Undo
+- native-PDO-safe remote Delete
+- local comment Create, Update, Delete, and Tombstone mapping
+- local reaction Like and Undo
+- outbound Follow, verified Accept, Following collection, and Unfollow
+- actor block containment
+- domain block and unblock
+
+Final 10/10 requires all of the same workflows to pass on the final scorecard and documentation head.
