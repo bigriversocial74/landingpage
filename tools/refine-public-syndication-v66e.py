@@ -54,14 +54,14 @@ core = replace_once(
 )
 core = replace_once(
     core,
-    """    $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\\n";
+    """    $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
     if ($settings['podcast_owner_email'] !== '') {
-        $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\\n";
+        $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\n";
     }
 """,
     """    if ($settings['podcast_owner_email'] !== '') {
-        $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\\n";
-        $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\\n";
+        $xml .= '<podcast:locked owner="' . syndication_xml($settings['podcast_owner_email']) . '">no</podcast:locked>' . "\n";
+        $xml .= '<itunes:owner><itunes:name>' . syndication_xml($settings['podcast_owner_name']) . '</itunes:name><itunes:email>' . syndication_xml($settings['podcast_owner_email']) . "</itunes:email></itunes:owner>\n";
     }
 """,
     'podcast owner metadata',
@@ -69,6 +69,17 @@ core = replace_once(
 write('portal/public-syndication.php', core)
 
 test = read('tests/public-syndication-db-v66e.php')
+test = replace_once(
+    test,
+    """require_once NMM_ROOT . '/portal/public-syndication.php';
+require_once NMM_ROOT . '/portal/blog-feed-output.php';
+""",
+    """require_once NMM_ROOT . '/portal/public-syndication.php';
+require_once NMM_ROOT . '/portal/blog-feed-output.php';
+require_once NMM_ROOT . '/portal/webmention-service.php';
+""",
+    'database Webmention service include',
+)
 test = replace_once(
     test,
     """    $json=syndication_render_json_feed(['category'=>'','tag'=>'open-web','author'=>'']);
@@ -114,7 +125,7 @@ source_test = replace_once(
     """    ['JSON MIME','application/feed+json',$source['core'].$source['json']],
 """,
     """    ['JSON MIME','application/feed+json',$source['core'].$source['json']],
-    ['JSON WebSub hubs',"$feed['hubs']",$source['core']],
+    ['JSON WebSub hubs','$feed[\\'hubs\\']',$source['core']],
 """,
     'source JSON hub assertion',
 )
