@@ -1,0 +1,54 @@
+name: Apply Content Interactions v66C
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/apply-content-interactions-v66c.py
+      - .github/workflows/apply-content-interactions-v66c.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: content-interactions-v66c
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/content-interactions-v66c-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply deterministic integration
+        run: python3 tools/apply-content-interactions-v66c.py
+
+      - name: Focused validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l portal/content-interactions.php
+          php -l portal/content-interactions-admin.php
+          php -l content-interactions-api.php
+          php -l blog-post.php
+          php -l portal/publishing-admin.php
+          php -l portal/publishing-workflow-view.php
+          node --check assets/js/content-interactions.js
+          node --check tests/content-interactions-v66c.js
+          php tests/content-interactions-v66c.php
+          node tests/content-interactions-v66c.js
+
+      - name: Commit finished application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f tools/apply-content-interactions-v66c.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Build Content Interactions v66C"
+          git push origin HEAD:${{ github.head_ref }}
