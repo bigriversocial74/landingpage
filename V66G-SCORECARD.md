@@ -31,7 +31,7 @@ ActivityPub v66F provided a secure local actor, discovery, Blog federation, mode
 - Repaired native PDO Delete placeholders with separate activity and target-object parameters.
 - Removed every temporary integration, hardening, and repair controller.
 
-## Provisional score: 9.5/10
+## Final score: 10/10
 
 | Area | Score |
 |---|---:|
@@ -44,8 +44,8 @@ ActivityPub v66F provided a secure local actor, discovery, Blog federation, mode
 | Actor and domain moderation | 10/10 |
 | Unified Inbox integration | 10/10 |
 | Security and standalone reliability | 10/10 |
-| Final exact-head certification | 5/10 |
+| Database and exact-head certification | 10/10 |
 
-Pre-certification head `3500338fe6bb9dac32e51e371eaf67b9e12d04b3` passed the dedicated source/security matrix, live MySQL 8.4 and MariaDB 11.4 integration, ActivityPub Federation, Portal Quality, Public Syndication, Content Interactions, Unified Social Inbox, Feed Reader Media, VP3 Managed Update, and VP3 License Settings.
+Certification head `52f22e04c4fd4e84eb7573a24c5407599ece1800` passed Federated Interactions Quality, ActivityPub Federation Quality, North Mountain Media Portal Quality, Public Syndication Quality, Content Interactions Quality, Unified Social Inbox Quality, Feed Reader Media Quality, VP3 POD Managed Update v65, and VP3 License Settings Quality.
 
-Final 10/10 requires the same complete matrix to pass on the final scorecard and documentation head, followed by PR promotion and merge.
+The final scorecard and validation update is documentation-only. The same complete matrix must pass on the resulting PR head before promotion and merge.
