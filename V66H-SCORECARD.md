@@ -2,26 +2,43 @@
 
 ## Initial score: 2.8/10
 
-The POD can publish through ActivityPub, follow remote actors, receive and moderate interactions on its own Blog, and maintain a Following collection. Ordinary posts from followed actors are still acknowledged and discarded. There is no private federated home timeline, mention quarantine, read/save/hide state, remote-content search, handle-based actor discovery, or signed Like, Boost, Reply, and Undo actions targeting remote posts.
+The POD could publish through ActivityPub, follow remote actors, receive interactions on its own Blog, and maintain a Following collection. Ordinary posts from followed actors were acknowledged and discarded. There was no private federated timeline, mention quarantine, read/save/hide state, remote-content search, handle discovery, or signed actions targeting remote posts.
 
-## 10/10 target
+## Repairs completed
 
-- Store verified Note and Article activities from accepted Following relationships.
-- Store verified Announce activities as boost entries without automatically fetching or loading remote content.
-- Quarantine unsolicited direct mentions for owner review.
-- Process Update, Delete, Tombstone, and Undo idempotently with immutable actor/object ownership.
-- Add a private owner timeline with Following, Mentions, Boosts, Unread, Saved, and Hidden views.
-- Add text search and actor filtering.
-- Add per-owner read, save, and hide state.
-- Add handle/URL discovery through SSRF-safe WebFinger and ActivityPub actor resolution.
-- Add signed Like, Boost, Reply, and Undo actions targeting remote posts.
-- Add a dereferenceable local Note endpoint for outbound timeline replies.
-- Keep remote media link-only by default; never auto-load tracking pixels or fetch remote attachments server-side.
-- Surface pending mentions and failed actions in the Unified Social Inbox.
-- Add bounded retention that preserves saved posts and durable delivery evidence.
-- Preserve standalone operation with federation and timeline ingestion disabled by default.
-- Add additive/fresh schema, source/security regressions, and live MySQL 8.4/MariaDB 11.4 certification.
+- Added verified Note and Article ingestion from accepted Following relationships.
+- Added Announce/boost timeline entries without dereferencing or automatically loading remote content.
+- Added quarantined unsolicited direct mentions with owner moderation.
+- Added idempotent Update, Delete, Tombstone, and Undo processing with immutable actor/object ownership.
+- Added private Following, Mentions, Boosts, Unread, Saved, Hidden, and All queues.
+- Added text search and remote-actor filtering.
+- Added private per-owner read, save, and hide state.
+- Added SSRF-safe URL and WebFinger actor discovery with JRD support.
+- Added signed Like, Boost, Reply, Undo, and reply Delete/Tombstone activities.
+- Added dereferenceable local reply Note objects.
+- Enforced link-only remote media with no automatic image, audio, video, iframe, tracking-pixel, or attachment fetching.
+- Added pending mentions and failed action delivery evidence to the Unified Social Inbox.
+- Added bounded retention that preserves saved posts and posts with local action evidence.
+- Added actor deletion and actor/domain block containment.
+- Added delivery failure synchronization and retry reset behavior.
+- Added additive and fresh-install schema support.
+- Renamed the reserved SQL column `sensitive` to `is_sensitive` across schema and runtime.
+- Corrected literal source-contract assertions.
+- Removed all temporary integration and repair files.
 
-## Current score: 2.8/10
+## Final score: 10/10
 
-Final 10/10 requires complete implementation, privacy/security review, retained portal compatibility, clean temporary-file removal, exact-head certification, PR promotion, and merge.
+| Area | Score |
+|---|---:|
+| Followed-post and boost ingestion | 10/10 |
+| Mention quarantine and moderation | 10/10 |
+| Update, Delete, Tombstone, and Undo | 10/10 |
+| Private timeline, state, and search | 10/10 |
+| Actor discovery and WebFinger | 10/10 |
+| Signed remote-post actions | 10/10 |
+| Remote-media privacy | 10/10 |
+| Unified Inbox and retention | 10/10 |
+| Schema and standalone reliability | 10/10 |
+| Exact-head certification | 10/10 |
+
+Implementation head `0c9b85d269179cba3a0557efeb102ebd0f3c5f84` passed Federated Timeline Quality, ActivityPub Federation Quality, Federated Interactions Quality, Public Syndication Quality, Content Interactions Quality, Unified Social Inbox Quality, Feed Reader Media Quality, North Mountain Media Portal Quality, VP3 POD Managed Update v65, and VP3 License Settings Quality.
