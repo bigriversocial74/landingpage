@@ -10,6 +10,7 @@ require_once __DIR__ . '/portal/publishing-workflow.php';
 require_once __DIR__ . '/portal/public-music-shell.php';
 require_once __DIR__ . '/portal/content-interactions.php';
 require_once __DIR__ . '/portal/webmention-service.php';
+require_once __DIR__ . '/portal/activitypub.php';
 
 $slug = trim((string)($_GET['slug'] ?? ''));
 $previewRequested = !empty($_GET['preview']);
@@ -112,6 +113,7 @@ header(
 <meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
 <?=syndication_discovery_links(['category'=>'','tag'=>'','author'=>''], !$isAdminPreview)?>
+<?php if(!$isAdminPreview):?><?=activitypub_discovery_links()?><?php endif;?>
 <?php if($isAdminPreview):?>
 <meta name="robots" content="noindex,nofollow">
 <?php endif;?>

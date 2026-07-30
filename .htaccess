@@ -23,6 +23,10 @@ Options -Indexes
 
     # POD Protocol 1 public identity discovery.
     RewriteRule ^\.well-known/pod\.json$ pod-discovery.php [L,NC]
+
+    # ActivityPub and fediverse discovery.
+    RewriteRule ^\.well-known/webfinger$ webfinger.php [L,NC,QSA]
+    RewriteRule ^\.well-known/nodeinfo$ nodeinfo-discovery.php [L,NC]
 </IfModule>
 
 # Preserve bearer authorization when Apache/FastCGI provides it.
@@ -68,7 +72,7 @@ Options -Indexes
         Header set Expires "0"
     </FilesMatch>
 
-    <FilesMatch "^(blog-feed|sitemap|events-calendar|event-cover|pod-discovery)\.php$">
+    <FilesMatch "^(blog-feed|sitemap|events-calendar|event-cover|pod-discovery|webfinger|nodeinfo|nodeinfo-discovery|activitypub-actor|activitypub-outbox|activitypub-followers|activitypub-following|activitypub-activity|activitypub-object)\.php$">
         Header set Cache-Control "public, max-age=900, must-revalidate"
     </FilesMatch>
 </IfModule>

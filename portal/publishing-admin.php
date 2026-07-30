@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/content-interactions-admin.php';
 require_once __DIR__ . '/websub-service.php';
+require_once __DIR__ . '/activitypub-service.php';
 
 function publishing_handle_admin_action(
     string $action,
@@ -49,6 +50,7 @@ function publishing_handle_admin_action(
 
     if ($action === 'save_blog_post') {
         $id = int_input('id');
+        $existingPost = $id > 0 ? blog_admin_post($id) : null;
         $title = input('title');
         $slug = slugify(input('slug') ?: $title);
         $status = input('status');
@@ -250,6 +252,15 @@ function publishing_handle_admin_action(
                 (int)$user['id'],
                 $id
             );
+            activitypub_blog_event(
+                $id,
+                $existingPost && (string)$existingPost['status'] === 'published'
+                    ? 'Update'
+                    : 'Create',
+                (int)$user['id']
+            );
+        } elseif ($existingPost && (string)$existingPost['status'] === 'published') {
+            activitypub_blog_event($id, 'Delete', (int)$user['id'], $existingPost);
         }
         flash('success', $message);
         redirect(
@@ -375,6 +386,11 @@ function publishing_handle_admin_action(
             'blog_post',
             $postId
         );
+        $restoredPost = activitypub_blog_post($postId);
+        if ($restoredPost && (string)$restoredPost['status'] === 'published') {
+            syndication_queue_websub('update', (int)$user['id'], $postId);
+            activitypub_blog_event($postId, 'Update', (int)$user['id']);
+        }
         flash('success', 'Blog revision restored.');
         redirect(
             'portal/admin.php?view=blog&edit=' . $postId
@@ -383,6 +399,7 @@ function publishing_handle_admin_action(
 
     if ($action === 'archive_blog_post') {
         $id = int_input('id');
+        $existingPost = blog_admin_post($id);
 
         db()->prepare(
             'UPDATE blog_posts
@@ -395,6 +412,9 @@ function publishing_handle_admin_action(
             'blog_post',
             $id
         );
+        if ($existingPost && (string)$existingPost['status'] === 'published') {
+            activitypub_blog_event($id, 'Delete', (int)$user['id'], $existingPost);
+        }
         flash('success', 'Blog post archived.');
         redirect('portal/admin.php?view=blog');
     }
@@ -403,9 +423,10 @@ function publishing_handle_admin_action(
     if ($action === 'delete_blog_post') {
         $id = int_input('id');
         $postStatement = db()->prepare(
-            'SELECT id,title
-             FROM blog_posts
-             WHERE id=:id
+            'SELECT post.*,user.display_name AS author_name
+             FROM blog_posts post
+             LEFT JOIN users user ON user.id=post.author_user_id
+             WHERE post.id=:id
              LIMIT 1'
         );
         $postStatement->execute(['id' => $id]);
@@ -423,6 +444,9 @@ function publishing_handle_admin_action(
         $mediaStatement->execute(['post_id' => $id]);
         $media = $mediaStatement->fetchAll();
 
+        if ((string)($post['status'] ?? '') === 'published') {
+            activitypub_blog_event($id, 'Delete', (int)$user['id'], $post);
+        }
         content_interactions_cleanup('blog_post', $id);
         db()->prepare(
             'DELETE FROM blog_posts

@@ -276,10 +276,21 @@ function pod_discovery_document(): array
             'main' => $feed,
             'blog' => $origin !== '' ? $origin . '/blog-feed.php' : '',
             'atom' => $origin !== '' ? $origin . '/blog-atom.php' : '',
+            'json' => $origin !== '' ? $origin . '/blog-json-feed.php' : '',
+            'podcast' => $origin !== '' ? $origin . '/podcast-feed.php' : '',
         ],
         'capabilities' => [
             'profile' => ['version' => '1', 'url' => $profile],
-            'feeds' => ['version' => '1', 'formats' => ['rss', 'atom']],
+            'feeds' => ['version' => '1', 'formats' => ['rss', 'atom', 'json_feed', 'podcast_rss']],
+            'activitypub' => [
+                'version' => '1',
+                'status' => setting('activitypub_enabled', '0') === '1'
+                    ? 'available'
+                    : 'disabled',
+                'actor' => $origin !== '' ? $origin . '/activitypub-actor.php' : '',
+                'inbox' => $origin !== '' ? $origin . '/activitypub-inbox.php' : '',
+                'outbox' => $origin !== '' ? $origin . '/activitypub-outbox.php' : '',
+            ],
             'public_agent' => [
                 'version' => '1',
                 'status' => $agent !== '' ? 'available' : 'unavailable',
