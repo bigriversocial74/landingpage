@@ -5,8 +5,18 @@ define('NMM_ROOT', dirname(__DIR__));
 require_once NMM_ROOT . '/portal/unified-inbox.php';
 
 $catalog = unified_inbox_source_catalog();
-if (array_keys($catalog) !== ['communication','pod_message','content_comment','lead','call_center','notification']) {
-    fwrite(STDERR, "Unified source catalog failed.\n"); exit(1);
+$coreSources = ['communication','pod_message','content_comment','lead','call_center','notification'];
+$coreOrder = array_values(array_filter(
+    array_keys($catalog),
+    static fn(string $sourceType): bool => in_array($sourceType, $coreSources, true)
+));
+if ($coreOrder !== $coreSources) {
+    fwrite(STDERR, "Unified core source catalog failed.\n"); exit(1);
+}
+foreach (['federated_comment','federated_reaction','federated_follow'] as $sourceType) {
+    if (($catalog[$sourceType]['category'] ?? '') !== 'social') {
+        fwrite(STDERR, "Federated source catalog failed for {$sourceType}.\n"); exit(1);
+    }
 }
 
 $preview = unified_inbox_clean_preview("  Hello\n\n  <b>world</b>  ", 40);
@@ -67,6 +77,10 @@ $checks = [
     ['communications adapter','unified_inbox_communication_items',$source['core']],
     ['POD adapter','unified_inbox_pod_items',$source['core']],
     ['comments adapter','unified_inbox_comment_items',$source['core']],
+    ['federated adapter','federated_interactions_inbox_items',$source['core']],
+    ['federated comment source',"'federated_comment'",$source['core']],
+    ['federated reaction source',"'federated_reaction'",$source['core']],
+    ['federated follow source',"'federated_follow'",$source['core']],
     ['comment notification unread source','notification.entity_type="content_comment"',$source['core']],
     ['comment viewer state',"unified_inbox_comment_items((int)\$user['id'])",$source['core']],
     ['leads adapter','unified_inbox_lead_items',$source['core']],

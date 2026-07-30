@@ -1,0 +1,58 @@
+Federated Interactions, Replies & Social Graph v66G
+Repository certification
+Date: 2026-07-30
+
+Initial score: 3.2/10
+Final score: 10/10
+
+Certified implementation and documentation head:
+52f22e04c4fd4e84eb7573a24c5407599ece1800
+
+Passed exact-head workflows:
+- Federated Interactions Quality — run 30583626273
+- ActivityPub Federation Quality — run 30583626319
+- North Mountain Media Portal Quality — run 30583626313
+- Public Syndication Quality — run 30583626267
+- Content Interactions Quality — run 30583626335
+- Unified Social Inbox Quality — run 30583626264
+- Feed Reader Media Quality — run 30583626521
+- VP3 POD Managed Update v65 — run 30583626337
+- VP3 License Settings Quality — run 30583626261
+
+Dedicated v66G certification passed:
+- PHP syntax
+- source, moderation, ownership, and security regressions
+- fresh-install schema uniqueness
+- temporary builder, hardener, and repair cleanup
+- complete fresh schema import
+- repeat-safe additive migration imports
+- live MySQL 8.4 integration
+- live MariaDB 11.4 integration
+
+Live database coverage:
+- remote Note reply ingestion and sanitization
+- pre-moderation and approval
+- public rendering and counts
+- remote Update returns to moderation
+- remote Like and Announce
+- remote Undo
+- native-PDO-safe remote Delete
+- local comment Create, Update, Delete, and Tombstone mapping
+- local reaction Like and Undo
+- outbound Follow, verified Accept, Following collection, and Unfollow
+- actor block containment
+- domain block and unblock
+
+Security and reliability coverage:
+- verified actor attribution
+- immutable remote reply ownership and conversation targets
+- immutable remote reaction actor, target, and type
+- verified actor ownership for Follow Accept and Reject
+- post comment/reply/close-time/reaction controls
+- one-level remote reply nesting
+- pre-moderated public display
+- actor and domain containment
+- nonblocking local comments and reactions when federation delivery is unavailable
+- no fake local user creation for remote identities
+
+The scorecard/validation update creates a documentation-only final PR head. The complete matrix must pass once more on that exact head before merge.
