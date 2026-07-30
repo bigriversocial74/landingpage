@@ -249,7 +249,7 @@ function federated_timeline_ingest(int $inboxId, array $payload, array $remoteAc
         'INSERT INTO activitypub_remote_posts
             (inbox_activity_id,remote_actor_id,entry_uri,source_activity_uri,object_uri,
              entry_type,boosted_object_uri,in_reply_to_uri,source_url,title,summary,
-             body_text,body_hash,content_warning,sensitive,language_code,visibility,
+             body_text,body_hash,content_warning,is_sensitive,language_code,visibility,
              attachments_json,tags_json,mentions_local,status,source_published_at,source_updated_at)
          VALUES
             (:inbox_id,:actor_id,:entry_uri,:activity_uri,:object_uri,:entry_type,
@@ -260,7 +260,7 @@ function federated_timeline_ingest(int $inboxId, array $payload, array $remoteAc
              inbox_activity_id=VALUES(inbox_activity_id),source_activity_uri=VALUES(source_activity_uri),
              in_reply_to_uri=VALUES(in_reply_to_uri),source_url=VALUES(source_url),title=VALUES(title),
              summary=VALUES(summary),body_text=VALUES(body_text),body_hash=VALUES(body_hash),
-             content_warning=VALUES(content_warning),sensitive=VALUES(sensitive),
+             content_warning=VALUES(content_warning),is_sensitive=VALUES(is_sensitive),
              language_code=VALUES(language_code),visibility=VALUES(visibility),
              attachments_json=VALUES(attachments_json),tags_json=VALUES(tags_json),
              mentions_local=VALUES(mentions_local),

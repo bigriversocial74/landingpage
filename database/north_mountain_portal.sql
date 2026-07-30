@@ -3634,7 +3634,7 @@ CREATE TABLE IF NOT EXISTS activitypub_remote_posts (
     body_text MEDIUMTEXT NULL,
     body_hash CHAR(64) NOT NULL,
     content_warning VARCHAR(1000) NULL,
-    sensitive TINYINT(1) NOT NULL DEFAULT 0,
+    is_sensitive TINYINT(1) NOT NULL DEFAULT 0,
     language_code VARCHAR(35) NULL,
     visibility ENUM('public','unlisted','followers','direct') NOT NULL DEFAULT 'public',
     attachments_json MEDIUMTEXT NULL,
