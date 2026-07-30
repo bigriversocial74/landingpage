@@ -27,8 +27,8 @@ jobs:
           path = Path('tools/apply-federated-timeline-v66h.py')
           content = path.read_text(encoding='utf-8')
           replacements = {
-              '"] : [];\\n$actors = $schemaAvailable ? db()->query(\\n"': '"], 150) : [];\\n$actors = $schemaAvailable ? db()->query(\\n"',
-              '"] : [];\\n$actionsByPost = $schemaAvailable\\n"': '"], 150) : [];\\n$actionsByPost = $schemaAvailable\\n"',
+              '"] : [];\\n$actors = $schemaAvailable': '"], 150) : [];\\n$actors = $schemaAvailable',
+              '"] : [];\\n$actionsByPost = $schemaAvailable': '"], 150) : [];\\n$actionsByPost = $schemaAvailable',
           }
           for old, new in replacements.items():
               if content.count(old) != 1:
