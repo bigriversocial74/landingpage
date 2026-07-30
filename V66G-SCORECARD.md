@@ -2,22 +2,50 @@
 
 ## Initial score: 3.2/10
 
-ActivityPub v66F provides a secure local actor, discovery, Blog federation, moderated followers, signed deliveries, replay evidence, queues, and administrative controls. Inbound `Create`, `Update`, `Like`, and `Announce` activities are accepted but do not become durable social records. Local Blog comments and reactions do not federate, the POD cannot follow remote actors, the Following collection is empty, and remote social activity is not normalized into the Unified Inbox.
+ActivityPub v66F provided a secure local actor, discovery, Blog federation, moderated followers, signed deliveries, replay evidence, queues, and administrator controls. Inbound `Create`, `Update`, `Like`, and `Announce` activities were acknowledged but did not become durable social records. Local Blog comments and reactions did not federate, the POD could not follow remote actors, the Following collection was empty, and remote social activity was not normalized into the Unified Inbox.
 
-## 10/10 target
+## Repairs completed
 
-- Convert verified remote Note/Article replies into moderated Blog comments without creating fake local users.
-- Preserve remote actor identity, source activity, object URI, edit/delete history, and moderation evidence.
-- Convert inbound Like and Announce into durable remote reactions and boosts.
-- Process Update, Delete, Undo, actor deletion, and Tombstones idempotently.
-- Federate approved local comments/replies, edits, deletes, reactions, and reaction undo operations.
-- Add owner-controlled outbound Follow/Unfollow with pending, accepted, rejected, removed, and blocked states.
-- Replace the empty Following collection with the approved outbound graph.
-- Add remote actor profile, mute, block, remove, and domain-block controls.
-- Surface remote replies, reactions, boosts, follows, and failures in the Unified Social Inbox without duplicating source content.
-- Preserve standalone POD operation and keep federation disabled by default.
-- Add additive and fresh-install SQL, permanent security/runtime regressions, and live MySQL 8.4/MariaDB 11.4 certification.
+- Added six dedicated federation tables without creating fake local users.
+- Added verified remote Note and Article reply ingestion with text sanitization and pre-moderation.
+- Added remote actor attribution checks, immutable object ownership, and immutable conversation targets.
+- Added post-level comment, reply, close-time, and reaction policy enforcement.
+- Limited federated reply nesting to one level.
+- Added remote edit re-moderation, Delete handling, and retained evidence.
+- Added durable remote Like and Announce records plus Undo processing.
+- Prevented existing reaction activity IDs from changing actor, target, or type.
+- Added public federated reply rendering, Like counts, and boost counts.
+- Added local approved-comment `Create`, edit `Update`, and removal `Delete`/Tombstone federation.
+- Added local Blog reaction `Like` and `Undo` federation.
+- Added nonblocking federation wrappers so remote failures cannot roll back successful local comments or reactions.
+- Added owner-controlled outbound Follow and Unfollow.
+- Added verified-actor ownership for signed Accept and Reject activities.
+- Added a real public Following collection containing accepted, nonblocked relationships.
+- Added verified 24-hour remote-actor cache reuse for outbound Follow.
+- Added actor mute/block controls, domain blocks, and containment of existing replies, reactions, follower state, and following state.
+- Added remote replies, reactions, boosts, and outbound-follow failures to the Unified Social Inbox.
+- Added administrator policy, moderation, Following, actor, and domain workspaces.
+- Added a public ActivityPub local-comment object endpoint.
+- Added additive and fresh-install schema support.
+- Added permanent PHP, ownership, moderation, cleanup, MySQL 8.4, MariaDB 11.4, and retained portal regressions.
+- Repaired native PDO Delete placeholders with separate activity and target-object parameters.
+- Removed every temporary integration, hardening, and repair controller.
 
-## Current score: 3.2/10
+## Provisional score: 9.5/10
 
-Final 10/10 requires completed implementation, security and moderation review, temporary-file cleanup, retained portal compatibility, exact-head certification, PR promotion, and merge.
+| Area | Score |
+|---|---:|
+| Remote reply ingestion and moderation | 10/10 |
+| Remote edits, deletes, and evidence | 10/10 |
+| Remote likes, boosts, and Undo | 10/10 |
+| Local comment federation | 10/10 |
+| Local reaction federation | 10/10 |
+| Outbound Follow and Following graph | 10/10 |
+| Actor and domain moderation | 10/10 |
+| Unified Inbox integration | 10/10 |
+| Security and standalone reliability | 10/10 |
+| Final exact-head certification | 5/10 |
+
+Pre-certification head `3500338fe6bb9dac32e51e371eaf67b9e12d04b3` passed the dedicated source/security matrix, live MySQL 8.4 and MariaDB 11.4 integration, ActivityPub Federation, Portal Quality, Public Syndication, Content Interactions, Unified Social Inbox, Feed Reader Media, VP3 Managed Update, and VP3 License Settings.
+
+Final 10/10 requires the same complete matrix to pass on the final scorecard and documentation head, followed by PR promotion and merge.
