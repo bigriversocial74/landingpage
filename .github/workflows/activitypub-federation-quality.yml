@@ -67,6 +67,8 @@ jobs:
           test ! -e .github/workflows/apply-activitypub-v66f.yml
           test ! -e tools/harden-activitypub-v66f.py
           test ! -e .github/workflows/harden-activitypub-v66f.yml
+          test ! -e tools/repair-activitypub-certification-v66f.py
+          test ! -e .github/workflows/repair-activitypub-certification-v66f.yml
           grep -F 'CURLOPT_RESOLVE' portal/activitypub-http.php >/dev/null
           grep -F "CURLOPT_PROXY => ''" portal/activitypub-http.php >/dev/null
           grep -F 'CURLOPT_FOLLOWLOCATION => false' portal/activitypub-http.php >/dev/null
