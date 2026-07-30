@@ -1,29 +1,29 @@
 Federated Interactions, Replies & Social Graph v66G
-Provisional repository validation
+Repository certification
 Date: 2026-07-30
 
 Initial score: 3.2/10
-Provisional score after implementation and repair: 9.5/10
+Final score: 10/10
 
-Pre-certification head:
-3500338fe6bb9dac32e51e371eaf67b9e12d04b3
+Certified implementation and documentation head:
+52f22e04c4fd4e84eb7573a24c5407599ece1800
 
 Passed exact-head workflows:
-- Federated Interactions Quality — run 30583315295
-- ActivityPub Federation Quality — run 30583315300
-- North Mountain Media Portal Quality — run 30583315271
-- Public Syndication Quality — run 30583315282
-- Content Interactions Quality — run 30583315301
-- Unified Social Inbox Quality — run 30583315311
-- Feed Reader Media Quality — run 30583315352
-- VP3 POD Managed Update v65 — run 30583315278
-- VP3 License Settings Quality — run 30583315340
+- Federated Interactions Quality — run 30583626273
+- ActivityPub Federation Quality — run 30583626319
+- North Mountain Media Portal Quality — run 30583626313
+- Public Syndication Quality — run 30583626267
+- Content Interactions Quality — run 30583626335
+- Unified Social Inbox Quality — run 30583626264
+- Feed Reader Media Quality — run 30583626521
+- VP3 POD Managed Update v65 — run 30583626337
+- VP3 License Settings Quality — run 30583626261
 
 Dedicated v66G certification passed:
 - PHP syntax
 - source, moderation, ownership, and security regressions
 - fresh-install schema uniqueness
-- temporary builder and repair cleanup
+- temporary builder, hardener, and repair cleanup
 - complete fresh schema import
 - repeat-safe additive migration imports
 - live MySQL 8.4 integration
@@ -43,4 +43,16 @@ Live database coverage:
 - actor block containment
 - domain block and unblock
 
-Final 10/10 requires all of the same workflows to pass on the final scorecard and documentation head.
+Security and reliability coverage:
+- verified actor attribution
+- immutable remote reply ownership and conversation targets
+- immutable remote reaction actor, target, and type
+- verified actor ownership for Follow Accept and Reject
+- post comment/reply/close-time/reaction controls
+- one-level remote reply nesting
+- pre-moderated public display
+- actor and domain containment
+- nonblocking local comments and reactions when federation delivery is unavailable
+- no fake local user creation for remote identities
+
+The scorecard/validation update creates a documentation-only final PR head. The complete matrix must pass once more on that exact head before merge.
