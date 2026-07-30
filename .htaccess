@@ -52,7 +52,7 @@ Options -Indexes
     </FilesMatch>
 </IfModule>
 
-# Public publishing, POD call, receptionist, and feed cache controls.
+# Public publishing, POD call, receptionist, feed, and editor cache controls.
 <IfModule mod_headers.c>
     <FilesMatch "^(index|index-preview|music-library|music-collection|blog|blog-post|resume-post|events|event|event-registration|booking|appointment|intake|intake-confirmation|proposal|call-dave|pod-call|connected-call|connected-receptionist)\.php$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
@@ -61,6 +61,11 @@ Options -Indexes
     </FilesMatch>
     <FilesMatch "^(visitor-activity|music-player|music-dashboard|public-music-shell|publishing-workflow|events-calendar|bookings|proposals|pod-contacts-v63-1|pod-receptionist-v63-3|pod-receptionist-voice-v63-4)\.js$">
         Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    </FilesMatch>
+    <FilesMatch "^(site-builder-bootstrap|site-builder|site-builder-advanced)\.js$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
     </FilesMatch>
 
     <FilesMatch "^(blog-feed|sitemap|events-calendar|event-cover|pod-discovery)\.php$">
