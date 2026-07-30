@@ -1,0 +1,18 @@
+Rich Blog Media v66A validation
+
+Initial score: 3.8/10
+Final score: 10/10
+
+Required checks:
+- PHP syntax across repository
+- JavaScript syntax across repository
+- CSS structural validation
+- Rich Blog Media runtime and source regression
+- Existing Portal Quality regressions
+- Repository safety checks
+
+Deployment:
+- Deploy the merged main branch.
+- Preserve config.php and the complete storage directory.
+- No SQL migration is required.
+- Existing audio must be uploaded through Knowledge Center, adopted into Music Library, and set Active/Public before it appears in the Blog selector.

@@ -70,6 +70,7 @@ $structuredData = $post
             'name' => 'North Mountain Media',
         ],
         'image' => $ogImage !== '' ? [$ogImage] : null,
+        'hasPart' => blog_rich_media_structured_objects((string)$post['body']) ?: null,
     ]
     : null;
 
@@ -83,7 +84,8 @@ header(
     "Content-Security-Policy: default-src 'self'; "
     . "script-src 'self' 'unsafe-inline'; "
     . "style-src 'self' 'unsafe-inline'; "
-    . "img-src 'self' data:; connect-src 'self'; "
+    . "img-src 'self' data:; connect-src 'self'; media-src 'self'; "
+    . "frame-src https://www.youtube-nocookie.com https://player.vimeo.com; "
     . "base-uri 'self'; object-src 'none'; frame-ancestors 'self'"
 );
 ?>
@@ -130,6 +132,7 @@ header(
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260728-content-controls-v62.1'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260728-content-controls-v62.1'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260728-content-controls-v62.1'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/blog-rich-media.css?v=20260730-v66A'))?>">
 </head>
 <body class="blog-body">
 <div class="music-public-shell">
@@ -230,6 +233,7 @@ The requested article is not published or could not be found.
 <script src="<?=e(app_url('assets/js/public-sidebar.js?v=20260728-content-controls-v62.1'))?>"></script>
 <script src="<?=e(app_url('assets/js/public-music-shell.js?v=20260728-content-controls-v62.1'))?>"></script>
 <script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260728-content-controls-v62.1'))?>"></script>
+<script src="<?=e(app_url('assets/js/blog-rich-media.js?v=20260730-v66A'))?>"></script>
 <?php if($post&&!$isAdminPreview):?>
 <script>
 window.NMMVisitorActivity?.track(

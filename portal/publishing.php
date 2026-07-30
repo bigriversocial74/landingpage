@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260727-site-controls-landing-v60 */
+require_once __DIR__ . '/blog-rich-media.php';
+
+/* North Mountain Media build: 20260730-rich-blog-media-v66A */
 
 function publishing_schema_available(): bool
 {
@@ -115,6 +117,15 @@ function publishing_render_body(?string $value): string
         if ($line === '') {
             $flushParagraph();
             $flushList();
+            continue;
+        }
+
+        $richMedia = blog_rich_media_render_directive($line);
+
+        if ($richMedia !== null) {
+            $flushParagraph();
+            $flushList();
+            $html[] = $richMedia;
             continue;
         }
 
