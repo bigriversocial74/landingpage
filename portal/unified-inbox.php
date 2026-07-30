@@ -149,22 +149,29 @@ function unified_inbox_pod_items(): array
     return $items;
 }
 
-function unified_inbox_comment_items(): array
+function unified_inbox_comment_items(int $userId): array
 {
     if (!function_exists('content_interactions_schema_available')
         || !content_interactions_schema_available()) return [];
     try {
-        $rows = db()->query(
+        $statement = db()->prepare(
             'SELECT comment.id,comment.parent_id,comment.body,comment.status,comment.report_count,
                     comment.created_at,comment.updated_at,user.display_name AS author_name,
-                    post.title AS post_title,post.slug AS post_slug
+                    post.title AS post_title,post.slug AS post_slug,
+                    (SELECT COUNT(*) FROM portal_notifications notification
+                     WHERE notification.recipient_user_id=:viewer_id
+                       AND notification.entity_type="content_comment"
+                       AND notification.entity_id=comment.id
+                       AND notification.is_read=0) AS notification_unread
              FROM content_comments comment
              JOIN users user ON user.id=comment.author_user_id
              LEFT JOIN blog_posts post ON post.id=comment.content_id
              WHERE comment.content_type="blog_post" AND comment.status<>"deleted"
              ORDER BY COALESCE(comment.updated_at,comment.created_at) DESC,comment.id DESC
              LIMIT 150'
-        )->fetchAll();
+        );
+        $statement->execute(['viewer_id' => $userId]);
+        $rows = $statement->fetchAll();
     } catch (Throwable) {
         return [];
     }
@@ -179,7 +186,7 @@ function unified_inbox_comment_items(): array
             'participant' => (string)$row['author_name'],
             'preview' => (string)$row['body'],
             'occurred_at' => (string)($row['updated_at'] ?? $row['created_at']),
-            'native_unread' => $pending || $reported,
+            'native_unread' => $pending || $reported || (int)($row['notification_unread'] ?? 0) > 0,
             'native_status' => (string)$row['status'],
             'native_priority' => $reported ? 'high' : 'normal',
             'native_needs_response' => $pending || $reported,
@@ -352,7 +359,7 @@ function unified_inbox_collect(array $user): array
     $items = array_merge(
         unified_inbox_communication_items($user),
         unified_inbox_pod_items(),
-        unified_inbox_comment_items(),
+        unified_inbox_comment_items((int)$user['id']),
         unified_inbox_lead_items(),
         unified_inbox_call_items(),
         unified_inbox_notification_items((int)$user['id'])
