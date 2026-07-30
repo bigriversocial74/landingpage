@@ -193,6 +193,7 @@ foreach ([
 foreach ([
     'tools/apply-activitypub-v66f.py','.github/workflows/apply-activitypub-v66f.yml',
     'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
+    'tools/repair-activitypub-certification-v66f.py','.github/workflows/repair-activitypub-certification-v66f.yml',
 ] as $temporary) {
     if (file_exists($root . '/' . $temporary)) $fail('Temporary ActivityPub build file remains: ' . $temporary);
 }
