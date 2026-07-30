@@ -20,10 +20,10 @@ $base = [
     'pinned' => false, 'unread' => false, 'needs_response' => false, 'priority' => 'normal',
 ];
 $items = [
-    $base + ['source_type'=>'notification','source_id'=>1,'key'=>'notification:1','title'=>'Old','occurred_at'=>'2026-01-01 00:00:00'],
-    $base + ['source_type'=>'lead','source_id'=>2,'key'=>'lead:2','title'=>'Urgent','occurred_at'=>'2026-01-02 00:00:00','priority'=>'urgent','needs_response'=>true],
-    $base + ['source_type'=>'communication','source_id'=>3,'key'=>'communication:3','title'=>'Pinned','occurred_at'=>'2025-01-01 00:00:00','pinned'=>true],
-    $base + ['source_type'=>'content_comment','source_id'=>4,'key'=>'content_comment:4','title'=>'Unread comment','category'=>'social','occurred_at'=>'2026-01-03 00:00:00','unread'=>true],
+    array_replace($base, ['source_type'=>'notification','source_id'=>1,'key'=>'notification:1','title'=>'Old','occurred_at'=>'2026-01-01 00:00:00']),
+    array_replace($base, ['source_type'=>'lead','source_id'=>2,'key'=>'lead:2','title'=>'Urgent','occurred_at'=>'2026-01-02 00:00:00','priority'=>'urgent','needs_response'=>true]),
+    array_replace($base, ['source_type'=>'communication','source_id'=>3,'key'=>'communication:3','title'=>'Pinned','occurred_at'=>'2025-01-01 00:00:00','pinned'=>true]),
+    array_replace($base, ['source_type'=>'content_comment','source_id'=>4,'key'=>'content_comment:4','title'=>'Unread comment','category'=>'social','occurred_at'=>'2026-01-03 00:00:00','unread'=>true]),
 ];
 $filtered = unified_inbox_filter_items($items, ['q'=>'','channel'=>'all','queue'=>'active','archived'=>false,'user_id'=>1]);
 if (($filtered[0]['key'] ?? '') !== 'communication:3') { fwrite(STDERR, "Pinned sorting failed.\n"); exit(1); }
