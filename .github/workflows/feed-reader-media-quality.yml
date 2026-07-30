@@ -1,0 +1,93 @@
+name: Feed Reader Media Quality
+
+on:
+  pull_request:
+    paths:
+      - portal/feed-reader-media.php
+      - portal/feed-reader-core.php
+      - portal/feed-reader-view.php
+      - portal/feed-reader-api.php
+      - portal/bootstrap.php
+      - assets/js/feed-reader-social.js
+      - assets/css/feed-reader-media-v66b.css
+      - database/feed_reader_media_v66b.sql
+      - database/north_mountain_portal.sql
+      - tests/feed-reader-media-v66b.php
+      - tests/feed-reader-media-player-v66b.js
+      - .github/workflows/feed-reader-media-quality.yml
+  push:
+    branches: [main]
+    paths:
+      - portal/feed-reader-media.php
+      - portal/feed-reader-core.php
+      - portal/feed-reader-view.php
+      - portal/feed-reader-api.php
+      - portal/bootstrap.php
+      - assets/js/feed-reader-social.js
+      - assets/css/feed-reader-media-v66b.css
+      - database/feed_reader_media_v66b.sql
+      - database/north_mountain_portal.sql
+      - tests/feed-reader-media-v66b.php
+      - tests/feed-reader-media-player-v66b.js
+      - .github/workflows/feed-reader-media-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  feed-reader-media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/feed-reader-media.php
+          php -l portal/feed-reader-core.php
+          php -l portal/feed-reader-view.php
+          php -l portal/feed-reader-api.php
+          php -l portal/bootstrap.php
+
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check assets/js/feed-reader-social.js
+          node --check tests/feed-reader-media-player-v66b.js
+
+      - name: Feed Reader media regressions
+        run: |
+          set -euo pipefail
+          php tests/feed-reader-media-v66b.php
+          node tests/feed-reader-media-player-v66b.js
+
+      - name: Migration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          migration = Path('database/feed_reader_media_v66b.sql').read_text(encoding='utf-8')
+          schema = Path('database/north_mountain_portal.sql').read_text(encoding='utf-8')
+          tables = ['feed_item_media_states', 'feed_collections', 'feed_collection_items']
+          for table in tables:
+              needle = f'CREATE TABLE IF NOT EXISTS {table}'
+              if migration.count(needle) != 1:
+                  raise SystemExit(f'v66B migration must define {table} exactly once')
+              if schema.count(needle) != 1:
+                  raise SystemExit(f'fresh schema must define {table} exactly once')
+          if 'FOREIGN KEY (item_id) REFERENCES feed_items(id) ON DELETE CASCADE' not in migration:
+              raise SystemExit('Feed item cascade boundary is missing')
+          if 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4' not in migration:
+              raise SystemExit('Migration storage contract is missing')
+          print('Feed Reader media migration contract passed.')
+          PY
+
+      - name: Required source and cleanup
+        run: |
+          set -euo pipefail
+          test -f FEED-READER-MEDIA-SETUP-v66B.md
+          test -f V66B-SCORECARD.md
+          test -f V66B-VALIDATION.txt
+          test ! -f tools/apply-feed-reader-media-v66b.py
+          test ! -f .github/workflows/apply-feed-reader-media-v66b.yml
