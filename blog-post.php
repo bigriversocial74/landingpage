@@ -9,6 +9,7 @@ require_once __DIR__ . '/portal/publishing.php';
 require_once __DIR__ . '/portal/publishing-workflow.php';
 require_once __DIR__ . '/portal/public-music-shell.php';
 require_once __DIR__ . '/portal/content-interactions.php';
+require_once __DIR__ . '/portal/webmention-service.php';
 
 $slug = trim((string)($_GET['slug'] ?? ''));
 $previewRequested = !empty($_GET['preview']);
@@ -27,6 +28,9 @@ $shell = music_public_shell_context();
 $interactionContext = $post && !$isAdminPreview
     ? content_interactions_context('blog_post', (int)$post['id'], $viewer)
     : ['schema_ready'=>false,'settings'=>[],'comments'=>[],'comment_count'=>0,'reactions'=>[],'viewer_reaction'=>''];
+$webmentions = $post && !$isAdminPreview
+    ? syndication_approved_webmentions((int)$post['id'])
+    : [];
 
 if (!$post) {
     http_response_code(404);
@@ -107,9 +111,7 @@ header(
 <meta name="description" content="<?=e($description)?>">
 <meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
-<?php $feedSettings=publishing_blog_settings();?>
-<?php if($feedSettings['rss_enabled']):?><link rel="alternate" type="application/rss+xml" title="<?=e($feedSettings['title'])?> RSS" href="<?=e(publishing_absolute_url('blog-feed.php'))?>"><?php endif;?>
-<?php if($feedSettings['atom_enabled']):?><link rel="alternate" type="application/atom+xml" title="<?=e($feedSettings['title'])?> Atom" href="<?=e(publishing_absolute_url('blog-atom.php'))?>"><?php endif;?>
+<?=syndication_discovery_links(['category'=>'','tag'=>'','author'=>''], !$isAdminPreview)?>
 <?php if($isAdminPreview):?>
 <meta name="robots" content="noindex,nofollow">
 <?php endif;?>
@@ -144,6 +146,7 @@ header(
 <link rel="stylesheet" href="<?=e(app_url('assets/css/blog.css?v=20260728-content-controls-v62.1'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/blog-rich-media.css?v=20260730-v66A'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/content-interactions.css?v=20260730-v66C'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-syndication.css?v=20260730-v66E'))?>">
 </head>
 <body class="blog-body">
 <div class="music-public-shell">
@@ -230,6 +233,24 @@ The requested article is not published or could not be found.
 <?php endif;?>
 </figure>
 <?php endforeach;?>
+</section>
+<?php endif;?>
+
+<?php if($webmentions):?>
+<section class="webmentions" aria-labelledby="webmentions-title">
+<h2 id="webmentions-title">From around the web</h2>
+<div class="webmention-list">
+<?php foreach($webmentions as $mention):?>
+<article class="webmention-item">
+<div class="webmention-avatar" aria-hidden="true"><?=e(mb_strtoupper(mb_substr($mention['author_name']?:'W',0,1)))?></div>
+<div>
+<strong><a href="<?=e($mention['source_url'])?>" rel="ugc nofollow noopener noreferrer" target="_blank"><?=e($mention['author_name']?:$mention['source_title']?:'External mention')?></a></strong>
+<span><?=e(status_label($mention['mention_type']))?> · <?=e(format_datetime($mention['received_at']))?></span>
+<?php if($mention['source_excerpt']):?><small><?=e($mention['source_excerpt'])?></small><?php endif;?>
+</div>
+</article>
+<?php endforeach;?>
+</div>
 </section>
 <?php endif;?>
 

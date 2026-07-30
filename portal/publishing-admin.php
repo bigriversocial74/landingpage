@@ -4,6 +4,7 @@ declare(strict_types=1);
 /* North Mountain Media build: 20260730-content-interactions-v66C */
 
 require_once __DIR__ . '/content-interactions-admin.php';
+require_once __DIR__ . '/websub-service.php';
 
 function publishing_handle_admin_action(
     string $action,
@@ -243,6 +244,13 @@ function publishing_handle_admin_action(
             $id,
             ['status' => $status]
         );
+        if ($status === 'published') {
+            syndication_queue_websub(
+                $event === 'blog_post_created' ? 'publish' : 'update',
+                (int)$user['id'],
+                $id
+            );
+        }
         flash('success', $message);
         redirect(
             'portal/admin.php?view=blog&edit=' . $id

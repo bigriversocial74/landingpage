@@ -7,6 +7,7 @@ require __DIR__ . '/portal/bootstrap.php';
 nmm_require_public_module('blog');
 require_once __DIR__ . '/portal/publishing.php';
 require_once __DIR__ . '/portal/publishing-workflow.php';
+require_once __DIR__ . '/portal/public-syndication.php';
 require_once __DIR__ . '/portal/public-music-shell.php';
 
 $category = trim((string)($_GET['category'] ?? ''));
@@ -88,17 +89,7 @@ header(
 <meta name="description" content="<?=e($archiveDescription)?>">
 <meta name="build-version" content="20260728-content-controls-v62.1">
 <link rel="canonical" href="<?=e($canonicalUrl)?>">
-<?php if($blogSettings['rss_enabled']):?>
-<link
-    rel="alternate"
-    type="application/rss+xml"
-    title="<?=e($archiveTitle)?> RSS"
-    href="<?=e(publishing_absolute_url('blog-feed.php' . ($category!=='' ? '?category=' . rawurlencode($category) : '')))?>"
->
-<?php endif;?>
-<?php if($blogSettings['atom_enabled']):?>
-<link rel="alternate" type="application/atom+xml" title="<?=e($archiveTitle)?> Atom" href="<?=e(publishing_absolute_url('blog-atom.php' . ($category!=='' ? '?category=' . rawurlencode($category) : '')))?>">
-<?php endif;?>
+<?=syndication_discovery_links(['category'=>$category,'tag'=>'','author'=>''])?>
 <meta property="og:type" content="website">
 <meta property="og:title" content="<?=e($archiveIntro)?>">
 <meta property="og:description" content="<?=e($archiveDescription)?>">
@@ -141,6 +132,7 @@ header(
 
 <nav class="blog-category-nav" aria-label="Blog categories">
 <a class="<?=$category===''?'active':''?>" href="<?=e(app_url('blog.php'))?>">All posts</a>
+<a href="<?=e(app_url('blog-feeds.php'))?>">Feeds &amp; podcast</a>
 <?php foreach($categories as $item):?>
 <a
     class="<?=$category===$item['category']?'active':''?>"

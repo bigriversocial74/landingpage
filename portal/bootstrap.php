@@ -1114,6 +1114,7 @@ function portal_header(string $title, string $active, array $user): void
         'Work' => [
             'portfolio' => 'Portfolio',
             'blog' => 'Blog',
+            'syndication' => 'Syndication',
             'feeds' => 'Feed Reader',
             'events' => 'Events',
             'bookings' => 'Bookings',
@@ -1174,6 +1175,7 @@ function portal_header(string $title, string $active, array $user): void
     <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260728-content-controls-v62.1')) ?>">
     <?php if($active==='feeds'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/feed-reader.css?v=20260728-content-controls-v62.1')) ?>"><?php endif;?>
     <?php if($active==='inbox'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/unified-inbox.css?v=20260730-v66D')) ?>"><?php endif;?>
+    <?php if($active==='syndication'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/syndication-admin.css?v=20260730-v66E')) ?>"><?php endif;?>
 </head>
 <body
     class="portal-body"

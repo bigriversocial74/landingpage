@@ -1,0 +1,205 @@
+name: Public Syndication Quality
+
+on:
+  pull_request:
+    paths:
+      - portal/public-syndication.php
+      - portal/webmention-service.php
+      - portal/websub-service.php
+      - portal/syndication-admin.php
+      - portal/admin.php
+      - portal/bootstrap.php
+      - portal/publishing-admin.php
+      - portal/blog-feed-output.php
+      - blog.php
+      - blog-post.php
+      - blog-json-feed.php
+      - podcast-feed.php
+      - webmention.php
+      - blog-feeds.php
+      - cron/process-syndication.php
+      - assets/css/public-syndication.css
+      - assets/css/syndication-admin.css
+      - database/public_syndication_v66e.sql
+      - database/north_mountain_portal.sql
+      - tests/public-syndication-v66e.php
+      - tests/public-syndication-db-v66e.php
+      - PUBLIC-SYNDICATION-SETUP-v66E.md
+      - V66E-SCORECARD.md
+      - V66E-VALIDATION.txt
+      - .github/workflows/public-syndication-quality.yml
+  push:
+    branches: [main]
+    paths:
+      - portal/public-syndication.php
+      - portal/webmention-service.php
+      - portal/websub-service.php
+      - portal/syndication-admin.php
+      - portal/admin.php
+      - portal/bootstrap.php
+      - portal/publishing-admin.php
+      - portal/blog-feed-output.php
+      - blog.php
+      - blog-post.php
+      - blog-json-feed.php
+      - podcast-feed.php
+      - webmention.php
+      - blog-feeds.php
+      - cron/process-syndication.php
+      - assets/css/public-syndication.css
+      - assets/css/syndication-admin.css
+      - database/public_syndication_v66e.sql
+      - database/north_mountain_portal.sql
+      - tests/public-syndication-v66e.php
+      - tests/public-syndication-db-v66e.php
+      - .github/workflows/public-syndication-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/public-syndication.php
+          php -l portal/webmention-service.php
+          php -l portal/websub-service.php
+          php -l portal/syndication-admin.php
+          php -l portal/admin.php
+          php -l portal/bootstrap.php
+          php -l portal/publishing-admin.php
+          php -l portal/blog-feed-output.php
+          php -l blog.php
+          php -l blog-post.php
+          php -l blog-json-feed.php
+          php -l podcast-feed.php
+          php -l webmention.php
+          php -l blog-feeds.php
+          php -l cron/process-syndication.php
+          php -l tests/public-syndication-v66e.php
+          php -l tests/public-syndication-db-v66e.php
+      - name: Protocol and security regressions
+        run: |
+          set -euo pipefail
+          php tests/public-syndication-v66e.php
+      - name: Schema, security, and cleanup contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          migration = Path('database/public_syndication_v66e.sql').read_text(encoding='utf-8')
+          schema = Path('database/north_mountain_portal.sql').read_text(encoding='utf-8')
+          mention = Path('portal/webmention-service.php').read_text(encoding='utf-8')
+          websub = Path('portal/websub-service.php').read_text(encoding='utf-8')
+          for table in ['syndication_webmentions','syndication_websub_deliveries']:
+              needle = f'CREATE TABLE IF NOT EXISTS {table}'
+              if migration.count(needle) != 1:
+                  raise SystemExit(f'v66E migration must define {table} exactly once')
+              if schema.count(needle) != 1:
+                  raise SystemExit(f'fresh schema must define {table} exactly once')
+          required_migration = [
+              "status ENUM('pending','approved','hidden','spam','rejected')",
+              "status ENUM('pending','delivering','delivered','failed')",
+              'UNIQUE KEY uq_syndication_webmention_source_target',
+              'UNIQUE KEY uq_syndication_websub_delivery_payload',
+              'FOREIGN KEY (target_post_id) REFERENCES blog_posts(id)',
+              'FOREIGN KEY (created_by_user_id) REFERENCES users(id)',
+          ]
+          for needle in required_migration:
+              if needle not in migration:
+                  raise SystemExit(f'Migration evidence missing: {needle}')
+          required_security = [
+              'FILTER_FLAG_NO_PRIV_RANGE', 'FILTER_FLAG_NO_RES_RANGE',
+              'CURLOPT_RESOLVE', 'CURLOPT_FOLLOWLOCATION => false',
+              'CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS',
+              '1024 * 1024', 'LIBXML_NONET',
+              'array_values(array_unique($allowed))',
+          ]
+          for needle in required_security:
+              if needle not in mention:
+                  raise SystemExit(f'Webmention security evidence missing: {needle}')
+          if 'CURLOPT_RESOLVE=>syndication_curl_resolve($resolution)' not in websub:
+              raise SystemExit('WebSub DNS pinning evidence missing')
+          print('Public Syndication schema and security contract passed.')
+          PY
+          test -f PUBLIC-SYNDICATION-SETUP-v66E.md
+          test -f V66E-SCORECARD.md
+          test -f V66E-VALIDATION.txt
+          test ! -f tools/apply-public-syndication-v66e.py
+          test ! -f .github/workflows/apply-public-syndication-v66e.yml
+          test ! -f tools/fix-public-syndication-security-v66e.py
+          test ! -f .github/workflows/fix-public-syndication-security-v66e.yml
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extension
+        run: sudo apt-get update -qq && sudo apt-get install -y php-mysql php-xml
+      - name: Import fresh schema and additive migration
+        run: |
+          set -euo pipefail
+          mysql --protocol=tcp -h127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql --protocol=tcp -h127.0.0.1 -uroot -proot nmm < database/public_syndication_v66e.sql
+          count=$(mysql --batch --skip-column-names --protocol=tcp -h127.0.0.1 -uroot -proot nmm -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nmm' AND table_name IN ('syndication_webmentions','syndication_websub_deliveries')")
+          test "$count" = "2"
+      - name: Live feed integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/public-syndication-db-v66e.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update -qq && sudo apt-get install -y mariadb-client php-mysql php-xml
+      - name: Import fresh schema and additive migration
+        run: |
+          set -euo pipefail
+          mariadb --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm < database/public_syndication_v66e.sql
+          count=$(mariadb --batch --skip-column-names --protocol=tcp -h127.0.0.1 -P3307 -uroot -proot nmm -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nmm' AND table_name IN ('syndication_webmentions','syndication_websub_deliveries')")
+          test "$count" = "2"
+      - name: Live feed integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/public-syndication-db-v66e.php
