@@ -13,6 +13,7 @@ on:
       - assets/js/blog-rich-media.js
       - assets/css/blog-rich-media.css
       - tests/rich-blog-media-v66a.php
+      - tests/rich-blog-media-player-v66a.js
       - .github/workflows/rich-blog-media-quality.yml
   push:
     branches: [main]
@@ -27,6 +28,7 @@ on:
       - assets/js/blog-rich-media.js
       - assets/css/blog-rich-media.css
       - tests/rich-blog-media-v66a.php
+      - tests/rich-blog-media-player-v66a.js
       - .github/workflows/rich-blog-media-quality.yml
 
 permissions:
@@ -53,9 +55,13 @@ jobs:
           set -euo pipefail
           node --check assets/js/blog-rich-media-admin.js
           node --check assets/js/blog-rich-media.js
+          node --check tests/rich-blog-media-player-v66a.js
 
       - name: Rich media regression
-        run: php tests/rich-blog-media-v66a.php
+        run: |
+          set -euo pipefail
+          php tests/rich-blog-media-v66a.php
+          node tests/rich-blog-media-player-v66a.js
 
       - name: Temporary build files removed
         run: |
