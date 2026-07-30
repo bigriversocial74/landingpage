@@ -78,7 +78,7 @@ function activitypub_parse_signature_header(string $value): array
         $value = trim(substr($value, 10));
     }
     $parts = [];
-    if (!preg_match_all('/([A-Za-z][A-Za-z0-9_-]*)="((?:\\.|[^"\\])*)"/', $value, $matches, PREG_SET_ORDER)) {
+    if (!preg_match_all('/([A-Za-z][A-Za-z0-9_-]*)="((?:\\\\.|[^"\\\\])*)"/', $value, $matches, PREG_SET_ORDER)) {
         return [];
     }
     foreach ($matches as $match) {
