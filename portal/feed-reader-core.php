@@ -1406,6 +1406,9 @@ function feed_reader_subscribe(int $userId, string $url, int $folderId = 0, stri
         throw new RuntimeException('The selected feed folder is not available.');
     }
 
+    if (function_exists('feed_reader_resolve_subscription_url')) {
+        $url = feed_reader_resolve_subscription_url($url);
+    }
     $normalized = feed_reader_normalize_url($url);
     $hash = hash('sha256', $normalized);
     $statement = db()->prepare('SELECT * FROM feed_sources WHERE canonical_hash=:hash LIMIT 1');
@@ -1658,6 +1661,10 @@ function feed_reader_items(int $userId, array $filters, int $limit = 200): array
         $where[] = 'COALESCE(state.is_saved,0)=1';
     } elseif ($stateFilter === 'archived') {
         $where[] = 'COALESCE(state.is_archived,0)=1';
+    } elseif ($stateFilter === 'listened' && function_exists('feed_reader_media_schema_available') && feed_reader_media_schema_available()) {
+        $where[] = 'EXISTS (SELECT 1 FROM feed_item_media_states media_state WHERE media_state.user_id=subscription.user_id AND media_state.item_id=item.id AND media_state.is_listened=1)';
+    } elseif ($stateFilter === 'notes' && function_exists('feed_reader_media_schema_available') && feed_reader_media_schema_available()) {
+        $where[] = 'EXISTS (SELECT 1 FROM feed_item_media_states media_state WHERE media_state.user_id=subscription.user_id AND media_state.item_id=item.id AND media_state.note_text IS NOT NULL AND media_state.note_text<>"")';
     } else {
         $where[] = 'COALESCE(state.is_archived,0)=0';
     }

@@ -1,0 +1,14 @@
+Feed Reader Media & Intelligence v66B validation
+
+Initial score: 6.4/10
+Final score target: 10/10
+
+Required exact-head checks:
+- Feed Reader Media Quality
+- North Mountain Media Portal Quality
+- VP3 POD Managed Update v65
+- VP3 License Settings Quality
+
+Database:
+- Import database/feed_reader_media_v66b.sql after database/rss_feed_reader_v62.sql.
+- The migration is additive and creates feed_item_media_states, feed_collections, and feed_collection_items.
