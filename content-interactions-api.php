@@ -9,7 +9,7 @@ require_once __DIR__ . '/portal/publishing.php';
 require_once __DIR__ . '/portal/content-interactions.php';
 
 $user = current_user();
-if (!$user) json_response(['ok' => false, 'message' => 'Sign in to participate.'], 401);
+if (!$user) json_response(['ok' => false, 'message' => 'Authentication required. Sign in to participate.'], 401);
 if (!is_post()) json_response(['ok' => false, 'message' => 'POST required.'], 405);
 if (!same_origin_request()) json_response(['ok' => false, 'message' => 'Origin not permitted.'], 403);
 verify_csrf();
