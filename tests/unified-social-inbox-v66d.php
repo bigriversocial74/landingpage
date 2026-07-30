@@ -40,11 +40,11 @@ if (($request['ok'] ?? true) !== false || ($request['available'] ?? true) !== fa
 
 $root = NMM_ROOT;
 $paths = [
-    'core'=>'portal/unified-inbox.php', 'adapter'=>'portal/homeserver-adapter.php',
-    'admin'=>'portal/admin.php', 'bootstrap'=>'portal/bootstrap.php',
-    'css'=>'assets/css/unified-inbox.css', 'script'=>'assets/js/unified-inbox.js',
-    'migration'=>'database/unified_social_inbox_v66d.sql', 'schema'=>'database/north_mountain_portal.sql',
-    'workflow'=>'.github/workflows/unified-social-inbox-quality.yml',
+    'core'=>'portal/unified-inbox.php', 'api'=>'portal/unified-inbox-api.php',
+    'adapter'=>'portal/homeserver-adapter.php', 'admin'=>'portal/admin.php',
+    'bootstrap'=>'portal/bootstrap.php', 'css'=>'assets/css/unified-inbox.css',
+    'script'=>'assets/js/unified-inbox.js', 'migration'=>'database/unified_social_inbox_v66d.sql',
+    'schema'=>'database/north_mountain_portal.sql', 'workflow'=>'.github/workflows/unified-social-inbox-quality.yml',
 ];
 $source=[];
 foreach ($paths as $key=>$path) {
@@ -68,6 +68,13 @@ $checks = [
     ['user state','unified_inbox_user_state',$source['migration'].$source['schema']],
     ['HomeServer boundary','homeserver_capability_available',$source['adapter'].$source['core']],
     ['standalone mode','standalone',$source['adapter'].$source['core']],
+    ['secure HomeServer API',"require_role('admin')",$source['api']],
+    ['same-origin HomeServer API','same_origin_request()',$source['api']],
+    ['CSRF HomeServer API','verify_csrf()',$source['api']],
+    ['server-side item reconstruction','unified_inbox_collect($user)',$source['api']],
+    ['bounded HomeServer payload','mb_substr($text, 0, 12000)',$source['api']],
+    ['browser HomeServer endpoint','unified-inbox-api.php',$source['script']],
+    ['browser CSRF header','X-CSRF-Token',$source['script']],
     ['responsive layout','@media(max-width:680px)',$source['css']],
     ['keyboard navigation','ArrowDown',$source['script']],
     ['permanent quality gate','mysql:8.4',$source['workflow']],
