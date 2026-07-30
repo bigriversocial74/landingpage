@@ -35,6 +35,7 @@ $checks=[
  ['settings dependency injection','bool $mediaReady',$source['view']],
  ['settings collections dependency','array $collections',$source['view']],
  ['track-switch playback ownership','const previousTrigger = currentTrigger',$source['script']],
+ ['same-track resume','if (player.paused) player.play().catch',$source['script']],
  ['listening queue','data-feed-player-next',$source['view'].$source['script']],
  ['playback threshold','listenedFromProgress',$source['script']],
  ['YouTube frame CSP','frame-src https://www.youtube-nocookie.com https://player.vimeo.com',$source['bootstrap']],

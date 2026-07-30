@@ -151,8 +151,12 @@
     if (audioTrigger) {
       event.preventDefault();
       const index = queue.indexOf(audioTrigger);
-      if (audioTrigger === currentTrigger && player && !player.paused) player.pause();
-      else if (index >= 0) loadQueue(index, true);
+      if (audioTrigger === currentTrigger && player) {
+        if (player.paused) player.play().catch(() => {});
+        else player.pause();
+      } else if (index >= 0) {
+        loadQueue(index, true);
+      }
       return;
     }
     if (event.target.closest('[data-feed-player-prev]')) { syncPlayback(); loadQueue(queueIndex - 1, true); return; }
