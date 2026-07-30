@@ -127,11 +127,16 @@
   payload.pages = existingPages.length ? existingPages : readPagesFallback();
   payload.sections = Object.keys(objectValue(payload.sections)).length ? payload.sections : serverSections;
   payload.blocks = Object.keys(objectValue(payload.blocks)).length ? payload.blocks : serverBlocks;
+  const existingSite = objectValue(payload.site);
+  const existingModuleLinks = arrayValue(existingSite.moduleLinks);
+  const existingHeaderLinks = arrayValue(existingSite.headerLinks);
   payload.site = {
     ...siteFallback,
-    ...objectValue(payload.site),
-    moduleLinks: arrayValue(payload.site?.moduleLinks).length ? payload.site.moduleLinks : siteFallback.moduleLinks,
-    headerLinks: arrayValue(payload.site?.headerLinks).length ? payload.site.headerLinks : siteFallback.headerLinks,
+    ...existingSite,
+    moduleLinks: existingModuleLinks.length ? existingModuleLinks : siteFallback.moduleLinks,
+    headerLinks: existingHeaderLinks.length
+      ? existingHeaderLinks
+      : (existingModuleLinks.length ? existingModuleLinks : siteFallback.headerLinks),
   };
 
   payload.payload = objectValue(payload.payload);
