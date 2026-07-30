@@ -1,0 +1,41 @@
+name: Refine Public Syndication v66E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/refine-public-syndication-v66e.py
+      - .github/workflows/refine-public-syndication-v66e.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    if: github.head_ref == 'feature/public-syndication-feed-discovery-v66e-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply standards refinements
+        run: python3 tools/refine-public-syndication-v66e.py
+      - name: Validate refinements
+        run: |
+          set -euo pipefail
+          php -l portal/public-syndication.php
+          php -l tests/public-syndication-v66e.php
+          php -l tests/public-syndication-db-v66e.php
+          grep -F "\$feed['hubs']" portal/public-syndication.php >/dev/null
+          grep -F "if (\$settings['podcast_owner_email'] !== '')" portal/public-syndication.php >/dev/null
+          grep -F "JSON Feed WebSub hub rendering failed" tests/public-syndication-db-v66e.php >/dev/null
+      - name: Commit standards refinements
+        run: |
+          set -euo pipefail
+          rm -f tools/refine-public-syndication-v66e.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add portal/public-syndication.php tests/public-syndication-v66e.php tests/public-syndication-db-v66e.php tools/refine-public-syndication-v66e.py
+          git commit -m "Refine JSON Feed and podcast metadata v66E"
+          git push origin HEAD:${{ github.head_ref }}
