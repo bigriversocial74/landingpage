@@ -1,0 +1,28 @@
+Unified Social Inbox v66D validation
+
+Initial score: 6.7/10
+Provisional implementation score: 9.2/10
+Final score target: 10/10
+
+Required exact-head checks:
+- Unified Social Inbox Quality
+- North Mountain Media Portal Quality
+- Rich Blog Media Quality
+- Feed Reader Media Quality
+- Content Interactions Quality
+- VP3 POD Managed Update v65
+- VP3 License Settings Quality
+
+Database:
+- Import database/unified_social_inbox_v66d.sql after the base portal schema.
+- Fresh-schema and additive-migration imports must pass on MySQL 8.4 and MariaDB 11.4.
+
+Acceptance:
+- all six sources render through one normalized operator list
+- source content remains in its original table and source screen
+- search, queue, channel, unread, needs-response, pinned, snoozed, resolved, and archived views work
+- workflow state stores assignment, priority, response status, pin, snooze, and private note
+- per-administrator state stores read override and archive state
+- duplicate portal notifications are suppressed when the source item is already represented
+- the inbox works with no HomeServer paired
+- HomeServer summary and reply controls remain disabled until authorized capabilities are available
