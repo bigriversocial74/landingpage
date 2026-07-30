@@ -270,7 +270,7 @@ function activitypub_rotate_key(int $actorUserId): array
         throw new RuntimeException('The ActivityPub public key could not be exported.');
     }
     $encrypted = activitypub_encrypt_private_key($privateKey);
-    $keyId = activitypub_actor_url() . '#main-key';
+    $keyId = activitypub_actor_url() . '#main-key-' . substr(hash('sha256', $publicKey), 0, 16);
 
     $pdo = db();
     $pdo->beginTransaction();
@@ -318,8 +318,8 @@ function activitypub_actor_document(): array
         throw new RuntimeException('ActivityPub federation is disabled or the canonical origin is not HTTPS.');
     }
     $identity = pod_local_identity(true);
-    $key = activitypub_active_key(true);
-    if (!$identity || !$key) throw new RuntimeException('The ActivityPub actor is not initialized.');
+    $key = activitypub_active_key(false);
+    if (!$identity || !$key) throw new RuntimeException('Initialize the ActivityPub actor from the administrator workspace first.');
 
     $profile = trim((string)($identity['profile_url'] ?? ''));
     if ($profile === '') $profile = publishing_absolute_url('index.php');

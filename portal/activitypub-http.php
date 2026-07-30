@@ -36,6 +36,18 @@ function activitypub_digest_header(string $body): string
     return 'SHA-256=' . base64_encode(hash('sha256', $body, true));
 }
 
+function activitypub_digest_matches(string $header, string $body): bool
+{
+    $expected = hash('sha256', $body, true);
+    foreach (explode(',', $header) as $candidate) {
+        $parts = explode('=', trim($candidate), 2);
+        if (count($parts) !== 2 || strtolower(trim($parts[0])) !== 'sha-256') continue;
+        $decoded = base64_decode(trim($parts[1]), true);
+        if (is_string($decoded) && hash_equals($expected, $decoded)) return true;
+    }
+    return false;
+}
+
 function activitypub_header_map(?array $headers = null): array
 {
     if ($headers === null) {
@@ -100,8 +112,8 @@ function activitypub_signing_string(
 
 function activitypub_sign_headers(string $method, string $url, string $body = ''): array
 {
-    $key = activitypub_active_key(true);
-    if (!$key) throw new RuntimeException('The local ActivityPub signing key is unavailable.');
+    $key = activitypub_active_key(false);
+    if (!$key) throw new RuntimeException('The local ActivityPub signing key is unavailable. Initialize it from the administrator workspace.');
     $privateKey = activitypub_decrypt_private_key($key);
     if ($privateKey === '') {
         throw new RuntimeException('The local ActivityPub private key could not be decrypted.');
@@ -364,7 +376,7 @@ function activitypub_verify_inbound_request(
         throw new RuntimeException('The ActivityPub request Host header does not match this POD.');
     }
     $digest = (string)($headers['digest'] ?? '');
-    if ($digest === '' || !hash_equals(activitypub_digest_header($body), $digest)) {
+    if ($digest === '' || !activitypub_digest_matches($digest, $body)) {
         throw new RuntimeException('The ActivityPub request Digest header is invalid.');
     }
     $signatureValue = (string)($headers['signature'] ?? '');
@@ -391,7 +403,10 @@ function activitypub_verify_inbound_request(
     if (!activitypub_https_url($actorUri)) {
         throw new RuntimeException('The ActivityPub activity does not identify a valid HTTPS actor.');
     }
-    $remote = activitypub_remote_actor($actorUri, true);
+    $remote = activitypub_remote_actor($actorUri, false);
+    if (!hash_equals((string)$remote['public_key_id'], $keyId)) {
+        $remote = activitypub_remote_actor($actorUri, true);
+    }
     if (!hash_equals((string)$remote['public_key_id'], $keyId)) {
         throw new RuntimeException('The ActivityPub signature key does not belong to the activity actor.');
     }

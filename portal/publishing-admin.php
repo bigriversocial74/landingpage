@@ -386,6 +386,11 @@ function publishing_handle_admin_action(
             'blog_post',
             $postId
         );
+        $restoredPost = activitypub_blog_post($postId);
+        if ($restoredPost && (string)$restoredPost['status'] === 'published') {
+            syndication_queue_websub('update', (int)$user['id'], $postId);
+            activitypub_blog_event($postId, 'Update', (int)$user['id']);
+        }
         flash('success', 'Blog revision restored.');
         redirect(
             'portal/admin.php?view=blog&edit=' . $postId

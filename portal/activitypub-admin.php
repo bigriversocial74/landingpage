@@ -23,6 +23,7 @@ function activitypub_handle_admin_action(string $action, array $user): bool
         }
         if ($enabled) {
             activitypub_secret_key();
+            activitypub_active_key(true, (int)$user['id']);
         }
         $username = pod_public_username(input('activitypub_username'));
         $displayName = mb_substr(trim(input('activitypub_display_name')), 0, 190);
@@ -40,7 +41,6 @@ function activitypub_handle_admin_action(string $action, array $user): bool
             'activitypub_summary' => $summary,
         ];
         foreach ($pairs as $key => $value) publishing_save_setting($key, $value);
-        if ($enabled) activitypub_active_key(true, (int)$user['id']);
         log_activity('activitypub_settings_updated', 'settings', null, [
             'enabled' => $enabled,
             'federate_blog_posts' => $pairs['activitypub_federate_blog_posts'] === '1',
@@ -187,7 +187,7 @@ function activitypub_render_admin(array $user): void
 <?php if(!$followers):?><div class="empty-state">Follow requests and approved fediverse actors will appear here.</div><?php else:?><div class="activitypub-follower-list">
 <?php foreach($followers as $follower):?>
 <article class="activitypub-follower status-<?=e($follower['status'])?>">
-<header><div><?php if($follower['avatar_url']):?><img src="<?=e($follower['avatar_url'])?>" alt="" loading="lazy"><?php endif;?><div><h3><?=e($follower['display_name']?:$follower['preferred_username']?:'Remote actor')?></h3><a href="<?=e($follower['profile_url']?:$follower['actor_uri'])?>" target="_blank" rel="noopener noreferrer"><?=e($follower['actor_uri'])?></a></div></div><b><?=e(status_label($follower['status']))?></b></header>
+<header><div><div><h3><?=e($follower['display_name']?:$follower['preferred_username']?:'Remote actor')?></h3><a href="<?=e($follower['profile_url']?:$follower['actor_uri'])?>" target="_blank" rel="noopener noreferrer"><?=e($follower['actor_uri'])?></a></div></div><b><?=e(status_label($follower['status']))?></b></header>
 <div class="activitypub-follower-actions">
 <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="moderate_activitypub_follower"><input type="hidden" name="id" value="<?=(int)$follower['id']?>"><button name="decision" value="approved">Approve</button><button name="decision" value="rejected">Reject</button><button name="decision" value="removed">Remove</button></form>
 <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="refresh_activitypub_actor"><input type="hidden" name="actor_id" value="<?=(int)$follower['remote_actor_id']?>"><button>Refresh actor</button></form>

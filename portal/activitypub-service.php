@@ -417,7 +417,22 @@ function activitypub_receive_inbox(
             $undo = is_array($object) ? $object : [];
             $undoType = trim((string)($undo['type'] ?? ''));
             $undoActor = activitypub_payload_actor($undo);
-            if ($undoType === 'Follow' && activitypub_normalize_url($undoActor) === activitypub_normalize_url($actorUri)) {
+            $undoId = is_string($object) ? trim($object) : trim((string)($undo['id'] ?? ''));
+            $matchesEmbeddedFollow = $undoType === 'Follow'
+                && activitypub_normalize_url($undoActor) === activitypub_normalize_url($actorUri);
+            $matchesStoredFollow = false;
+            if ($undoId !== '') {
+                $followCheck = db()->prepare(
+                    'SELECT COUNT(*) FROM activitypub_followers
+                     WHERE remote_actor_id=:actor_id AND follow_activity_id=:follow_activity_id'
+                );
+                $followCheck->execute([
+                    'actor_id' => (int)$remote['id'],
+                    'follow_activity_id' => $undoId,
+                ]);
+                $matchesStoredFollow = (int)$followCheck->fetchColumn() > 0;
+            }
+            if ($matchesEmbeddedFollow || $matchesStoredFollow) {
                 db()->prepare(
                     'UPDATE activitypub_followers
                      SET status="removed",moderated_at=UTC_TIMESTAMP()
@@ -685,10 +700,14 @@ function activitypub_backfill_published_posts(?int $actorUserId = null, int $lim
     if (!activitypub_schema_available() || !activitypub_settings()['enabled']) return 0;
     $limit = max(1, min(500, $limit));
     $rows = db()->query(
-        'SELECT id FROM blog_posts
-         WHERE status="published"
-           AND (published_at IS NULL OR published_at<=UTC_TIMESTAMP())
-         ORDER BY COALESCE(published_at,created_at),id LIMIT ' . $limit
+        'SELECT post.id FROM blog_posts post
+         WHERE post.status="published"
+           AND (post.published_at IS NULL OR post.published_at<=UTC_TIMESTAMP())
+           AND NOT EXISTS (
+                SELECT 1 FROM activitypub_outbox_activities activity
+                WHERE activity.blog_post_id=post.id AND activity.activity_type="Create"
+           )
+         ORDER BY COALESCE(post.published_at,post.created_at),post.id LIMIT ' . $limit
     )->fetchAll();
     $count = 0;
     foreach ($rows as $row) {
