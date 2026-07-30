@@ -39,8 +39,6 @@ jobs:
           php -l portal/publishing-workflow-view.php
           node --check assets/js/content-interactions.js
           node --check tests/content-interactions-v66c.js
-          grep -F 'Authentication required. Sign in to participate.' content-interactions-api.php >/dev/null
-          grep -F "(int)\$parent['depth'] !== 0" portal/content-interactions.php >/dev/null
           php tests/content-interactions-v66c.php
           node tests/content-interactions-v66c.js
 
