@@ -46,11 +46,12 @@ jobs:
           node --check assets/js/blog-rich-media.js
           php tests/rich-blog-media-v66a.php
 
-      - name: Commit finished feature
+      - name: Commit finished application source
         shell: bash
         run: |
           set -euo pipefail
-          rm -f tools/apply-rich-blog-media-v66a.py tools/normalize-rich-blog-media-v66a.py .github/workflows/apply-rich-blog-media-v66a.yml
+          rm -f tools/apply-rich-blog-media-v66a.py tools/normalize-rich-blog-media-v66a.py
+          git checkout -- .github/workflows/portal-quality.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
