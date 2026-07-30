@@ -141,7 +141,7 @@ function activitypub_render_admin(array $user): void
     ?>
 <div class="activitypub-admin">
 <section class="activitypub-hero">
-<div><span>Section 66F</span><h2>ActivityPub Federation</h2><p>Publish Blog articles to the fediverse through one owner-controlled POD actor, moderated followers, signed delivery, and durable receipts.</p></div>
+<div><span>Sections 66F–66H</span><h2>ActivityPub Federation</h2><p>Publish Blog articles, manage federated relationships, and operate a private followed-network timeline through signed delivery and durable receipts.</p><a class="activitypub-timeline-link" href="<?=e(app_url('portal/federated-feed.php'))?>">Open Federated Timeline</a></div>
 <div class="activitypub-health <?=$settings['enabled']?'ready':($ready?'disabled':'missing')?>"><strong><?=$settings['enabled']?'Federation active':($ready?'Federation off':'Migration required')?></strong><span><?=$settings['enabled']?'Actor discovery and signed federation are available.':($ready?'Standalone POD operation is unchanged.':'Import database/activitypub_federation_v66f.sql.')?></span></div>
 </section>
 

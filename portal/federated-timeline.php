@@ -477,6 +477,10 @@ function federated_timeline_store_action(
     string $replyText = ''
 ): int {
     $uuid = pod_uuid_v4();
+    $rawObject = $activity['object'] ?? '';
+    $actionObjectUri = is_array($rawObject)
+        ? trim((string)($rawObject['inReplyTo'] ?? $rawObject['id'] ?? ''))
+        : trim((string)$rawObject);
     db()->prepare(
         'INSERT INTO activitypub_remote_post_actions
             (action_uuid,remote_post_id,action_type,activity_uri,outbox_activity_id,
@@ -490,7 +494,7 @@ function federated_timeline_store_action(
         'action_type' => $type,
         'activity_uri' => (string)$activity['id'],
         'outbox_id' => $outboxId,
-        'object_uri' => (string)($activity['object']['inReplyTo'] ?? $activity['object'] ?? ''),
+        'object_uri' => $actionObjectUri,
         'reply_object_uri' => $replyObject ? (string)$replyObject['id'] : null,
         'reply_text' => $replyText !== '' ? $replyText : null,
         'object_json' => $replyObject ? json_encode($replyObject, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) : null,
@@ -702,7 +706,7 @@ function federated_timeline_cleanup(): int
     $days = federated_timeline_settings()['retention_days'];
     $statement = db()->prepare(
         'DELETE post FROM activitypub_remote_posts post
-         WHERE COALESCE(post.source_published_at,post.created_at)<DATE_SUB(UTC_TIMESTAMP(),INTERVAL :retention_days DAY)
+         WHERE COALESCE(post.source_published_at,post.created_at)<DATE_SUB(UTC_TIMESTAMP(),INTERVAL ' . $days . ' DAY)
            AND NOT EXISTS (
                 SELECT 1 FROM activitypub_timeline_user_state state
                 WHERE state.remote_post_id=post.id AND state.saved_at IS NOT NULL
@@ -712,9 +716,73 @@ function federated_timeline_cleanup(): int
                 WHERE action.remote_post_id=post.id
            )'
     );
-    $statement->bindValue('retention_days', $days, PDO::PARAM_INT);
     $statement->execute();
     return $statement->rowCount();
+}
+
+
+function federated_timeline_sync_delivery(array $delivery, array $result): void
+{
+    if (!federated_timeline_schema_available()) return;
+    $outboxId = (int)($delivery['outbox_activity_id'] ?? 0);
+    $remoteActorId = (int)($delivery['remote_actor_id'] ?? 0);
+    if ($outboxId <= 0 || $remoteActorId <= 0) return;
+    $statement = db()->prepare(
+        'UPDATE activitypub_remote_post_actions action
+         JOIN activitypub_remote_posts post ON post.id=action.remote_post_id
+         SET action.status=CASE WHEN :delivered=1 THEN "active" ELSE "failed" END,
+             action.last_error=CASE WHEN :delivered2=1 THEN NULL ELSE :last_error END,
+             action.updated_at=UTC_TIMESTAMP()
+         WHERE action.outbox_activity_id=:outbox_id
+           AND post.remote_actor_id=:remote_actor_id
+           AND action.status NOT IN ("undone","deleted")'
+    );
+    $statement->execute([
+        'delivered' => !empty($result['ok']) ? 1 : 0,
+        'delivered2' => !empty($result['ok']) ? 1 : 0,
+        'last_error' => !empty($result['ok']) ? null : mb_substr((string)($result['error'] ?? 'Delivery failed.'), 0, 1000),
+        'outbox_id' => $outboxId,
+        'remote_actor_id' => $remoteActorId,
+    ]);
+}
+
+function federated_timeline_reset_delivery(int $deliveryId): void
+{
+    if (!federated_timeline_schema_available() || $deliveryId <= 0) return;
+    db()->prepare(
+        'UPDATE activitypub_remote_post_actions action
+         JOIN activitypub_deliveries delivery ON delivery.outbox_activity_id=action.outbox_activity_id
+         JOIN activitypub_remote_posts post ON post.id=action.remote_post_id
+         SET action.status="active",action.last_error=NULL,action.updated_at=UTC_TIMESTAMP()
+         WHERE delivery.id=:delivery_id
+           AND delivery.remote_actor_id=post.remote_actor_id
+           AND action.status="failed"'
+    )->execute(['delivery_id' => $deliveryId]);
+}
+
+function federated_timeline_actions_for_posts(array $postIds): array
+{
+    if (!federated_timeline_schema_available()) return [];
+    $postIds = array_values(array_unique(array_filter(array_map('intval', $postIds), static fn(int $id): bool => $id > 0)));
+    if (!$postIds) return [];
+    $rows = db()->query(
+        'SELECT id,remote_post_id,action_type,reply_text,reply_object_uri,status,created_at
+         FROM activitypub_remote_post_actions
+         WHERE remote_post_id IN (' . implode(',', $postIds) . ')
+         ORDER BY remote_post_id,id DESC'
+    )->fetchAll();
+    $result = [];
+    foreach ($rows as $row) {
+        $postId = (int)$row['remote_post_id'];
+        $result[$postId] ??= ['like' => null, 'announce' => null, 'replies' => []];
+        $type = (string)$row['action_type'];
+        if ($type === 'reply') {
+            if (count($result[$postId]['replies']) < 20) $result[$postId]['replies'][] = $row;
+        } elseif (in_array($type, ['like', 'announce'], true) && $result[$postId][$type] === null && (string)$row['status'] === 'active') {
+            $result[$postId][$type] = $row;
+        }
+    }
+    return $result;
 }
 
 function federated_timeline_inbox_items(): array

@@ -9,6 +9,7 @@ $user = require_role('admin');
 $userId = (int)$user['id'];
 
 if (is_post()) {
+    if (!same_origin_request()) { http_response_code(403); exit('Cross-origin request denied.'); }
     verify_csrf();
     enforce_authenticated_action_limit($user);
     $action = input('action');
@@ -91,6 +92,9 @@ $posts = $schemaAvailable ? federated_timeline_query($userId, [
     'q' => $search,
     'actor_id' => $actorId,
 ], 150) : [];
+$actionsByPost = $schemaAvailable
+    ? federated_timeline_actions_for_posts(array_column($posts, 'id'))
+    : [];
 $actors = $schemaAvailable ? db()->query(
     'SELECT DISTINCT actor.id,actor.actor_uri,actor.preferred_username,actor.display_name
      FROM activitypub_remote_posts post
@@ -161,10 +165,15 @@ portal_header('Federated Timeline', 'communications', $user);
 <?php foreach($posts as $post):
     $attachments=json_decode((string)($post['attachments_json']??''),true); if(!is_array($attachments))$attachments=[];
     $tags=json_decode((string)($post['tags_json']??''),true); if(!is_array($tags))$tags=[];
-    $likeAction=federated_timeline_active_action((int)$post['id'],'like');
-    $boostAction=federated_timeline_active_action((int)$post['id'],'announce');
-    $replyActions=db()->prepare('SELECT id,reply_text,reply_object_uri,status,created_at FROM activitypub_remote_post_actions WHERE remote_post_id=:post_id AND action_type="reply" ORDER BY id DESC LIMIT 20');
-    $replyActions->execute(['post_id'=>(int)$post['id']]); $replies=$replyActions->fetchAll();
+    $postActions=$actionsByPost[(int)$post['id']]??['like'=>null,'announce'=>null,'replies'=>[]];
+    $likeAction=$postActions['like'];
+    $boostAction=$postActions['announce'];
+    $replies=$postActions['replies'];
+    $stateActions=[
+        (empty($post['read_at'])?'read':'unread')=>(empty($post['read_at'])?'Mark read':'Mark unread'),
+        (empty($post['saved_at'])?'save':'unsave')=>(empty($post['saved_at'])?'Save':'Unsave'),
+        (empty($post['hidden_at'])?'hide':'unhide')=>(empty($post['hidden_at'])?'Hide':'Unhide'),
+    ];
 ?>
 <article class="ft-card status-<?=e($post['status'])?> <?=empty($post['read_at'])?'unread':''?>" id="remote-post-<?=(int)$post['id']?>">
 <header><div><span class="ft-type"><?=e(status_label($post['entry_type']))?></span><h2><?=e($post['display_name']?:$post['preferred_username']?:'Remote actor')?></h2><a href="<?=e($post['profile_url']?:$post['actor_uri'])?>" target="_blank" rel="noopener noreferrer"><?=e($post['actor_uri'])?></a></div><time datetime="<?=e((string)($post['source_published_at']?:$post['created_at']))?>"><?=e(format_datetime((string)($post['source_published_at']?:$post['created_at'])))?></time></header>
@@ -178,7 +187,7 @@ portal_header('Federated Timeline', 'communications', $user);
 <?php if($tags):?><div class="ft-tags"><?php foreach($tags as $tag):?><?php if(!empty($tag['href'])):?><a href="<?=e((string)$tag['href'])?>" target="_blank" rel="noopener noreferrer nofollow"><?=e((string)$tag['name'])?></a><?php else:?><span><?=e((string)$tag['name'])?></span><?php endif;?><?php endforeach;?></div><?php endif;?>
 <footer><a href="<?=e($post['source_url']?:$post['object_uri'])?>" target="_blank" rel="noopener noreferrer">View original</a><span><?=e(status_label($post['visibility']))?></span><?php if(!empty($post['mentions_local'])):?><b>Mentions this POD</b><?php endif;?></footer>
 <div class="ft-state-actions">
-<?php foreach([empty($post['read_at'])?'read':'unread'=>empty($post['read_at'])?'Mark read':'Mark unread',empty($post['saved_at'])?'save':'unsave'=>empty($post['saved_at'])?'Save':'Unsave',empty($post['hidden_at'])?'hide':'unhide'=>empty($post['hidden_at'])?'Hide':'Unhide'] as $stateAction=>$label):?><form method="post"><?=csrf_field()?><input type="hidden" name="action" value="timeline_state"><input type="hidden" name="post_id" value="<?=(int)$post['id']?>"><input type="hidden" name="state_action" value="<?=e($stateAction)?>"><input type="hidden" name="return_queue" value="<?=e($queue)?>"><input type="hidden" name="return_q" value="<?=e($search)?>"><input type="hidden" name="return_actor_id" value="<?=$actorId?>"><button><?=e($label)?></button></form><?php endforeach;?>
+<?php foreach($stateActions as $stateAction=>$label):?><form method="post"><?=csrf_field()?><input type="hidden" name="action" value="timeline_state"><input type="hidden" name="post_id" value="<?=(int)$post['id']?>"><input type="hidden" name="state_action" value="<?=e($stateAction)?>"><input type="hidden" name="return_queue" value="<?=e($queue)?>"><input type="hidden" name="return_q" value="<?=e($search)?>"><input type="hidden" name="return_actor_id" value="<?=$actorId?>"><button><?=e($label)?></button></form><?php endforeach;?>
 </div>
 <?php if($post['status']==='pending'):?><form method="post" class="ft-moderation"><?=csrf_field()?><input type="hidden" name="action" value="moderate_timeline_post"><input type="hidden" name="post_id" value="<?=(int)$post['id']?>"><input name="note" maxlength="1000" placeholder="Private moderation note"><button name="decision" value="active">Approve mention</button><button name="decision" value="hidden">Hide</button><button name="decision" value="deleted">Delete</button></form><?php endif;?>
 <?php if($post['status']==='active'):?><div class="ft-social-actions">
