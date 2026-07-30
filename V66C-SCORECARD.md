@@ -14,16 +14,17 @@ The portal already had authenticated users, CSRF and action limiting, Blog publi
 - Comment edit history and 15-minute approved-comment edit window.
 - Owner/admin deletion with soft deleted placeholders for reply continuity.
 - Reader reports, unique reporter enforcement, durable resolution evidence, and five-report automatic hiding.
-- Administrator moderation queue and immutable moderation events.
+- Administrator moderation queue and immutable manual/system moderation events.
 - Notifications for pending moderation, approvals, post comments, replies, and first reactions.
-- Rate limits, duplicate-comment prevention, URL limits, CSRF, same-origin, ownership, and status checks.
+- Batched viewer-reaction loading and bounded public comment retrieval.
+- Rate limits, duplicate-comment prevention, URL limits, CSRF, same-origin, ownership, status checks, and generic internal-error responses.
 - Cleanup when a Blog post is permanently deleted.
 - Additive migration and fresh-install schema coverage.
-- Permanent PHP, Node, SQL, source, runtime, cleanup, and retained portal regressions.
+- Permanent PHP, Node, SQL, source, runtime, cleanup, MySQL 8, MariaDB 11.4, and retained portal regressions.
 
-## Final score target: 10/10
+## Final score: 10/10
 
-| Area | Target |
+| Area | Score |
 |---|---:|
 | Authentication and ownership | 10/10 |
 | Comments and replies | 10/10 |
