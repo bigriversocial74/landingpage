@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260730-rich-blog-media-v66A */
+/* North Mountain Media build: 20260730-public-syndication-v66E */
+
+require_once __DIR__ . '/public-syndication.php';
 
 function publishing_feed_xml(mixed $value): string
 {
@@ -57,41 +59,10 @@ function publishing_feed_timestamp(array $post, string $field, string $fallback 
 
 function publishing_feed_context(string $format): array
 {
-    $settings = publishing_blog_settings();
-    $category = publishing_feed_category();
-    $limit = (int)$settings['feed_item_limit'];
-    $posts = blog_public_posts($category, null, $limit, 0);
-    $suffix = $category !== '' ? ' — ' . $category : '';
-    $selfPath = $format === 'atom' ? 'blog-atom.php' : 'blog-feed.php';
-    if ($category !== '') {
-        $selfPath .= '?category=' . rawurlencode($category);
-    }
-    $blogPath = 'blog.php';
-    if ($category !== '') {
-        $blogPath .= '?category=' . rawurlencode($category);
-    }
-    $lastModified = 0;
-    foreach ($posts as $post) {
-        $lastModified = max(
-            $lastModified,
-            publishing_feed_timestamp($post, 'updated_at', (string)($post['published_at'] ?? ''))
-        );
-    }
-    if ($lastModified <= 0) {
-        $lastModified = 946684800; // Stable empty-feed timestamp: 2000-01-01 UTC.
-    }
-    return [
-        'settings' => $settings,
-        'category' => $category,
-        'posts' => $posts,
-        'title' => (string)$settings['title'] . $suffix,
-        'description' => $category !== ''
-            ? 'Published ' . $category . ' articles from ' . (string)$settings['title'] . '.'
-            : (string)$settings['description'],
-        'self_url' => publishing_absolute_url($selfPath),
-        'blog_url' => publishing_absolute_url($blogPath),
-        'last_modified' => $lastModified,
-    ];
+    $filter = syndication_filter_from_request();
+    $context = syndication_context($format === 'atom' ? 'atom' : 'rss', $filter);
+    $context['category'] = (string)$filter['category'];
+    return $context;
 }
 
 function publishing_feed_send(string $xml, string $contentType, int $lastModified): never
@@ -134,13 +105,19 @@ function publishing_render_rss_feed(): string
     $xml .= '<description>' . publishing_feed_xml($context['description']) . "</description>\n";
     $xml .= '<language>' . publishing_feed_xml($settings['feed_language']) . "</language>\n";
     $xml .= '<lastBuildDate>' . gmdate(DATE_RSS, $context['last_modified']) . "</lastBuildDate>\n";
-    $xml .= '<generator>North Mountain Media Portal v66A</generator>' . "\n";
+    $xml .= '<generator>North Mountain Media Portal v66E</generator>' . "\n";
     $xml .= '<itunes:author>North Mountain Media</itunes:author>' . "\n";
     $xml .= '<itunes:summary>' . publishing_feed_xml($context['description']) . "</itunes:summary>\n";
     $xml .= '<itunes:explicit>false</itunes:explicit>' . "\n";
     $xml .= '<atom:link href="' . publishing_feed_xml($context['self_url']) . '" rel="self" type="application/rss+xml" />' . "\n";
+    if ($settings['websub_enabled']) {
+        $xml .= '<atom:link href="' . publishing_feed_xml($settings['websub_hub_url']) . '" rel="hub" />' . "\n";
+    }
+    if ($settings['json_enabled']) {
+        $xml .= '<atom:link href="' . publishing_feed_xml(publishing_absolute_url('blog-json-feed.php' . syndication_filter_query($context['filter']))) . '" rel="alternate" type="application/feed+json" />' . "\n";
+    }
     if ($settings['atom_enabled']) {
-        $xml .= '<atom:link href="' . publishing_feed_xml(publishing_absolute_url('blog-atom.php' . ($context['category'] !== '' ? '?category=' . rawurlencode($context['category']) : ''))) . '" rel="alternate" type="application/atom+xml" />' . "\n";
+        $xml .= '<atom:link href="' . publishing_feed_xml(publishing_absolute_url('blog-atom.php' . syndication_filter_query($context['filter']))) . '" rel="alternate" type="application/atom+xml" />' . "\n";
     }
 
     foreach ($context['posts'] as $post) {
@@ -191,7 +168,7 @@ function publishing_render_atom_feed(): string
 {
     $context = publishing_feed_context('atom');
     $settings = $context['settings'];
-    $rssPath = 'blog-feed.php' . ($context['category'] !== '' ? '?category=' . rawurlencode($context['category']) : '');
+    $rssPath = 'blog-feed.php' . syndication_filter_query($context['filter']);
     $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     $xml .= '<feed xmlns="http://www.w3.org/2005/Atom">' . "\n";
     $xml .= '<id>' . publishing_feed_xml($context['self_url']) . "</id>\n";
@@ -199,11 +176,17 @@ function publishing_render_atom_feed(): string
     $xml .= '<subtitle>' . publishing_feed_xml($context['description']) . "</subtitle>\n";
     $xml .= '<updated>' . gmdate(DATE_ATOM, $context['last_modified']) . "</updated>\n";
     $xml .= '<link rel="self" type="application/atom+xml" href="' . publishing_feed_xml($context['self_url']) . '" />' . "\n";
+    if ($settings['websub_enabled']) {
+        $xml .= '<link rel="hub" href="' . publishing_feed_xml($settings['websub_hub_url']) . '" />' . "\n";
+    }
+    if ($settings['json_enabled']) {
+        $xml .= '<link rel="alternate" type="application/feed+json" href="' . publishing_feed_xml(publishing_absolute_url('blog-json-feed.php' . syndication_filter_query($context['filter']))) . '" />' . "\n";
+    }
     $xml .= '<link rel="alternate" type="text/html" href="' . publishing_feed_xml($context['blog_url']) . '" />' . "\n";
     if ($settings['rss_enabled']) {
         $xml .= '<link rel="alternate" type="application/rss+xml" href="' . publishing_feed_xml(publishing_absolute_url($rssPath)) . '" />' . "\n";
     }
-    $xml .= '<generator uri="' . publishing_feed_xml(publishing_absolute_url('index.php')) . '">North Mountain Media Portal v66A</generator>' . "\n";
+    $xml .= '<generator uri="' . publishing_feed_xml(publishing_absolute_url('index.php')) . '">North Mountain Media Portal v66E</generator>' . "\n";
     $xml .= '<rights>' . publishing_feed_xml($settings['feed_copyright']) . "</rights>\n";
 
     foreach ($context['posts'] as $post) {
