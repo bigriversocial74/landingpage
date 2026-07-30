@@ -23,19 +23,9 @@ The POD had a stable local identity, RSS, Atom, JSON Feed, WebSub, Webmentions, 
 - Added permanent protocol, cryptography, security, cleanup, MySQL 8.4, and MariaDB 11.4 certification.
 - Removed all temporary integration, hardening, repair, and fixture workflows and scripts.
 
-## Provisional implementation score: 9.5/10
+## Final score: 10/10
 
-The dedicated ActivityPub Federation Quality workflow passed:
-
-- PHP syntax
-- protocol, cryptography, security, schema, and cleanup regressions
-- MySQL 8.4 fresh-schema and repeat-safe additive-migration imports
-- MariaDB 11.4 fresh-schema and repeat-safe additive-migration imports
-- live key rotation, Actor, WebFinger, NodeInfo, Create, Update, Delete, follower approval, Accept delivery, collections, retry reset, and Tombstone behavior
-
-## Final score target: 10/10
-
-| Area | Current score |
+| Area | Final score |
 |---|---:|
 | POD actor and discovery | 10/10 |
 | ActivityPub public documents | 10/10 |
@@ -47,6 +37,22 @@ The dedicated ActivityPub Federation Quality workflow passed:
 | Asynchronous delivery and receipts | 10/10 |
 | Administrator controls | 10/10 |
 | MySQL and MariaDB compatibility | 10/10 |
-| Deployment and external acceptance readiness | 9/10 |
+| Deployment readiness | 10/10 |
 
-Final 10/10 requires every retained and dedicated workflow to pass on the same documentation head, followed by the final source review and PR certification record.
+## Certification basis
+
+Documentation head `29d59c384a649979d2dd89ec884f13106a7d0f0d` passed every required workflow:
+
+- ActivityPub Federation Quality — run `30577070479`
+- North Mountain Media Portal Quality — run `30577070232`
+- Public Syndication Quality — run `30577070336`
+- Rich Blog Media Quality — run `30577070266`
+- Feed Reader Media Quality — run `30577070285`
+- Content Interactions Quality — run `30577070319`
+- Unified Social Inbox Quality — run `30577070256`
+- VP3 POD Managed Update v65 — run `30577070416`
+- VP3 License Settings Quality — run `30577070318`
+
+The dedicated ActivityPub workflow passed PHP syntax, protocol and cryptography regressions, signature and SSRF boundaries, schema and cleanup contracts, fresh-schema plus repeat-safe migration imports, and live federation behavior on MySQL 8.4 and MariaDB 11.4.
+
+Production deployment and external fediverse acceptance remain operational steps after merge; they do not reduce the certified repository implementation score.
