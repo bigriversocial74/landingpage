@@ -38,9 +38,9 @@ jobs:
           path = Path('portal/federated-feed.php')
           content = path.read_text(encoding='utf-8')
           replacements = {
-              "empty($post['read_at'])?'read':'unread'=>": "(empty($post['read_at'])?'read':'unread')=>",
-              "empty($post['saved_at'])?'save':'unsave'=>": "(empty($post['saved_at'])?'save':'unsave')=>",
-              "empty($post['hidden_at'])?'hide':'unhide'=>": "(empty($post['hidden_at'])?'hide':'unhide')=>",
+              "empty($post['read_at'])?'read':'unread'=>empty($post['read_at'])?'Mark read':'Mark unread',": "(empty($post['read_at'])?'read':'unread')=>(empty($post['read_at'])?'Mark read':'Mark unread'),",
+              "empty($post['saved_at'])?'save':'unsave'=>empty($post['saved_at'])?'Save':'Unsave',": "(empty($post['saved_at'])?'save':'unsave')=>(empty($post['saved_at'])?'Save':'Unsave'),",
+              "empty($post['hidden_at'])?'hide':'unhide'=>empty($post['hidden_at'])?'Hide':'Unhide',": "(empty($post['hidden_at'])?'hide':'unhide')=>(empty($post['hidden_at'])?'Hide':'Unhide'),",
           }
           for old, new in replacements.items():
               if content.count(old) != 1:
