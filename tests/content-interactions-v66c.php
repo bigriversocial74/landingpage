@@ -29,7 +29,7 @@ $checks = [
  ['existing rate limiter','rate_limit_exceeded',$source['api']],
  ['anonymous posting disabled','Anonymous posting is disabled',$source['core']],
  ['pre-moderation','pre_moderated',$source['core'].$source['admin']],
- ['one-level replies',"(int)$parent['depth'] !== 0",$source['core']],
+ ['one-level replies','(int)$parent[\'depth\'] !== 0',$source['core']],
  ['edit history','content_comment_edits',$source['core'].$source['migration']],
  ['reports','content_comment_reports',$source['core'].$source['migration']],
  ['five-report auto hide','$count >= 5',$source['core']],
