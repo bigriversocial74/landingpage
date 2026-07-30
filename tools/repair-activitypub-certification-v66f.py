@@ -40,6 +40,14 @@ pure = replace_once(
 )
 pure = replace_once(
     pure,
+    '''    ['Delete publication hook',"activitypub_blog_event($id, 'Delete'",$source['publishing']],
+''',
+    '''    ['Delete publication hook',"activitypub_blog_event(\\$id, 'Delete'",$source['publishing']],
+''',
+    'Delete-hook source-test literal',
+)
+pure = replace_once(
+    pure,
     '''    'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
 ''',
     '''    'tools/harden-activitypub-v66f.py','.github/workflows/harden-activitypub-v66f.yml',
