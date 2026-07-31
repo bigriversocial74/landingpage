@@ -25,6 +25,10 @@ jobs:
           start=next(i for i,line in enumerate(source) if "python3 - <<'PY'" in line)+1
           end=next(i for i in range(start,len(source)) if source[i].strip()=='PY')
           payload='\n'.join(line[10:] if line.startswith('          ') else line for line in source[start:end])+'\n'
+          payload=payload.replace(
+              "text = replace_once(text, anchor, addition, 'module nav filtering')",
+              "if anchor in text:\n    text = text.replace(anchor, addition, 1)\nelse:\n    marker = \"    $script = $isAdmin ? 'admin.php' : 'client.php';\"\n    if marker not in text: raise SystemExit('Missing fallback navigation insertion marker')\n    text = text.replace(marker, addition[len(anchor):] + '\\n' + marker, 1)"
+          )
           Path('/tmp/build-v66q.py').write_text(payload,encoding='utf-8')
           PY
           python3 /tmp/build-v66q.py
