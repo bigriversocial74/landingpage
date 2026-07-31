@@ -1,0 +1,67 @@
+name: Audit Retention Finalize Automation Rules v66K
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-retention-finalize-automation-rules-v66k.yml'
+      - 'tools/audit-retention-finalize-automation-rules-v66k.py'
+
+permissions:
+  contents: write
+
+jobs:
+  audit-retention:
+    if: github.head_ref == 'feature/automation-routing-action-center-v66k-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply complete integration and audit retention hardening
+        run: |
+          set -euo pipefail
+          python3 tools/audit-retention-finalize-automation-rules-v66k.py
+      - name: Install validation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y php-mbstring
+      - name: Validate audit-safe source
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/automation-rules.php \
+            portal/automation-admin.php \
+            portal/admin.php \
+            portal/notifications.php \
+            portal/bootstrap.php \
+            cron/process-automation.php \
+            tests/automation-rules-v66k.php \
+            tests/automation-rules-db-v66k.php; do
+              php -l "$file"
+          done
+          node --check assets/js/automation-center.js
+          grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/automation_rules_v66k.sql >/dev/null
+          grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/north_mountain_portal.sql >/dev/null
+          grep -F 'Action receipts must survive the shorter event-retention window.' tests/automation-rules-db-v66k.php >/dev/null
+          grep -F 'automation_retry_approval' portal/automation-rules.php >/dev/null
+          grep -F "array_replace(\$settings, ['enabled' => false])" portal/automation-admin.php >/dev/null
+          ! grep -F 'DELETE FROM automation_rules' portal/automation-admin.php
+      - name: Commit audit-safe application
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            portal/automation-rules.php \
+            portal/automation-admin.php \
+            portal/admin.php \
+            portal/notifications.php \
+            portal/bootstrap.php \
+            database/automation_rules_v66k.sql \
+            database/north_mountain_portal.sql \
+            tests/automation-rules-v66k.php \
+            tests/automation-rules-db-v66k.php
+          git commit -m 'Preserve Automation Rules v66K audit retention'
+          git push origin HEAD:${{ github.head_ref }}
