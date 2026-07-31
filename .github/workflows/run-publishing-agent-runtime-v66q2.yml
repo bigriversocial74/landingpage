@@ -1,0 +1,100 @@
+name: Run Publishing and Agent Runtime v66Q.2
+
+on:
+  push:
+    branches:
+      - repair/publishing-agent-runtime-v66q2-20260731
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/publishing-agent-runtime-v66q2-20260731
+          fetch-depth: 0
+
+      - name: Apply focused runtime repair
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'Missing repair anchor: {label}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+              'assets/js/portal.js',
+              "if (document.body.dataset.portalActive === 'agent') {\n  window.requestAnimationFrame(openAdminChat);\n}\n\n",
+              '',
+              'empty Agent Chat overlay auto-open'
+          )
+
+          replace_once(
+              'assets/js/publishing-center-v66q.js',
+              "    if (target.origin !== window.location.origin) return;",
+              "    if (!['http:', 'https:'].includes(target.protocol)) return;\n    target = new URL(\n      `${target.pathname}${target.search}${target.hash}`,\n      window.location.origin\n    );",
+              'Publishing Center configured-origin rejection'
+          )
+
+          bootstrap = Path('portal/bootstrap.php')
+          text = bootstrap.read_text(encoding='utf-8')
+          old = "    $active = (string)($GLOBALS['nmm_portal_active_view'] ?? '');\n    ?>"
+          new = "    $active = (string)($GLOBALS['nmm_portal_active_view'] ?? '');\n    $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');\n    ?>"
+          if old not in text:
+              raise SystemExit('Missing portal_footer scope anchor')
+          text = text.replace(old, new, 1)
+          replacements = {
+              'assets/css/portal.css?v=20260728-content-controls-v62.1': 'assets/css/portal.css?v=20260731-v66Q2',
+              'assets/css/publishing-center-v66q.css?v=20260731-v66Q': 'assets/css/publishing-center-v66q.css?v=20260731-v66Q2',
+              'assets/js/portal.js?v=20260728-content-controls-v62.1': 'assets/js/portal.js?v=20260731-v66Q2',
+              'assets/js/publishing-center-v66q.js?v=20260731-v66Q': 'assets/js/publishing-center-v66q.js?v=20260731-v66Q2',
+          }
+          for previous, current in replacements.items():
+              if previous not in text:
+                  raise SystemExit(f'Missing asset version anchor: {previous}')
+              text = text.replace(previous, current)
+          bootstrap.write_text(text, encoding='utf-8')
+
+          Path('tests/publishing-agent-runtime-v66q2.php').write_text('''<?php
+declare(strict_types=1);
+$root=dirname(__DIR__);
+$bootstrap=(string)file_get_contents($root.'/portal/bootstrap.php');
+$portal=(string)file_get_contents($root.'/assets/js/portal.js');
+$publishing=(string)file_get_contents($root.'/assets/js/publishing-center-v66q.js');
+if(str_contains($portal,"window.requestAnimationFrame(openAdminChat)")) throw new RuntimeException('Agent Chat still auto-opens an empty overlay.');
+if(!str_contains($portal,'addAdminUserMessage(query);')||!str_contains($portal,'openAdminChat();')) throw new RuntimeException('Agent Chat query flow no longer opens chat.');
+if(!str_contains($publishing,'configured.pathname')&&!str_contains($publishing,'target.pathname')) throw new RuntimeException('Publishing forms are not normalized to the current browser origin.');
+if(str_contains($publishing,'target.origin !== window.location.origin')) throw new RuntimeException('Silent configured-origin rejection remains.');
+if(!str_contains($bootstrap,"$landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');")) throw new RuntimeException('portal_footer scope repair missing.');
+foreach(['portal.css?v=20260731-v66Q2','publishing-center-v66q.css?v=20260731-v66Q2','portal.js?v=20260731-v66Q2','publishing-center-v66q.js?v=20260731-v66Q2'] as $asset){if(!str_contains($bootstrap,$asset))throw new RuntimeException('Cache-bust missing: '.$asset);}
+echo "Publishing and Agent runtime v66Q.2 regression passed\n";
+''', encoding='utf-8')
+          PY
+
+      - name: Validate source
+        run: |
+          php -l portal/bootstrap.php
+          php -l tests/publishing-agent-runtime-v66q2.php
+          node --check assets/js/portal.js
+          node --check assets/js/publishing-center-v66q.js
+          php tests/publishing-center-v66q.php
+          php tests/publishing-agent-repair-v66q1.php
+          php tests/publishing-agent-runtime-v66q2.php
+          php tests/social-posts-v66p.php
+          php tests/feed-reader-media-v66b.php
+
+      - name: Commit permanent source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/portal.js assets/js/publishing-center-v66q.js portal/bootstrap.php tests/publishing-agent-runtime-v66q2.php
+          git commit -m "Repair Publishing and Agent runtime v66Q.2"
+          git push origin HEAD:repair/publishing-agent-runtime-v66q2-20260731
