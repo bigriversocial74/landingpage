@@ -51,7 +51,7 @@ jobs:
           grep -F "openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC" portal/notification-delivery.php >/dev/null
           grep -F "'retry_at' => gmdate" portal/notification-delivery.php >/dev/null
           grep -F 'external notification enqueue failed' portal/notifications.php >/dev/null
-          if grep -E 'https?://[^[:space:]"'"']+\.js' notification-service-worker.js assets/js/notification-delivery.js; then exit 1; fi
+          if grep -E 'https?://[^[:space:]]+\.js' notification-service-worker.js assets/js/notification-delivery.js; then exit 1; fi
       - name: Commit integrated application
         run: |
           set -euo pipefail
