@@ -6,6 +6,8 @@ require_once __DIR__ . '/portal/bootstrap.php';
 require_once __DIR__ . '/portal/appointments-booking.php';
 require_once __DIR__ . '/portal/site-builder-core.php';
 require_once __DIR__ . '/portal/music-library.php';
+require_once __DIR__ . '/portal/activitypub-service.php';
+require_once __DIR__ . '/portal/social-posts-service.php';
 
 nmm_require_public_module('landing_page');
 
@@ -57,6 +59,7 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-sr
 <meta name="build-version" content="20260727-visual-site-builder-v61">
 <?php nmm_render_seo_meta($headline, $subheadline, 'index.php'); ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/landing-page.css?v=20260727-visual-site-builder-v61'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
 </head>
 <body class="landing-body landing-template-<?=e($template)?>">
 <header class="landing-header">
@@ -100,6 +103,7 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-sr
 </div>
 </section>
 
+<?php social_posts_render_landing();?>
 <section class="landing-final-cta">
 <p><?=e(nmm_site_setting('landing_cta_eyebrow','Ready to build'))?></p>
 <h2><?=e(nmm_site_setting('landing_cta_title','Turn the next idea into a connected working system.'))?></h2>
@@ -107,6 +111,7 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-sr
 </section>
 </main>
 <footer class="landing-footer"><div><?php if(!site_builder_render_menu_location('footer','landing-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div><a href="<?=e(app_url('portal/login.php?role=admin'))?>">Administrator</a></footer>
+<script src="<?=e(app_url('assets/js/social-posts-v66p.js?v=20260731-v66P'))?>"></script>
 <script src="<?=e(app_url('assets/js/landing-page.js?v=20260727-visual-site-builder-v61'))?>"></script>
 </body>
 </html>

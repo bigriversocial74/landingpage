@@ -1,0 +1,45 @@
+Section 66P — POD Social Post Publisher
+Initial score: 4.0/10
+Final score: 10.0/10
+Status: complete and certified; draft PR #55 remains unmerged.
+Certified implementation head: 73e6e32555b26fdb13bb0f0a7a04dc7b55409a2a
+
+Implemented scope:
+- permanent local ActivityPub Note publisher
+- drafts, public publishing, followers-only publishing, edits, deletion, and Tombstones
+- approved-follower delivery through the existing ActivityPub outbox
+- public ActivityPub outbox audience filtering that excludes follower-only payloads
+- protected same-origin media and HTTPS external-link policy
+- public social feed, public post pages, and ActivityPub Note object pages
+- remote Follow this POD handoff without collecting remote credentials
+- default landing-page blogs/social/tabbed modes
+- visual-builder home-page blogs/social/tabbed modes
+- local published-post section in the federated timeline
+- direct administrator Social Posts navigation
+- existing Blog, RSS, and Stories behavior retained
+- additive migration and cumulative v66P schema entrypoint
+
+Exact-head certification:
+- POD Social Posts Quality #17 / run 30655542835
+  - source-quality: passed
+  - MySQL 8.4 integration: passed
+  - MariaDB 11.4 integration: passed
+- ActivityPub Federation Quality #159 / run 30655539963: passed
+- Federated Timeline Quality #90 / run 30655540201: passed
+- Federated Interactions Quality #113 / run 30655542895: passed
+- Federated Messaging Quality #66 / run 30655539879: passed
+- Stories Followed Feed Quality #29 / run 30655539862: passed
+- Public Syndication Quality #165 / run 30655539958: passed
+- Unified Social Inbox Quality #199 / run 30655543018: passed
+- Feed Reader Media Quality #222 / run 30655539970: passed
+- North Mountain Media Portal Quality #640 / run 30655543937: passed
+- VP3 License Settings Quality #449 / run 30655542808: passed
+- VP3 POD Managed Update v65 #451 / run 30655539863: passed
+
+Permanent-diff certification:
+- 22 permanent changed files
+- no repair workflow
+- no temporary patch script
+- no payload or assembler files
+- no self-modifying production source
+- no merge without David Evans's explicit approval

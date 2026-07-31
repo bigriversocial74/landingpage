@@ -1,0 +1,509 @@
+/* North Mountain Media — POD Social Posts v66P */
+:root{
+  --pod-social-ink:#15202b;
+  --pod-social-muted:#65717d;
+  --pod-social-line:#dce3e8;
+  --pod-social-soft:#f5f7f8;
+  --pod-social-card:#ffffff;
+  --pod-social-accent:#0b7f83;
+  --pod-social-accent-dark:#075f63;
+  --pod-social-shadow:0 18px 50px rgba(20,35,48,.09);
+}
+
+.pod-content-section,
+.pod-local-stream{
+  width:min(1180px,calc(100% - 40px));
+  margin:72px auto;
+  color:var(--pod-social-ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.pod-content-section{
+  padding:44px;
+  border:1px solid var(--pod-social-line);
+  border-radius:28px;
+  background:linear-gradient(180deg,#fff 0%,#f8fafb 100%);
+  box-shadow:var(--pod-social-shadow);
+}
+.pod-content-header,
+.pod-local-stream>header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:28px;
+  margin-bottom:28px;
+}
+.pod-content-header>div:first-child{max-width:720px}
+.pod-content-header span,
+.pod-local-stream>header span,
+.pod-social-admin-hero span,
+.pod-social-admin-panel>header span,
+.pod-social-profile>div span,
+.pod-follow-card>span{
+  display:block;
+  margin-bottom:8px;
+  color:var(--pod-social-accent);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.pod-content-header h2,
+.pod-local-stream h2{
+  margin:0;
+  color:var(--pod-social-ink);
+  font-size:clamp(30px,4vw,50px);
+  line-height:1.05;
+  letter-spacing:-.035em;
+}
+.pod-content-header p{
+  margin:16px 0 0;
+  color:var(--pod-social-muted);
+  font-size:17px;
+  line-height:1.65;
+}
+.pod-content-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:10px;
+}
+.pod-content-actions a,
+.pod-local-stream>header>a,
+.pod-social-public-header nav a,
+.pod-social-admin-hero nav a{
+  display:inline-flex;
+  min-height:44px;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+  border:1px solid var(--pod-social-line);
+  border-radius:999px;
+  color:var(--pod-social-ink);
+  background:#fff;
+  font-size:14px;
+  font-weight:750;
+  text-decoration:none;
+}
+.pod-follow-button,
+.pod-content-actions .pod-follow-button{
+  display:inline-flex;
+  min-height:46px;
+  align-items:center;
+  justify-content:center;
+  padding:11px 20px;
+  border:0;
+  border-radius:999px;
+  color:#fff!important;
+  background:var(--pod-social-accent);
+  box-shadow:0 10px 24px rgba(11,127,131,.2);
+  font-weight:800;
+  text-decoration:none;
+  cursor:pointer;
+}
+.pod-follow-button:hover{background:var(--pod-social-accent-dark)}
+.pod-content-tabs{
+  display:flex;
+  gap:8px;
+  width:max-content;
+  max-width:100%;
+  margin:0 0 24px;
+  padding:5px;
+  border:1px solid var(--pod-social-line);
+  border-radius:999px;
+  background:#edf1f3;
+}
+.pod-content-tabs button{
+  min-height:42px;
+  padding:9px 18px;
+  border:0;
+  border-radius:999px;
+  color:var(--pod-social-muted);
+  background:transparent;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.pod-content-tabs button[aria-selected="true"]{
+  color:var(--pod-social-ink);
+  background:#fff;
+  box-shadow:0 4px 14px rgba(20,35,48,.08);
+}
+.pod-content-grid,
+.pod-local-stream-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;
+}
+.pod-social-grid{align-items:start}
+.pod-content-empty{
+  grid-column:1/-1;
+  padding:28px;
+  border:1px dashed #cbd5dc;
+  border-radius:20px;
+  color:var(--pod-social-muted);
+  background:#fff;
+  text-align:center;
+}
+.pod-blog-card,
+.pod-social-card{
+  overflow:hidden;
+  min-width:0;
+  border:1px solid var(--pod-social-line);
+  border-radius:22px;
+  background:var(--pod-social-card);
+  box-shadow:0 10px 28px rgba(20,35,48,.055);
+}
+.pod-blog-cover{
+  display:block;
+  aspect-ratio:16/9;
+  overflow:hidden;
+  background:#e8edef;
+}
+.pod-blog-cover img{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+.pod-blog-card>div{padding:22px}
+.pod-blog-card span{
+  color:var(--pod-social-accent);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.pod-blog-card h3{margin:9px 0;font-size:22px;line-height:1.2}
+.pod-blog-card h3 a{color:var(--pod-social-ink);text-decoration:none}
+.pod-blog-card p{margin:0;color:var(--pod-social-muted);line-height:1.55}
+.pod-blog-card small{display:block;margin-top:16px;color:#87919a}
+.pod-rss-link{margin-top:18px;text-align:right}
+.pod-rss-link a{color:var(--pod-social-accent);font-weight:750}
+
+.pod-social-card{padding:20px}
+.pod-social-card>header{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+}
+.pod-social-avatar,
+.pod-social-profile-avatar{
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  color:#fff;
+  background:linear-gradient(145deg,#172b3d,#0b7f83);
+  font-weight:850;
+}
+.pod-social-card>header strong{display:block;font-size:15px}
+.pod-social-card>header span:not(.pod-social-visibility){display:block;margin-top:3px;color:var(--pod-social-muted);font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.pod-social-visibility{
+  padding:5px 8px;
+  border-radius:999px;
+  color:#4f5b65;
+  background:#eef2f4;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.pod-social-body{
+  margin:18px 0 0;
+  color:var(--pod-social-ink);
+  font-size:16px;
+  line-height:1.58;
+  overflow-wrap:anywhere;
+}
+.pod-social-media{
+  overflow:hidden;
+  margin:18px 0 0;
+  border-radius:16px;
+  background:#edf1f3;
+}
+.pod-social-media img,
+.pod-social-media video{display:block;width:100%;max-height:540px;object-fit:cover}
+.pod-social-media audio{display:block;width:calc(100% - 24px);margin:12px}
+.pod-social-media>a{display:block;padding:18px;color:var(--pod-social-accent);font-weight:750}
+.pod-social-link{
+  display:block;
+  margin-top:14px;
+  padding:12px 14px;
+  border:1px solid var(--pod-social-line);
+  border-radius:14px;
+  color:var(--pod-social-accent);
+  background:#f8fafb;
+  font-size:13px;
+  font-weight:700;
+  overflow-wrap:anywhere;
+}
+.pod-social-card>footer{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid #edf1f3;
+  color:var(--pod-social-muted);
+  font-size:12px;
+}
+.pod-social-card>footer a{color:var(--pod-social-accent);font-weight:800;text-decoration:none}
+.pod-social-card.is-compact{padding:18px}
+.pod-social-card.is-compact .pod-social-body{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+
+.pod-local-stream{
+  padding:24px;
+  border:1px solid var(--pod-social-line);
+  border-radius:24px;
+  background:#fff;
+}
+.pod-local-stream>header{align-items:center;margin-bottom:18px}
+.pod-local-stream h2{font-size:28px}
+.pod-local-stream-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+.pod-social-admin{
+  width:min(1280px,calc(100% - 34px));
+  margin:0 auto 70px;
+  color:var(--pod-social-ink);
+}
+.pod-social-admin-hero{
+  display:flex;
+  justify-content:space-between;
+  gap:32px;
+  margin:8px 0 22px;
+  padding:34px;
+  border-radius:26px;
+  color:#fff;
+  background:linear-gradient(135deg,#112433,#173b46 60%,#0b7f83);
+}
+.pod-social-admin-hero>div{max-width:760px}
+.pod-social-admin-hero span{color:#8de0df}
+.pod-social-admin-hero h2{margin:0;font-size:clamp(32px,4vw,52px);line-height:1.04;letter-spacing:-.04em}
+.pod-social-admin-hero p{margin:16px 0 0;color:#d4e2e6;font-size:17px;line-height:1.6}
+.pod-social-admin-hero nav{display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:flex-end;gap:9px}
+.pod-social-admin-hero nav a{border-color:rgba(255,255,255,.18);color:#fff;background:rgba(255,255,255,.08)}
+.pod-social-warning{
+  margin:18px 0;
+  padding:18px 20px;
+  border:1px solid #e8c66d;
+  border-radius:16px;
+  color:#6a4a00;
+  background:#fff7d8;
+}
+.pod-social-stats{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+  margin:0 0 18px;
+}
+.pod-social-stats article{
+  padding:20px;
+  border:1px solid var(--pod-social-line);
+  border-radius:18px;
+  background:#fff;
+}
+.pod-social-stats span{display:block;color:var(--pod-social-muted);font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.08em}
+.pod-social-stats strong{display:block;margin-top:8px;font-size:28px}
+.pod-social-admin-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:18px}
+.pod-social-admin-panel{
+  margin-bottom:18px;
+  padding:26px;
+  border:1px solid var(--pod-social-line);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 10px 28px rgba(20,35,48,.045);
+}
+.pod-social-admin-panel>header{
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:flex-start;
+  margin-bottom:20px;
+}
+.pod-social-admin-panel>header h2{margin:0;font-size:26px;letter-spacing:-.025em}
+.pod-social-admin-panel>header b{color:var(--pod-social-muted);font-size:13px;overflow-wrap:anywhere}
+.pod-social-composer label,
+.pod-social-settings label,
+.pod-follow-form label{display:block;margin-bottom:16px}
+.pod-social-composer label>span,
+.pod-follow-form label>span{display:block;margin-bottom:7px;color:#4f5c66;font-size:13px;font-weight:800}
+.pod-social-composer textarea,
+.pod-social-composer input,
+.pod-social-composer select,
+.pod-social-settings input[type="number"],
+.pod-social-settings select,
+.pod-follow-form input{
+  width:100%;
+  min-height:46px;
+  padding:11px 13px;
+  border:1px solid #ccd5dc;
+  border-radius:12px;
+  color:var(--pod-social-ink);
+  background:#fff;
+  font:inherit;
+  box-sizing:border-box;
+}
+.pod-social-composer textarea{min-height:160px;resize:vertical;line-height:1.55}
+.pod-social-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pod-social-policy-note,
+.pod-follow-note,
+.pod-social-protocol-note{color:var(--pod-social-muted);font-size:13px;line-height:1.55}
+.pod-social-composer-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pod-social-composer-actions>a{margin-left:auto;color:var(--pod-social-accent);font-weight:750}
+.pod-social-button{
+  min-height:46px;
+  padding:11px 18px;
+  border:1px solid var(--pod-social-accent);
+  border-radius:12px;
+  color:#fff;
+  background:var(--pod-social-accent);
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.pod-social-button.secondary{color:var(--pod-social-ink);border-color:var(--pod-social-line);background:#fff}
+.pod-social-settings>label{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) minmax(120px,180px);
+  gap:12px;
+  align-items:center;
+  padding:13px 0;
+  border-bottom:1px solid #edf1f3;
+}
+.pod-social-settings>label:has(input[type="checkbox"]){grid-template-columns:auto minmax(0,1fr)}
+.pod-social-settings>label strong,.pod-social-settings>label small{display:block}
+.pod-social-settings>label small{margin-top:3px;color:var(--pod-social-muted);line-height:1.35}
+.pod-social-settings input[type="checkbox"]{width:20px;height:20px;accent-color:var(--pod-social-accent)}
+.pod-social-fixed-policy{
+  margin:18px 0;
+  padding:16px;
+  border-radius:14px;
+  background:var(--pod-social-soft);
+}
+.pod-social-fixed-policy strong,.pod-social-fixed-policy span{display:block}
+.pod-social-fixed-policy span{margin-top:5px;color:var(--pod-social-muted);font-size:13px;line-height:1.45}
+.pod-social-management-list article{
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:center;
+  padding:16px 0;
+  border-top:1px solid #edf1f3;
+}
+.pod-social-management-copy{min-width:0}
+.pod-social-management-copy span,.pod-social-management-copy strong,.pod-social-management-copy small{display:block}
+.pod-social-management-copy span{color:var(--pod-social-accent);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.pod-social-management-copy strong{margin-top:6px;line-height:1.4;overflow-wrap:anywhere}
+.pod-social-management-copy small{margin-top:5px;color:var(--pod-social-muted)}
+.pod-social-management-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pod-social-management-actions a,.pod-social-management-actions button{
+  min-height:38px;padding:8px 12px;border:1px solid var(--pod-social-line);border-radius:10px;color:var(--pod-social-ink);background:#fff;font:inherit;font-size:13px;font-weight:750;text-decoration:none;cursor:pointer
+}
+.pod-social-management-actions form{margin:0}
+.pod-social-federation-status p{overflow-wrap:anywhere}
+
+.pod-social-public-body,
+.pod-follow-body{
+  margin:0;
+  color:var(--pod-social-ink);
+  background:#f3f6f7;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.pod-social-public-header{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  align-items:center;
+  min-height:72px;
+  padding:0 max(24px,calc((100% - 1120px)/2));
+  border-bottom:1px solid var(--pod-social-line);
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(16px);
+}
+.pod-social-public-header>a{color:var(--pod-social-ink);font-weight:850;text-decoration:none}
+.pod-social-public-header nav{display:flex;gap:8px;align-items:center}
+.pod-social-feed-page,.pod-social-single{width:min(760px,calc(100% - 32px));margin:42px auto 80px}
+.pod-social-profile{
+  display:grid;
+  grid-template-columns:76px minmax(0,1fr) auto;
+  gap:20px;
+  align-items:center;
+  margin-bottom:22px;
+  padding:28px;
+  border:1px solid var(--pod-social-line);
+  border-radius:24px;
+  background:#fff;
+}
+.pod-social-profile-avatar{width:76px;height:76px;font-size:28px}
+.pod-social-profile h1{margin:0;font-size:34px;letter-spacing:-.035em}
+.pod-social-profile p{margin:8px 0;color:var(--pod-social-muted);line-height:1.5}
+.pod-social-profile strong{font-size:13px;overflow-wrap:anywhere}
+.pod-social-feed-list{display:grid;gap:16px}
+.pod-social-single .pod-social-card{box-shadow:var(--pod-social-shadow)}
+.pod-social-protocol-note{text-align:center}
+
+.pod-follow-body{display:grid;min-height:100vh;place-items:center;padding:24px;box-sizing:border-box}
+.pod-follow-card{
+  width:min(560px,100%);
+  padding:38px;
+  border:1px solid var(--pod-social-line);
+  border-radius:28px;
+  background:#fff;
+  box-shadow:var(--pod-social-shadow);
+  box-sizing:border-box;
+}
+.pod-follow-back{display:inline-block;margin-bottom:28px;color:var(--pod-social-muted);font-weight:750;text-decoration:none}
+.pod-follow-card h1{margin:14px 0 10px;font-size:38px;letter-spacing:-.04em}
+.pod-follow-card>p{color:var(--pod-social-muted);line-height:1.6}
+.pod-follow-identity{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  margin:22px 0;
+  padding:14px 16px;
+  border-radius:14px;
+  background:var(--pod-social-soft);
+}
+.pod-follow-identity strong{overflow-wrap:anywhere}
+.pod-follow-identity button{border:0;color:var(--pod-social-accent);background:transparent;font:inherit;font-weight:800;cursor:pointer}
+.pod-follow-form .pod-follow-button{width:100%;border:0;font:inherit}
+
+@media (max-width:980px){
+  .pod-content-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pod-social-admin-layout{grid-template-columns:1fr}
+  .pod-social-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pod-social-admin-hero{display:block}
+  .pod-social-admin-hero nav{justify-content:flex-start;margin-top:22px}
+}
+@media (max-width:720px){
+  .pod-content-section,.pod-local-stream{width:calc(100% - 24px);margin:38px auto}
+  .pod-content-section{padding:24px;border-radius:22px}
+  .pod-content-header,.pod-local-stream>header{display:block}
+  .pod-content-actions{justify-content:flex-start;margin-top:20px}
+  .pod-content-grid,.pod-local-stream-grid{grid-template-columns:1fr}
+  .pod-content-tabs{width:100%;box-sizing:border-box}
+  .pod-content-tabs button{flex:1}
+  .pod-social-card>header{grid-template-columns:42px minmax(0,1fr)}
+  .pod-social-visibility{grid-column:2;width:max-content}
+  .pod-social-admin{width:calc(100% - 20px)}
+  .pod-social-admin-hero,.pod-social-admin-panel{padding:22px;border-radius:20px}
+  .pod-social-stats{grid-template-columns:1fr 1fr}
+  .pod-social-form-grid{grid-template-columns:1fr}
+  .pod-social-settings>label{grid-template-columns:auto minmax(0,1fr)}
+  .pod-social-settings>label select,.pod-social-settings>label input[type="number"]{grid-column:1/-1}
+  .pod-social-management-list article{align-items:flex-start;flex-direction:column}
+  .pod-social-management-actions{justify-content:flex-start}
+  .pod-social-public-header{align-items:flex-start;flex-direction:column;padding:16px}
+  .pod-social-public-header nav{width:100%;overflow-x:auto;padding-bottom:2px}
+  .pod-social-profile{grid-template-columns:58px minmax(0,1fr)}
+  .pod-social-profile-avatar{width:58px;height:58px;font-size:22px}
+  .pod-social-profile>.pod-follow-button{grid-column:1/-1}
+  .pod-follow-card{padding:26px}
+}
+@media (max-width:460px){
+  .pod-social-stats{grid-template-columns:1fr}
+  .pod-social-admin-hero h2{font-size:34px}
+  .pod-follow-identity{align-items:flex-start;flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}

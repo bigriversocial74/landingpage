@@ -1114,6 +1114,7 @@ function portal_header(string $title, string $active, array $user): void
         'Work' => [
             'portfolio' => 'Portfolio',
             'blog' => 'Blog',
+            'social-posts' => 'Social Posts',
             'syndication' => 'Syndication',
             'federation' => 'Federation',
             'feeds' => 'Feed Reader',
@@ -1241,10 +1242,12 @@ function portal_header(string $title, string $active, array $user): void
                             <?php foreach ($groupItems as $key => $label): ?>
                                 <a
                                     class="<?= $active === $key ? 'active' : '' ?>"
-                                    href="<?= e(app_url(
-                                        'portal/' . $script .
-                                        ($key === 'dashboard' ? '' : '?view=' . $key)
-                                    )) ?>"
+                                    href="<?= e($key === 'social-posts'
+                                        ? app_url('portal/social-posts.php')
+                                        : app_url(
+                                            'portal/' . $script .
+                                            ($key === 'dashboard' ? '' : '?view=' . $key)
+                                        )) ?>"
                                 ><?= e($label) ?></a>
                             <?php endforeach; ?>
                         </div>
