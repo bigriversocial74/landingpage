@@ -1,0 +1,76 @@
+name: Package v66M deployment zip
+
+on:
+  pull_request:
+    branches:
+      - feature/incident-response-runbooks-recovery-center-v66m-20260731
+    paths:
+      - '.github/workflows/package-v66m-deploy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build deployment payload
+        run: |
+          set -euo pipefail
+          rm -rf deploy
+          mkdir -p deploy
+          rsync -a ./ deploy/ \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='tests/' \
+            --exclude='tools/' \
+            --exclude='storage/' \
+            --exclude='config.php' \
+            --exclude='deploy/'
+
+          cat > deploy/DEPLOY-V66M.txt <<'EOF'
+          SECTION 66M — INCIDENT RESPONSE, RUNBOOKS & RECOVERY CENTER
+
+          Certified source head:
+          eff097c71ea0a9466841d7d2d4673067d74e8f54
+
+          IMPORTANT PRESERVATION RULES
+          - Preserve the live config.php file.
+          - Preserve the complete storage/ directory and all protection files.
+          - Preserve existing database data, secrets, credentials, caches, packages, staging data, backups, and cron schedules.
+          - This package intentionally excludes config.php and storage/.
+
+          EXISTING INSTALLATION
+          1. Back up the site and database.
+          2. Upload this package over the existing application.
+          3. Import once:
+             database/incident_response_runbooks_v66m.sql
+          4. Open /portal/recovery-center.php.
+          5. Synchronize the nine permanent runbooks.
+          6. Keep recovery execution disabled and dry-run enabled for acceptance testing.
+
+          FRESH INSTALLATION
+          Import database/north_mountain_portal_v66m.sql after configuring the complete application database.
+
+          WORKER
+          Do not schedule until dry-run and emergency-disable acceptance tests pass.
+          Initial command: php cron/process-recovery.php 10
+          Suggested initial cadence: every five minutes.
+
+          ROLLBACK
+          Activate emergency disable, disable recovery execution, stop the recovery cron, and restore the prior application code. Preserve config.php, storage/, existing data, and the Section 66M evidence tables.
+          EOF
+
+          find deploy -type f -print0 | sort -z | xargs -0 sha256sum | sed 's#  deploy/#  #' > deploy/SHA256SUMS.txt
+
+      - name: Upload deployment zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: landingpage-v66m-deploy-eff097c7
+          path: deploy/
+          if-no-files-found: error
+          retention-days: 7
