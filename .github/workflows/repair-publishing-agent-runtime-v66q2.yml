@@ -1,0 +1,414 @@
+name: Repair Publishing and Agent Runtime v66Q.2
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply runtime repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, content):
+              Path(path).write_text(content, encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'Missing repair anchor: {label}')
+              return text.replace(old, new, 1)
+
+          # Agent Chat must not auto-open an empty fixed overlay on page load.
+          path = 'assets/js/portal.js'
+          text = read(path)
+          text = replace_once(
+              text,
+              "if (document.body.dataset.portalActive === 'agent') {\n  window.requestAnimationFrame(openAdminChat);\n}\n\n",
+              '',
+              'Agent Chat empty-overlay auto-open'
+          )
+          write(path, text)
+
+          # Publishing Center: always load authenticated forms on the browser's
+          # current origin, expose failures, and provide a direct fallback.
+          write('assets/js/publishing-center-v66q.js', r'''(() => {
+  const modal = document.querySelector('[data-publishing-center]');
+  const dialog = modal?.querySelector('[data-publishing-dialog]');
+  const frame = modal?.querySelector('[data-publishing-frame]');
+  const empty = modal?.querySelector('[data-publishing-empty]');
+  const loading = modal?.querySelector('[data-publishing-loading]');
+  const errorPanel = modal?.querySelector('[data-publishing-error]');
+  const fallback = modal?.querySelector('[data-publishing-fallback]');
+  const portalShell = document.querySelector('.portal-shell');
+  const options = Array.from(
+    modal?.querySelectorAll('[data-publishing-option]') || []
+  );
+
+  let returnFocus = null;
+  let frameTimer = null;
+  let activeTarget = null;
+
+  const clearFrameTimer = () => {
+    if (frameTimer) {
+      window.clearTimeout(frameTimer);
+      frameTimer = null;
+    }
+  };
+
+  const setOptionState = (activeOption) => {
+    options.forEach((option) => {
+      const active = option === activeOption;
+      option.classList.toggle('is-active', active);
+      option.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  };
+
+  const resolvePublishingTarget = (rawUrl) => {
+    try {
+      const configured = new URL(rawUrl, window.location.href);
+      if (!['http:', 'https:'].includes(configured.protocol)) return null;
+
+      // The live config may use www/non-www or another canonical hostname.
+      // Publishing forms must share the browser's current authenticated origin.
+      return new URL(
+        `${configured.pathname}${configured.search}${configured.hash}`,
+        window.location.origin
+      );
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const showFrameError = (target = activeTarget) => {
+    clearFrameTimer();
+    if (loading) loading.hidden = true;
+    if (frame) {
+      frame.hidden = true;
+      frame.removeAttribute('aria-busy');
+    }
+    if (fallback && target) fallback.href = target.href;
+    if (errorPanel) errorPanel.hidden = false;
+  };
+
+  const select = (key, forcedUrl = '') => {
+    if (!modal || !frame) return;
+
+    const option = options.find(
+      (item) => item.dataset.publishingOption === key
+    ) || options[0];
+    const rawUrl = forcedUrl || option?.dataset.publishingUrl || '';
+    const target = resolvePublishingTarget(rawUrl);
+
+    if (!target) {
+      showFrameError(null);
+      return;
+    }
+
+    activeTarget = target;
+    clearFrameTimer();
+    setOptionState(option);
+    frame.title = option?.querySelector('strong')?.textContent?.trim()
+      || 'Publishing form';
+    frame.setAttribute('aria-busy', 'true');
+    if (empty) empty.hidden = true;
+    if (errorPanel) errorPanel.hidden = true;
+    if (fallback) fallback.href = target.href;
+    if (loading) loading.hidden = false;
+    frame.hidden = true;
+    frame.src = target.href;
+
+    frameTimer = window.setTimeout(() => showFrameError(target), 12000);
+
+    try {
+      localStorage.setItem(
+        'nmm.publishing.last',
+        option?.dataset.publishingOption || key
+      );
+    } catch (error) {
+    }
+  };
+
+  const open = (key = '', url = '') => {
+    if (!modal) return;
+
+    returnFocus = document.activeElement;
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('publishing-center-open');
+    portalShell?.setAttribute('inert', '');
+
+    if (key || url) {
+      select(key, url);
+    } else {
+      setOptionState(null);
+      activeTarget = null;
+      clearFrameTimer();
+      if (empty) empty.hidden = false;
+      if (frame) frame.hidden = true;
+      if (loading) loading.hidden = true;
+      if (errorPanel) errorPanel.hidden = true;
+    }
+
+    dialog?.focus();
+  };
+
+  const close = (reload = false) => {
+    if (!modal) return;
+
+    clearFrameTimer();
+    activeTarget = null;
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('publishing-center-open');
+    portalShell?.removeAttribute('inert');
+
+    if (frame) {
+      frame.src = 'about:blank';
+      frame.hidden = true;
+      frame.removeAttribute('aria-busy');
+    }
+    if (empty) empty.hidden = false;
+    if (loading) loading.hidden = true;
+    if (errorPanel) errorPanel.hidden = true;
+    setOptionState(null);
+
+    if (reload) {
+      window.location.reload();
+    } else if (returnFocus instanceof HTMLElement) {
+      returnFocus.focus();
+    }
+  };
+
+  document.addEventListener('click', (event) => {
+    const targetElement = event.target instanceof Element
+      ? event.target
+      : event.target?.parentElement;
+    if (!targetElement) return;
+
+    const trigger = targetElement.closest('[data-publishing-open]');
+    if (trigger) {
+      event.preventDefault();
+      open(
+        trigger.dataset.publishingOpen || '',
+        trigger.dataset.publishingUrl || ''
+      );
+      return;
+    }
+
+    const option = targetElement.closest('[data-publishing-option]');
+    if (option) {
+      event.preventDefault();
+      select(
+        option.dataset.publishingOption || '',
+        option.dataset.publishingUrl || ''
+      );
+    }
+  });
+
+  modal?.querySelectorAll('[data-publishing-close]').forEach((button) => {
+    button.addEventListener('click', () => close());
+  });
+
+  frame?.addEventListener('load', () => {
+    if (modal?.hidden || frame.src === 'about:blank') return;
+
+    clearFrameTimer();
+    if (loading) loading.hidden = true;
+    if (errorPanel) errorPanel.hidden = true;
+    frame.hidden = false;
+    frame.removeAttribute('aria-busy');
+
+    try {
+      const url = new URL(frame.contentWindow.location.href);
+      const completed = url.searchParams.get('done') === '1';
+      const leftModalMode = url.origin === window.location.origin
+        && !url.searchParams.has('modal')
+        && url.href !== 'about:blank';
+      if (completed || leftModalMode) close(true);
+    } catch (error) {
+    }
+  });
+
+  frame?.addEventListener('error', () => showFrameError());
+
+  window.addEventListener('message', (event) => {
+    if (
+      event.origin === window.location.origin
+      && event.data?.type === 'nmm-publishing-complete'
+    ) {
+      close(true);
+    }
+  });
+
+  modal?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+
+    if (
+      ['ArrowDown', 'ArrowUp'].includes(event.key)
+      && event.target.matches('[data-publishing-option]')
+    ) {
+      event.preventDefault();
+      const current = options.indexOf(event.target);
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      options[(current + direction + options.length) % options.length]?.focus();
+      return;
+    }
+
+    if (event.key !== 'Tab' || !dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll(
+      'button:not([disabled]), a[href], iframe:not([hidden]), '
+      + 'input:not([disabled]), select:not([disabled]), '
+      + 'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hidden);
+    if (!focusable.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  const settings = document.querySelector('[data-feed-settings-dialog]');
+  document.querySelector('[data-feed-settings-open]')?.addEventListener(
+    'click',
+    () => settings?.showModal()
+  );
+  document.querySelectorAll('[data-feed-settings-close]').forEach((button) => {
+    button.addEventListener('click', () => settings?.close());
+  });
+
+  if (new URLSearchParams(window.location.search).get('create') === '1') {
+    window.requestAnimationFrame(() => {
+      document.querySelector('[data-crm-contact-open]')?.click();
+    });
+  }
+})();
+''')
+
+          # Add a visible fallback inside the modal instead of silent failure.
+          path = 'portal/publishing-center.php'
+          text = read(path)
+          old = '''                <div class="publishing-center-loading" data-publishing-loading hidden>
+                    <span></span>
+                    <strong>Loading publishing form</strong>
+                </div>
+                <iframe title="Publishing form" data-publishing-frame hidden></iframe>'''
+          new = '''                <div class="publishing-center-loading" data-publishing-loading hidden>
+                    <span></span>
+                    <strong>Loading publishing form</strong>
+                </div>
+                <div class="publishing-center-error" data-publishing-error hidden>
+                    <span>!</span>
+                    <h3>The publishing form did not load.</h3>
+                    <p>Open it directly in this authenticated window and continue publishing.</p>
+                    <a class="button button-primary" data-publishing-fallback href="#">Open form</a>
+                </div>
+                <iframe title="Publishing form" data-publishing-frame hidden></iframe>'''
+          text = replace_once(text, old, new, 'Publishing Center fallback panel')
+          write(path, text)
+
+          # Repair footer scope and force static asset cache invalidation.
+          path = 'portal/bootstrap.php'
+          text = read(path)
+          text = replace_once(
+              text,
+              "    $active = (string)($GLOBALS['nmm_portal_active_view'] ?? '');\n    ?>",
+              "    $active = (string)($GLOBALS['nmm_portal_active_view'] ?? '');\n    $landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');\n    ?>",
+              'portal_footer landing-page module scope'
+          )
+          text = text.replace(
+              'assets/css/portal.css?v=20260728-content-controls-v62.1',
+              'assets/css/portal.css?v=20260731-v66Q2'
+          )
+          text = text.replace(
+              'assets/css/publishing-center-v66q.css?v=20260731-v66Q',
+              'assets/css/publishing-center-v66q.css?v=20260731-v66Q2'
+          )
+          text = text.replace(
+              'assets/js/portal.js?v=20260728-content-controls-v62.1',
+              'assets/js/portal.js?v=20260731-v66Q2'
+          )
+          text = text.replace(
+              'assets/js/publishing-center-v66q.js?v=20260731-v66Q',
+              'assets/js/publishing-center-v66q.js?v=20260731-v66Q2'
+          )
+          write(path, text)
+
+          # Error-state styling.
+          path = 'assets/css/publishing-center-v66q.css'
+          text = read(path)
+          if '.publishing-center-error{' not in text:
+              text += '''
+.publishing-center-error{display:grid;place-items:center;align-content:center;gap:10px;min-height:360px;padding:36px;text-align:center}
+.publishing-center-error[hidden]{display:none!important}
+.publishing-center-error>span{display:grid;place-items:center;width:48px;height:48px;border:1px solid #e7b9bd;border-radius:50%;color:#9d3b44;background:#fff4f5;font-size:1.15rem;font-weight:900}
+.publishing-center-error h3{margin:4px 0 0;font-size:1rem}
+.publishing-center-error p{max-width:440px;margin:0;color:#687586;font-size:.76rem}
+.publishing-center-error .button{margin-top:5px}
+'''
+          write(path, text)
+
+          # Permanent source regression.
+          write('tests/publishing-agent-runtime-v66q2.php', '''<?php
+declare(strict_types=1);
+$root=dirname(__DIR__);
+$bootstrap=(string)file_get_contents($root.'/portal/bootstrap.php');
+$portalJs=(string)file_get_contents($root.'/assets/js/portal.js');
+$publishingJs=(string)file_get_contents($root.'/assets/js/publishing-center-v66q.js');
+$publishingPhp=(string)file_get_contents($root.'/portal/publishing-center.php');
+if(str_contains($portalJs,"window.requestAnimationFrame(openAdminChat)")) throw new RuntimeException('Agent Chat still auto-opens an empty overlay.');
+if(!str_contains($portalJs,'addAdminUserMessage(query);')||!str_contains($portalJs,'openAdminChat();')) throw new RuntimeException('Agent Chat no longer opens when a query is submitted.');
+if(!str_contains($publishingJs,'window.location.origin')||!str_contains($publishingJs,'configured.pathname')) throw new RuntimeException('Publishing Center does not normalize forms to the active authenticated origin.');
+if(str_contains($publishingJs,'target.origin !== window.location.origin')) throw new RuntimeException('Silent configured-origin rejection remains.');
+if(!str_contains($publishingJs,'showFrameError')||!str_contains($publishingPhp,'data-publishing-fallback')) throw new RuntimeException('Publishing Center load failure fallback is missing.');
+if(!str_contains($bootstrap,"$landingPageEditorEnabled = $isAdmin && nmm_module_enabled('landing_page');")) throw new RuntimeException('portal_footer module scope repair is missing.');
+foreach(['portal.css?v=20260731-v66Q2','publishing-center-v66q.css?v=20260731-v66Q2','portal.js?v=20260731-v66Q2','publishing-center-v66q.js?v=20260731-v66Q2'] as $version){if(!str_contains($bootstrap,$version))throw new RuntimeException('Asset cache-bust missing: '.$version);}
+echo "Publishing and Agent runtime v66Q.2 regression passed\n";
+''')
+          PY
+
+      - name: Validate repaired source
+        run: |
+          php -l portal/bootstrap.php
+          php -l portal/publishing-center.php
+          php -l tests/publishing-agent-runtime-v66q2.php
+          node --check assets/js/portal.js
+          node --check assets/js/publishing-center-v66q.js
+          php tests/publishing-center-v66q.php
+          php tests/publishing-agent-repair-v66q1.php
+          php tests/publishing-agent-runtime-v66q2.php
+          php tests/social-posts-v66p.php
+          php tests/feed-reader-media-v66b.php
+
+      - name: Commit permanent source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/portal.js assets/js/publishing-center-v66q.js assets/css/publishing-center-v66q.css portal/bootstrap.php portal/publishing-center.php tests/publishing-agent-runtime-v66q2.php
+          git commit -m "Repair Publishing and Agent runtime v66Q.2"
+          git push origin HEAD:${{ github.head_ref }}
