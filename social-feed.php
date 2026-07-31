@@ -7,6 +7,8 @@ require_once __DIR__ . '/portal/activitypub-service.php';
 require_once __DIR__ . '/portal/social-posts-service.php';
 require_once __DIR__ . '/portal/public-syndication.php';
 
+nmm_require_public_module('social_feed');
+
 $settings = activitypub_settings();
 $posts = social_posts_settings()['enabled'] ? social_posts_public_posts(60) : [];
 

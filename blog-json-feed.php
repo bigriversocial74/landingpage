@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('NMM_PUBLIC_PAGE', true);
 require __DIR__ . '/portal/bootstrap.php';
 nmm_require_public_module('blog');
+nmm_require_public_module('rss');
 require_once __DIR__ . '/portal/public-syndication.php';
 
 $settings = syndication_settings();

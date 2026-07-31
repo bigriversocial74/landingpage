@@ -614,27 +614,25 @@ const navigationGroups = document.querySelectorAll(
   '[data-nav-group]'
 );
 
-navigationGroups.forEach((group) => {
-  const toggle = group.querySelector(
-    '[data-nav-group-toggle]'
-  );
-  const links = group.querySelector(
-    '[data-nav-group-links]'
-  );
-
-  toggle?.addEventListener('click', () => {
-    const expanded =
-      toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute(
-      'aria-expanded',
-      expanded ? 'false' : 'true'
-    );
-    group.classList.toggle('is-collapsed', expanded);
-
-    if (links) {
-      links.hidden = expanded;
-    }
-  });
+navigationGroups.forEach((group, index) => {
+  const toggle = group.querySelector('[data-nav-group-toggle]');
+  const links = group.querySelector('[data-nav-group-links]');
+  const groupKey = links?.id || `group-${index}`;
+  const storageKey = `nmm.portal.navigation.${groupKey}`;
+  let expanded = true;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (stored === 'expanded' || stored === 'collapsed') expanded = stored === 'expanded';
+  } catch (error) {}
+  const apply = (nextExpanded) => {
+    expanded = Boolean(nextExpanded);
+    toggle?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    group.classList.toggle('is-collapsed', !expanded);
+    if (links) links.hidden = !expanded;
+    try { localStorage.setItem(storageKey, expanded ? 'expanded' : 'collapsed'); } catch (error) {}
+  };
+  apply(expanded);
+  toggle?.addEventListener('click', () => apply(!expanded));
 });
 
 
@@ -1085,6 +1083,10 @@ adminChatNew?.addEventListener(
   'click',
   clearAdminChat
 );
+
+if (document.body.dataset.portalActive === 'agent') {
+  window.requestAnimationFrame(openAdminChat);
+}
 
 document.addEventListener('click', (event) => {
   if (

@@ -5,6 +5,7 @@ define('NMM_PUBLIC_PAGE', true);
 
 require __DIR__ . '/portal/bootstrap.php';
 nmm_require_public_module('blog');
+nmm_require_public_module('rss');
 require_once __DIR__ . '/portal/publishing.php';
 require_once __DIR__ . '/portal/publishing-workflow.php';
 require_once __DIR__ . '/portal/blog-feed-output.php';
