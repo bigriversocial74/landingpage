@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/operations-analytics-quality.yml'
       - 'portal/operations-analytics.php'
+      - 'portal/operations-admin.php'
+      - 'portal/notifications.php'
+      - 'assets/css/operations-analytics.css'
       - 'cron/process-operations-analytics.php'
       - 'database/operations_analytics_v66l.sql'
       - 'database/north_mountain_portal.sql'
@@ -28,6 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           php -l portal/operations-analytics.php
+          php -l portal/operations-admin.php
+          php -l portal/notifications.php
           php -l cron/process-operations-analytics.php
           php -l tests/operations-analytics-v66l.php
           php -l tests/operations-analytics-db-v66l.php
@@ -48,6 +53,10 @@ jobs:
           grep -F "PHP_SAPI !== 'cli'" cron/process-operations-analytics.php >/dev/null
           grep -F "'operations.health_transition'" portal/operations-analytics.php >/dev/null
           grep -F 'operations_analytics_column_exists' portal/operations-analytics.php >/dev/null
+          grep -F 'operations_admin_portal_bootstrap' portal/notifications.php >/dev/null
+          grep -F 'portal/admin.php?view=operations' portal/notifications.php >/dev/null
+          grep -F 'operations_admin_export_csv' portal/operations-admin.php >/dev/null
+          grep -F "preg_match('/^[=+\\-@]/'" portal/operations-admin.php >/dev/null
           if grep -E 'permissions:[[:space:]]*write|contents:[[:space:]]*write' .github/workflows/operations-analytics-quality.yml; then exit 1; fi
 
   mysql-8-integration:
