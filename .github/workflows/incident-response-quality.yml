@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/incident-response-quality.yml'
       - 'portal/incident-response.php'
+      - 'portal/operations-analytics-extensions.php'
       - 'portal/recovery-center.php'
       - 'assets/css/recovery-center.css'
       - 'cron/process-recovery.php'
@@ -32,6 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l portal/incident-response.php
+          php -l portal/operations-analytics-extensions.php
           php -l portal/recovery-center.php
           php -l cron/process-recovery.php
           php -l tests/incident-response-v66m.php
@@ -43,9 +45,13 @@ jobs:
           set -euo pipefail
           for path in \
             tools/harden-incident-response-v66m.py \
+            tools/link-recovery-center-v66m.py \
+            tools/repair-v66m-certification.py \
             tools/repair-incident-response-v66m.py \
             tools/finalize-incident-response-v66m.py \
             .github/workflows/harden-incident-response-v66m.yml \
+            .github/workflows/link-recovery-center-v66m.yml \
+            .github/workflows/repair-v66m-certification.yml \
             .github/workflows/repair-incident-response-v66m.yml \
             .github/workflows/finalize-incident-response-v66m.yml; do
               test ! -e "$path"
@@ -55,6 +61,7 @@ jobs:
           grep -F 'operations_analytics_run_extended' portal/incident-response.php >/dev/null
           grep -F 'status=IF(attempt_count<max_attempts,"queued","failed")' portal/incident-response.php >/dev/null
           grep -F 'data-recovery-center-nav' portal/recovery-center.php >/dev/null
+          grep -F 'data-recovery-center-entry' portal/operations-analytics-extensions.php >/dev/null
           if grep -E 'permissions:[[:space:]]*write|contents:[[:space:]]*write' .github/workflows/incident-response-quality.yml; then exit 1; fi
 
   mysql-8-integration:
