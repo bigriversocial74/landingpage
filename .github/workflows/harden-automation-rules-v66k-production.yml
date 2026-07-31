@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/harden-automation-rules-v66k-production.yml'
-      - 'tools/harden-automation-rules-v66k-production-v4.py'
+      - 'tools/harden-automation-rules-v66k-production-v5.py'
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
       - name: Apply final production hardening
         run: |
           set -euo pipefail
-          python3 tools/harden-automation-rules-v66k-production-v4.py
+          python3 tools/harden-automation-rules-v66k-production-v5.py
       - name: Install PHP when absent
         run: |
           set -euo pipefail
