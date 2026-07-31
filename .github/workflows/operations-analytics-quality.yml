@@ -1,0 +1,119 @@
+name: Operations Analytics Quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/operations-analytics-quality.yml'
+      - 'portal/operations-analytics.php'
+      - 'cron/process-operations-analytics.php'
+      - 'database/operations_analytics_v66l.sql'
+      - 'database/north_mountain_portal.sql'
+      - 'tests/operations-analytics-v66l.php'
+      - 'tests/operations-analytics-db-v66l.php'
+      - 'OPERATIONS-ANALYTICS-SPEC-v66L.md'
+      - 'V66L-SCORECARD.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mbstring
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/operations-analytics.php
+          php -l cron/process-operations-analytics.php
+          php -l tests/operations-analytics-v66l.php
+          php -l tests/operations-analytics-db-v66l.php
+      - name: Source, privacy, and authority regression
+        run: php tests/operations-analytics-v66l.php
+      - name: Permanent cleanup contract
+        run: |
+          set -euo pipefail
+          for path in \
+            tools/apply-operations-analytics-v66l.py \
+            tools/repair-operations-analytics-v66l.py \
+            tools/harden-operations-analytics-v66l.py \
+            .github/workflows/apply-operations-analytics-v66l.yml \
+            .github/workflows/repair-operations-analytics-v66l.yml \
+            .github/workflows/harden-operations-analytics-v66l.yml; do
+              test ! -e "$path"
+          done
+          grep -F "PHP_SAPI !== 'cli'" cron/process-operations-analytics.php >/dev/null
+          grep -F "'operations.health_transition'" portal/operations-analytics.php >/dev/null
+          grep -F 'operations_analytics_column_exists' portal/operations-analytics.php >/dev/null
+          if grep -E 'permissions:[[:space:]]*write|contents:[[:space:]]*write' .github/workflows/operations-analytics-quality.yml; then exit 1; fi
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
+      - name: Import base schema and repeat-safe v66L migration
+        run: |
+          set -euo pipefail
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/operations_analytics_v66l.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/operations_analytics_v66l.sql
+      - name: Live Operations Analytics integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/operations-analytics-db-v66l.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
+      - name: Import base schema and repeat-safe v66L migration
+        run: |
+          set -euo pipefail
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/operations_analytics_v66l.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/operations_analytics_v66l.sql
+      - name: Live Operations Analytics integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/operations-analytics-db-v66l.php
