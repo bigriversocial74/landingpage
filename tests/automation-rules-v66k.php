@@ -115,6 +115,8 @@ v66k_assert(str_contains($core, "str_starts_with(\$entityType, 'automation_')"),
 v66k_assert(str_contains($admin, 'automation_emergency_disable'), 'The Action Center must expose an emergency disable.');
 v66k_assert(str_contains($core, '($evidence[\'matched\'] ?? null) === true'), 'Only a matching current simulation may authorize activation.');
 v66k_assert(str_contains($admin, "array_replace(\$settings, ['enabled' => false])"), 'Emergency disable must replace the enabled setting.');
+v66k_assert(str_contains($core, ':starts_at,:expires_at,:created_by_user_id,:updated_by_user_id)'), 'Rule creation must use distinct native PDO placeholders.');
+v66k_assert(!str_contains($core, ':starts_at,:expires_at,:user_id,:user_id)'), 'Rule creation must not reuse a native PDO named placeholder.');
 v66k_assert(!str_contains($admin, 'DELETE FROM automation_rules'), 'Rule and audit history must not be hard-deleted.');
 v66k_assert(strpos($core, 'if ($dryRun)') < strpos($core, 'if (!automation_rule_limit_reserve($rule))'), 'Dry-run must not consume live execution limits.');
 v66k_assert(str_contains($core, 'automation_refresh_execution_status'), 'Approval outcomes must refresh parent execution state.');
