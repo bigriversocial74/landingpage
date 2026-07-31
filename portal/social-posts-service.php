@@ -440,14 +440,15 @@ function social_posts_update(int $postId, array $input, int $userId, bool $publi
              media_kind=:media_kind,media_url=:media_url,media_alt=:media_alt,
              link_url=:link_url,visibility=:visibility,status=:status,
              published_at=CASE
-                WHEN :published="published" THEN COALESCE(published_at,UTC_TIMESTAMP())
+                WHEN :publish_state="published" THEN COALESCE(published_at,UTC_TIMESTAMP())
                 ELSE published_at END,
-             edited_at=CASE WHEN :published="published" THEN UTC_TIMESTAMP() ELSE edited_at END,
+             edited_at=CASE WHEN :edit_state="published" THEN UTC_TIMESTAMP() ELSE edited_at END,
              updated_at=UTC_TIMESTAMP()
          WHERE id=:id'
     )->execute($values + [
         'status' => $status,
-        'published' => $status,
+        'publish_state' => $status,
+        'edit_state' => $status,
         'id' => $postId,
     ]);
     $post = social_posts_find($postId);

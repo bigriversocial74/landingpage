@@ -648,22 +648,52 @@ function activitypub_recent_deliveries(int $limit = 50): array
     )->fetchAll();
 }
 
+function activitypub_audience_contains_public(mixed $audience): bool
+{
+    $public = 'https://www.w3.org/ns/activitystreams#Public';
+    if (is_string($audience)) {
+        return activitypub_normalize_url($audience) === activitypub_normalize_url($public);
+    }
+    if (!is_array($audience)) return false;
+    foreach ($audience as $value) {
+        if (activitypub_audience_contains_public($value)) return true;
+    }
+    return false;
+}
+
+function activitypub_payload_is_public(array $payload): bool
+{
+    foreach (['to', 'cc', 'audience'] as $field) {
+        if (activitypub_audience_contains_public($payload[$field] ?? null)) return true;
+    }
+    $object = $payload['object'] ?? null;
+    if (is_array($object)) {
+        foreach (['to', 'cc', 'audience'] as $field) {
+            if (activitypub_audience_contains_public($object[$field] ?? null)) return true;
+        }
+    }
+    return false;
+}
+
 function activitypub_outbox_document(): array
 {
     activitypub_require_schema();
-    $count = (int)db()->query(
-        'SELECT COUNT(*) FROM activitypub_outbox_activities
-         WHERE activity_type IN ("Create","Update","Delete")'
-    )->fetchColumn();
-    $rows = db()->query(
+    $statement = db()->prepare(
         'SELECT payload_json FROM activitypub_outbox_activities
          WHERE activity_type IN ("Create","Update","Delete")
-         ORDER BY published_at DESC,id DESC LIMIT 50'
-    )->fetchAll();
+           AND payload_json LIKE :public_marker
+         ORDER BY published_at DESC,id DESC'
+    );
+    $statement->execute([
+        'public_marker' => '%https://www.w3.org/ns/activitystreams#Public%',
+    ]);
     $items = [];
-    foreach ($rows as $row) {
+    $count = 0;
+    while ($row = $statement->fetch()) {
         $payload = json_decode((string)$row['payload_json'], true);
-        if (is_array($payload)) $items[] = $payload;
+        if (!is_array($payload) || !activitypub_payload_is_public($payload)) continue;
+        $count++;
+        if (count($items) < 50) $items[] = $payload;
     }
     return [
         '@context' => 'https://www.w3.org/ns/activitystreams',
