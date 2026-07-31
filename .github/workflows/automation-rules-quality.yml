@@ -10,7 +10,6 @@ on:
       - 'portal/automation-recovery.php'
       - 'portal/notifications.php'
       - 'portal/admin.php'
-      - 'portal/admin-controller.php'
       - 'portal/unified-inbox.php'
       - 'assets/js/automation-center.js'
       - 'assets/css/automation-center.css'
@@ -42,7 +41,6 @@ jobs:
             portal/automation-recovery.php \
             portal/notifications.php \
             portal/admin.php \
-            portal/admin-controller.php \
             cron/process-automation.php \
             tests/automation-rules-v66k.php \
             tests/automation-rules-db-v66k.php; do
@@ -83,13 +81,17 @@ jobs:
             .github/workflows/restart-safety-finalize-automation-rules-v66k.yml \
             .github/workflows/restart-safety-finalize-automation-rules-v66k-macos.yml \
             .github/workflows/harden-automation-rules-v66k-production.yml \
-            .github/workflows/repair-v66k-integration.yml; do
+            .github/workflows/repair-v66k-integration.yml \
+            portal/admin-controller.php; do
               test ! -e "$path"
           done
           grep -F "'proposal_only' => true" portal/automation-rules.php >/dev/null
           grep -F "'send_allowed' => false" portal/automation-rules.php >/dev/null
           grep -F "'tool_execution_allowed' => false" portal/automation-rules.php >/dev/null
           grep -F 'automation_capture_notification($notificationId)' portal/notifications.php >/dev/null
+          grep -F 'automation_admin_portal_bootstrap' portal/notifications.php >/dev/null
+          grep -F 'automation_handle_admin_action' portal/notifications.php >/dev/null
+          grep -F 'automation_render_admin' portal/notifications.php >/dev/null
           grep -F 'automation_refresh_execution_status' portal/automation-recovery.php >/dev/null
           grep -F 'automation_recover_interrupted_approvals_complete' cron/process-automation.php >/dev/null
           grep -F 'automation_retry_approval' portal/automation-rules.php >/dev/null
@@ -97,8 +99,7 @@ jobs:
           grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/automation_rules_v66k.sql >/dev/null
           grep -F "array_replace(\$settings, ['enabled' => false])" portal/automation-admin.php >/dev/null
           if grep -F 'DELETE FROM automation_rules' portal/automation-admin.php; then exit 1; fi
-          grep -F "'automation'" portal/admin.php >/dev/null
-          grep -F "automation-admin.php" portal/admin.php >/dev/null
+          grep -F "require_once __DIR__ . '/unified-inbox.php';" portal/admin.php >/dev/null
 
   mysql-8-integration:
     runs-on: ubuntu-latest
