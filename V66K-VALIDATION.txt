@@ -1,0 +1,101 @@
+Section 66K — Automation Rules, Routing & Action Center v66K
+Validation record
+Date: 2026-07-31
+Repository: bigriversocial74/landingpage
+Pull request: #45
+Base: main@115d62b8ff765079dbe13ce2c6141806879b8341
+Certified implementation head: 7318b32313549d3509f0f13577dfcb4401d1415c
+State: open, draft, unmerged
+Permanent changed files: 13
+Final score: 10.0/10
+
+IMPLEMENTATION CERTIFICATION
+
+Automation Rules Quality #71
+- Source-quality: passed
+- PHP syntax: passed
+- JavaScript syntax: passed
+- Source, safety, and authority regression: passed
+- Schema and cleanup contract: passed
+- MySQL 8.4 fresh schema and repeat-safe additive migration: passed
+- MySQL 8.4 live automation integration: passed
+- MariaDB 11.4 fresh schema and repeat-safe additive migration: passed
+- MariaDB 11.4 live automation integration: passed
+
+Retained exact-head workflows
+- North Mountain Media Portal Quality #525: passed
+- Unified Social Inbox Quality #179: passed
+- Notification Delivery Quality #29: passed
+- ActivityPub Federation Quality #128: passed
+- Federated Messaging Quality #45: passed
+- Federated Interactions Quality #92: passed
+- Federated Timeline Quality #59: passed
+- Public Syndication Quality #145: passed
+- Feed Reader Media Quality #202: passed
+- Content Interactions Quality #182: passed
+- VP3 License Settings Quality #338: passed
+- VP3 POD Managed Update v65 #340: passed
+
+CERTIFIED BEHAVIOR
+
+- Owner-authored deterministic rules with ordered evaluation and all/any condition modes.
+- Matching simulation evidence is required before activation.
+- Global disabled mode and dry-run mode are enforced.
+- Dry runs do not consume live hourly or daily execution limits.
+- Atomic event/rule idempotency prevents duplicate actions.
+- Safe allowlisted POD workflow actions only.
+- No autonomous messaging, publishing, financial, destructive, or tool-execution authority.
+- HomeServer requests remain approval-required proposals only.
+- HomeServer request flags are proposal_only=true, send_allowed=false, tool_execution_allowed=false.
+- Owner-visible approval and failure notifications are created.
+- Failed HomeServer proposals can be explicitly retried.
+- Interrupted approved requests become durable failure evidence and refresh parent execution state.
+- Rules expire automatically.
+- Execution and action-receipt evidence survives shorter event-retention cleanup.
+- Automation-created notifications do not recursively create automation events.
+- Notification creation feeds the automation event pipeline when enabled.
+- The administrator Action Center is integrated without replacing the retained administrator controller.
+- The worker is CLI-only and processes bounded batches.
+
+SECURITY AND PRIVACY
+
+- Existing source records remain canonical.
+- Automation payloads are sanitized and secret-like values are redacted.
+- No third-party JavaScript is loaded.
+- Emergency disable is atomic.
+- Rule and execution history is not hard-deleted through the Action Center.
+- HomeServer availability is optional; the POD remains functional without a paired HomeServer.
+
+DATABASE RESULT
+
+Fresh install:
+- database/north_mountain_portal.sql includes the complete v66K schema.
+
+Production additive migration:
+- database/automation_rules_v66k.sql is repeat-safe.
+- Importing the additive migration twice passed on MySQL 8.4 and MariaDB 11.4.
+- No application configuration-file migration is required.
+
+CLEANUP RESULT
+
+- No temporary builder scripts remain.
+- No temporary hardening scripts remain.
+- No repair workflow remains.
+- No self-modifying workflow remains.
+- The permanent Automation Rules workflow has contents: read permission only.
+
+DEPLOYMENT AND ROLLBACK CONTRACT
+
+- Back up application files and database before deployment.
+- Preserve the live config.php file.
+- Preserve the entire storage/ directory.
+- Deploy application files separately from SQL import.
+- Import database/automation_rules_v66k.sql for an existing installation.
+- Keep automation disabled and dry-run enabled until rules are simulated and reviewed.
+- Stop the automation worker and use emergency disable before rollback.
+- Restore application files from the pre-deployment backup while preserving config.php and storage/.
+- Preserve automation audit tables unless performing a complete database restore from the pre-deployment backup.
+
+FINAL DOCUMENTATION GATE
+
+The implementation head above is certified 10/10. The documentation commit that contains this record must rerun and pass the same 13 exact-head workflows. PR #45 must remain draft and unmerged until David Evans explicitly approves merge.

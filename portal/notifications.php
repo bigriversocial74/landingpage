@@ -2,6 +2,92 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/notification-delivery.php';
+require_once __DIR__ . '/automation-rules.php';
+
+function automation_admin_portal_decorate(string $html): string
+{
+    if (!function_exists('app_url') || !str_contains($html, 'data-admin-navigation')) {
+        return $html;
+    }
+
+    $active = (string)($_GET['view'] ?? '') === 'automation';
+    if (!str_contains($html, 'portal/admin.php?view=automation')) {
+        $link = '<a class="' . ($active ? 'active' : '') . '" href="'
+            . e(app_url('portal/admin.php?view=automation'))
+            . '">Action Center</a>';
+        $decorated = preg_replace(
+            '/(<div\s+class="portal-nav-group-links"\s+id="admin-nav-system"[^>]*>)/s',
+            '$1' . $link,
+            $html,
+            1
+        );
+        if (is_string($decorated)) {
+            $html = $decorated;
+        }
+    }
+
+    if ($active) {
+        $css = '<link rel="stylesheet" href="'
+            . e(app_url('assets/css/automation-center.css?v=20260731-v66K'))
+            . '">';
+        $javascript = '<script src="'
+            . e(app_url('assets/js/automation-center.js?v=20260731-v66K'))
+            . '" defer></script>';
+        $html = str_replace('</head>', $css . '</head>', $html);
+        $html = str_replace('</body>', $javascript . '</body>', $html);
+    }
+
+    return $html;
+}
+
+function automation_admin_portal_bootstrap(): void
+{
+    static $bootstrapped = false;
+    if ($bootstrapped) {
+        return;
+    }
+    $bootstrapped = true;
+
+    $script = basename((string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
+    if ($script !== 'admin.php') {
+        return;
+    }
+
+    ob_start('automation_admin_portal_decorate');
+
+    if ((string)($_GET['view'] ?? '') !== 'automation') {
+        return;
+    }
+
+    require_once __DIR__ . '/automation-admin.php';
+    require_once __DIR__ . '/automation-recovery.php';
+
+    $user = require_role('admin');
+    automation_recover_interrupted_approvals_complete();
+
+    if (is_post()) {
+        verify_csrf();
+        enforce_authenticated_action_limit($user);
+        try {
+            $action = input('action');
+            if (!automation_handle_admin_action($action, $user)) {
+                throw new RuntimeException('Unsupported Automation Action Center request.');
+            }
+        } catch (Throwable $exception) {
+            flash('error', $exception->getMessage());
+            automation_admin_redirect(
+                trim((string)($_GET['section'] ?? 'overview')) ?: 'overview'
+            );
+        }
+    }
+
+    portal_header('Automation Action Center', 'automation', $user);
+    automation_render_admin($user);
+    portal_footer();
+    exit;
+}
+
+automation_admin_portal_bootstrap();
 
 function notification_create(
     int $recipientUserId,
@@ -53,6 +139,11 @@ function notification_create(
             notification_delivery_enqueue_notification($notificationId);
         } catch (Throwable $deliveryException) {
             error_log('North Mountain Media external notification enqueue failed: ' . $deliveryException->getMessage());
+        }
+        try {
+            automation_capture_notification($notificationId);
+        } catch (Throwable $automationException) {
+            error_log('North Mountain Media automation notification capture failed: ' . $automationException->getMessage());
         }
         return $notificationId;
     } catch (Throwable $exception) {
