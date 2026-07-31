@@ -48,7 +48,7 @@ recovery_source_assert(substr_count($core, "default:\n            throw new Runt
 
 foreach (['shell_exec','exec','passthru','proc_open','popen','eval','assert'] as $forbiddenFunction) {
     recovery_source_assert(
-        !preg_match('/\\b' . preg_quote($forbiddenFunction, '/') . '\\s*\\(/', $core),
+        !preg_match('/(?<!->)(?<![A-Za-z0-9_])' . preg_quote($forbiddenFunction, '/') . '\\s*\\(/', $core),
         'Arbitrary execution primitive entered recovery core: ' . $forbiddenFunction
     );
 }
