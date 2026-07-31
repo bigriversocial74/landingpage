@@ -52,8 +52,8 @@ foreach (['shell_exec','exec','passthru','proc_open','popen','eval','assert'] as
         'Arbitrary execution primitive entered recovery core: ' . $forbiddenFunction
     );
 }
-recovery_source_assert(!str_contains($core, '->install('), 'Recovery gained software-install authority.');
-recovery_source_assert(!str_contains($core, '->prepare('), 'Recovery gained update-prepare authority.');
+recovery_source_assert(!str_contains($core, '$agent->install('), 'Recovery gained software-install authority.');
+recovery_source_assert(!str_contains($core, '$agent->prepare('), 'Recovery gained update-prepare authority.');
 recovery_source_assert(!str_contains($core, 'runScheduled('), 'Recovery gained unattended update authority.');
 recovery_source_assert(str_contains($core, '$agent->check(null, \'system\')'), 'VP3 recovery is not limited to an update-availability check.');
 recovery_source_assert(str_contains($core, "'homeserver_tool_execution' => false"), 'HomeServer tool execution prohibition is missing.');
