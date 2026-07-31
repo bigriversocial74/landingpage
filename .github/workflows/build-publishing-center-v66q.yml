@@ -1,0 +1,651 @@
+name: Build Publishing Center v66Q
+
+on:
+  push:
+    branches:
+      - feature/publishing-center-agent-chat-v66q-20260731
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'Build centralized publishing and agent workspace v66Q'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply v66Q implementation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, content):
+              p = Path(path)
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(content, encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'Missing patch anchor: {label}')
+              return text.replace(old, new, 1)
+
+          # Module catalog.
+          path = 'portal/site-settings.php'
+          text = read(path)
+          old = """        'landing_page' => ['label' => 'Landing Page', 'description' => 'Use the selected landing-page template as the public home page.', 'default' => false],
+        'portfolio' => ['label' => 'Portfolio', 'description' => 'Show portfolio projects, case studies, and portfolio navigation.', 'default' => true],"""
+          new = """        'landing_page' => ['label' => 'Landing Page', 'description' => 'Use the selected landing-page template as the public home page.', 'default' => false],
+        'clients' => ['label' => 'Clients', 'description' => 'Enable client accounts, client projects, protected files, and client navigation.', 'default' => true],
+        'leads' => ['label' => 'Leads', 'description' => 'Enable lead records, inquiry archives, and lead navigation.', 'default' => true],
+        'portfolio' => ['label' => 'Portfolio', 'description' => 'Show portfolio projects, case studies, and portfolio navigation.', 'default' => true],"""
+          text = replace_once(text, old, new, 'module definitions clients/leads')
+          old = """        'blog' => ['label' => 'Blog', 'description' => 'Show the public blog archive and published posts.', 'default' => true],
+        'feed_reader' => ['label' => 'Feed Reader', 'description' => 'Allow authenticated users to subscribe to and read external RSS and Atom feeds.', 'default' => true],"""
+          new = """        'blog' => ['label' => 'Blog', 'description' => 'Show the public blog archive and published posts.', 'default' => true],
+        'rss' => ['label' => 'RSS & Syndication', 'description' => 'Enable RSS, Atom, JSON Feed, podcast feeds, WebSub, and feed-discovery navigation.', 'default' => true],
+        'social_feed' => ['label' => 'Social Feed', 'description' => 'Enable permanent social posts, the public POD feed, and administrator Social Feed navigation.', 'default' => true],
+        'stories' => ['label' => 'Stories', 'description' => 'Enable temporary follower Stories and Story publishing options.', 'default' => true],
+        'feed_reader' => ['label' => 'Feed Reader', 'description' => 'Allow authenticated users to subscribe to and read external RSS and Atom feeds.', 'default' => true],"""
+          text = replace_once(text, old, new, 'module definitions rss/social')
+          write(path, text)
+
+          # Public sidebar module controls.
+          path = 'portal/public-sidebar.php'
+          text = read(path)
+          text = replace_once(
+              text,
+              "$rssEnabled = $moduleEnabled('blog')\n        && (",
+              "$rssEnabled = $moduleEnabled('blog')\n        && $moduleEnabled('rss')\n        && (",
+              'rss module condition'
+          )
+          old = """<?php if($moduleEnabled('blog')):?>
+<a href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('blog.php'))?>"><span>Blog</span></a>
+<?php endif;?>"""
+          new = """<?php if($moduleEnabled('blog')):?>
+<a href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('blog.php'))?>"><span>Blog</span></a>
+<?php endif;?>
+<?php if($moduleEnabled('social_feed')):?>
+<a href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('social-feed.php'))?>"><span>Social Feed</span></a>
+<?php endif;?>"""
+          text = replace_once(text, old, new, 'public social feed link')
+          write(path, text)
+
+          # Shared publishing center.
+          write('portal/publishing-center.php', r'''<?php
+declare(strict_types=1);
+
+/* North Mountain Media build: 20260731-publishing-center-v66Q */
+
+function publishing_center_catalog(): array
+{
+    $items = [
+        ['key'=>'social-post','group'=>'Social','label'=>'Social post','description'=>'Publish a permanent public or follower-only ActivityPub Note.','module'=>'social_feed','url'=>'portal/publish-social-post.php?modal=1'],
+        ['key'=>'story','group'=>'Social','label'=>'Story','description'=>'Publish a temporary update for approved followers.','module'=>'stories','url'=>'portal/publish-story.php?modal=1'],
+        ['key'=>'blog','group'=>'Publishing','label'=>'Blog post','description'=>'Write and publish a full article.','module'=>'blog','url'=>'portal/admin.php?view=blog&edit=new&modal=1'],
+        ['key'=>'event','group'=>'Publishing','label'=>'Event','description'=>'Create an event or registration page.','module'=>'events','url'=>'portal/admin.php?view=events&edit=new&modal=1'],
+        ['key'=>'booking','group'=>'Publishing','label'=>'Appointment type','description'=>'Configure a public booking option.','module'=>'bookings','url'=>'portal/admin.php?view=bookings&type=new&modal=1'],
+        ['key'=>'portfolio','group'=>'Content','label'=>'Portfolio project','description'=>'Add a project, case study, media, and outcomes.','module'=>'portfolio','url'=>'portal/admin.php?view=portfolio&edit=new&modal=1'],
+        ['key'=>'resume','group'=>'Content','label'=>'Resume post','description'=>'Add a role, accomplishment, or career entry.','module'=>'resume','url'=>'portal/admin.php?view=resume&edit=new&modal=1'],
+        ['key'=>'client','group'=>'Relationships','label'=>'Client','description'=>'Create a protected client portal account.','module'=>'clients','url'=>'portal/admin.php?view=clients&edit=new&modal=1'],
+        ['key'=>'lead','group'=>'Relationships','label'=>'Lead / CRM contact','description'=>'Create a new relationship record and follow-up.','module'=>'leads','url'=>'portal/admin.php?view=crm&create=1&modal=1'],
+        ['key'=>'proposal','group'=>'Work','label'=>'Proposal','description'=>'Build a proposal or estimate.','module'=>null,'url'=>'portal/admin.php?view=proposals&edit=new&modal=1'],
+        ['key'=>'project','group'=>'Work','label'=>'Client project','description'=>'Start a protected client project.','module'=>'clients','url'=>'portal/admin.php?view=projects&edit=new&modal=1'],
+        ['key'=>'knowledge','group'=>'Work','label'=>'Knowledge asset','description'=>'Add text, documents, audio, video, or images for the agent.','module'=>null,'url'=>'portal/admin.php?view=knowledge&section=add&modal=1'],
+        ['key'=>'file','group'=>'Work','label'=>'Protected file','description'=>'Upload a file for a client or project.','module'=>'clients','url'=>'portal/admin.php?view=files&modal=1'],
+    ];
+
+    return array_values(array_filter($items, static function(array $item): bool {
+        $module = $item['module'] ?? null;
+        return $module === null || nmm_module_enabled((string)$module);
+    }));
+}
+
+function publishing_center_render_modal(): void
+{
+    $user = current_user();
+    if (!$user || ($user['role'] ?? '') !== 'admin') return;
+    $catalog = publishing_center_catalog();
+    $groups = [];
+    foreach ($catalog as $item) $groups[(string)$item['group']][] = $item;
+    ?>
+<section class="publishing-center" data-publishing-center hidden aria-hidden="true">
+<button class="publishing-center-backdrop" type="button" data-publishing-close aria-label="Close Publishing Center"></button>
+<div class="publishing-center-dialog" role="dialog" aria-modal="true" aria-labelledby="publishingCenterTitle">
+<header class="publishing-center-header">
+<div><span>Create and publish</span><h2 id="publishingCenterTitle">Publishing +</h2><p>Choose a content type, then complete its form without leaving your current workspace.</p></div>
+<button type="button" data-publishing-close aria-label="Close Publishing Center">×</button>
+</header>
+<div class="publishing-center-layout">
+<aside class="publishing-center-menu" aria-label="Publishing options">
+<?php foreach($groups as $group=>$items):?>
+<section><span><?=e($group)?></span>
+<?php foreach($items as $item):?>
+<button type="button" data-publishing-option="<?=e($item['key'])?>" data-publishing-url="<?=e(app_url($item['url']))?>">
+<strong><?=e($item['label'])?></strong><small><?=e($item['description'])?></small>
+</button>
+<?php endforeach;?>
+</section>
+<?php endforeach;?>
+</aside>
+<section class="publishing-center-stage">
+<div class="publishing-center-empty" data-publishing-empty><span>+</span><h3>Select a publishing option</h3><p>The existing secure form will open here with its validation, uploads, permissions, and save workflow intact.</p></div>
+<div class="publishing-center-loading" data-publishing-loading hidden><span></span><strong>Loading publishing form</strong></div>
+<iframe title="Publishing form" data-publishing-frame hidden></iframe>
+</section>
+</div>
+</div>
+</section>
+<?php
+}
+''')
+
+          # Agent home view.
+          write('portal/agent-chat-view.php', r'''<?php
+declare(strict_types=1);
+
+function agent_chat_render(array $user): void
+{
+    $setup = [
+        ['title'=>'Agent settings','copy'=>'Choose the operating model, permissions, and assistant behavior.','url'=>'portal/admin.php?view=settings','status'=>'Configure'],
+        ['title'=>'Knowledge Base','copy'=>'Add the documents, media, and approved context the agent can use.','url'=>'portal/admin.php?view=knowledge','status'=>'Manage'],
+        ['title'=>'HomeServer','copy'=>'Pair private models, tools, skills, and local knowledge through the POD provider.','url'=>'portal/pod-homeserver.php','status'=>'Pair'],
+        ['title'=>'Action Center','copy'=>'Review approvals, automation results, failures, and required decisions.','url'=>'portal/action-center.php','status'=>'Open'],
+        ['title'=>'Social identity','copy'=>'Configure ActivityPub identity, followers, delivery, and federation policy.','url'=>'portal/admin.php?view=federation','status'=>'Configure'],
+        ['title'=>'Publishing Center','copy'=>'Create posts, stories, blogs, events, clients, projects, and other content.','url'=>'#publishing','status'=>'Create'],
+    ];
+    ?>
+<div class="agent-home" data-agent-home>
+<section class="agent-home-intro">
+<div><span>Private POD operating assistant</span><h2>Agent Chat</h2><p>Ask about calls, communications, CRM, clients, projects, publishing, notifications, and current work. Configure private capabilities before granting the agent broader context or tools.</p></div>
+<button class="agent-publish-button" type="button" data-publishing-open>Publishing +</button>
+</section>
+<section class="agent-quick-prompts" aria-label="Suggested agent prompts">
+<button type="button" data-admin-quick-prompt="What needs my attention today?"><strong>Attention</strong><span>Show urgent calls, messages, follow-ups, and failures.</span></button>
+<button type="button" data-admin-quick-prompt="Summarize current projects"><strong>Projects</strong><span>Review active work, progress, and next milestones.</span></button>
+<button type="button" data-admin-quick-prompt="CRM contacts needing attention"><strong>Relationships</strong><span>Surface contacts and leads that need follow-up.</span></button>
+<button type="button" data-admin-quick-prompt="Unread notifications"><strong>Notifications</strong><span>Review unread operational activity.</span></button>
+</section>
+<section class="agent-setup-section">
+<header><div><span>Setup and authority</span><h2>Connect the capabilities this agent may use.</h2></div><a href="<?=e(app_url('portal/admin.php?view=settings'))?>">All settings</a></header>
+<div class="agent-setup-grid">
+<?php foreach($setup as $item):?>
+<article><div><span><?=e($item['status'])?></span><h3><?=e($item['title'])?></h3><p><?=e($item['copy'])?></p></div>
+<?php if($item['url']==='#publishing'):?><button type="button" data-publishing-open>Open</button><?php else:?><a href="<?=e(app_url($item['url']))?>">Open</a><?php endif;?>
+</article>
+<?php endforeach;?>
+</div>
+</section>
+</div>
+<?php
+}
+''')
+
+          # Dedicated modal social composer.
+          write('portal/publish-social-post.php', r'''<?php
+declare(strict_types=1);
+
+require __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/activitypub-service.php';
+require_once __DIR__ . '/social-posts-service.php';
+
+$user = require_role('admin');
+$userId = (int)$user['id'];
+$postId = query_int('id');
+$editing = $postId > 0 ? social_posts_find($postId) : null;
+if ($editing && (int)$editing['owner_user_id'] !== $userId) $editing = null;
+$settings = social_posts_settings();
+
+if (is_post()) {
+    if (!same_origin_request()) { http_response_code(403); exit('Cross-origin request denied.'); }
+    verify_csrf();
+    enforce_authenticated_action_limit($user);
+    try {
+        $publish = input('intent', 'publish') === 'publish';
+        $values = [
+            'body_text'=>input('body_text'),
+            'media_kind'=>input('media_kind','none'),
+            'media_url'=>input('media_url'),
+            'media_alt'=>input('media_alt'),
+            'link_url'=>input('link_url'),
+            'visibility'=>input('visibility','public'),
+        ];
+        $submittedId = int_input('post_id');
+        if ($submittedId > 0) social_posts_update($submittedId, $values, $userId, $publish);
+        else social_posts_create($values, $userId, $publish);
+        flash('success', $publish ? 'Social post published.' : 'Social post saved as a draft.');
+        redirect('portal/publish-social-post.php?modal=1&done=1');
+    } catch (Throwable $exception) {
+        flash('error', $exception->getMessage());
+        redirect('portal/publish-social-post.php?modal=1' . ($postId > 0 ? '&id='.$postId : ''));
+    }
+}
+
+portal_header($editing ? 'Edit social post' : 'Create social post', 'social-posts', $user);
+?>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
+<div class="publishing-form-shell">
+<?php if(isset($_GET['done'])):?><section class="publishing-form-success"><strong>Published</strong><p>The Social Feed is being refreshed.</p></section><script src="<?=e(app_url('assets/js/publishing-complete-v66q.js'))?>"></script><?php else:?>
+<header><span>Social Feed</span><h2><?=$editing?'Edit social post':'New social post'?></h2><p>Publish a permanent public or follower-only ActivityPub Note.</p></header>
+<form method="post" class="pod-social-composer">
+<?=csrf_field()?>
+<?php if($editing):?><input type="hidden" name="post_id" value="<?=(int)$editing['id']?>"><?php endif;?>
+<label><span>Post</span><textarea name="body_text" maxlength="8000" rows="8" placeholder="Share an update from this POD."><?=e((string)($editing['body_text']??''))?></textarea></label>
+<div class="pod-social-form-grid">
+<label><span>Visibility</span><select name="visibility"><option value="public" <?=(string)($editing['visibility']??$settings['default_visibility'])==='public'?'selected':''?> <?=$settings['allow_public']?'':'disabled'?>>Public</option><option value="followers" <?=(string)($editing['visibility']??$settings['default_visibility'])==='followers'?'selected':''?>>Followers only</option></select></label>
+<label><span>Media type</span><select name="media_kind"><?php foreach(['none'=>'No media','image'=>'Image','audio'=>'Audio','video'=>'Video','link'=>'Media link'] as $value=>$label):?><option value="<?=e($value)?>" <?=(string)($editing['media_kind']??'none')===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label>
+</div>
+<label><span>Protected same-origin media URL</span><input name="media_url" maxlength="2048" value="<?=e((string)($editing['media_url']??''))?>" placeholder="<?=e(app_url('storage/...'))?>"></label>
+<label><span>Media description</span><input name="media_alt" maxlength="500" value="<?=e((string)($editing['media_alt']??''))?>" placeholder="Describe the media for accessibility"></label>
+<label><span>Optional HTTPS link</span><input name="link_url" maxlength="2048" value="<?=e((string)($editing['link_url']??''))?>" placeholder="https://example.com/resource"></label>
+<p class="pod-social-policy-note">Followers-only delivery is audience-restricted, not end-to-end encrypted.</p>
+<div class="pod-social-composer-actions"><button class="pod-social-button secondary" type="submit" name="intent" value="draft">Save draft</button><button class="pod-social-button" type="submit" name="intent" value="publish"><?=$editing?'Publish update':'Publish post'?></button></div>
+</form>
+<?php endif;?>
+</div>
+<?php portal_footer(); ?>
+''')
+
+          # Dedicated modal story composer.
+          write('portal/publish-story.php', r'''<?php
+declare(strict_types=1);
+
+require __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/activitypub-service.php';
+require_once __DIR__ . '/stories-service.php';
+
+$user = require_role('admin');
+$userId = (int)$user['id'];
+$settings = stories_settings();
+
+if (is_post()) {
+    if (!same_origin_request()) { http_response_code(403); exit('Cross-origin request denied.'); }
+    verify_csrf();
+    enforce_authenticated_action_limit($user);
+    try {
+        stories_create_local([
+            'title'=>input('title'),
+            'body_text'=>input('body_text'),
+            'media_kind'=>input('media_kind','none'),
+            'media_url'=>input('media_url'),
+            'media_alt'=>input('media_alt'),
+            'link_url'=>input('link_url'),
+        ], $userId);
+        flash('success','Your follower story is live.');
+        redirect('portal/publish-story.php?modal=1&done=1');
+    } catch (Throwable $exception) {
+        flash('error',$exception->getMessage());
+        redirect('portal/publish-story.php?modal=1');
+    }
+}
+
+portal_header('Create story', 'social-posts', $user);
+?>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/stories-v66o.css?v=20260731-v66O'))?>">
+<div class="publishing-form-shell">
+<?php if(isset($_GET['done'])):?><section class="publishing-form-success"><strong>Story published</strong><p>The Social Feed is being refreshed.</p></section><script src="<?=e(app_url('assets/js/publishing-complete-v66q.js'))?>"></script><?php else:?>
+<header><span>Follower Stories</span><h2>New story</h2><p>Share a temporary update with approved followers. It expires in <?=$settings['duration_hours']?> hours.</p></header>
+<form method="post" class="story-composer">
+<?=csrf_field()?>
+<label><span>Title</span><input name="title" maxlength="200" placeholder="A quick update"></label>
+<label><span>Story</span><textarea name="body_text" maxlength="4000" rows="7" placeholder="Share an update with approved followers."></textarea></label>
+<div class="story-form-grid"><label><span>Media type</span><select name="media_kind"><option value="none">No media</option><option value="image">Image</option><option value="audio">Audio</option><option value="video">Video</option><option value="link">Link card</option></select></label><label><span>Same-origin media URL</span><input name="media_url" maxlength="2048" placeholder="<?=e(app_url('storage/...'))?>"></label></div>
+<label><span>Media description</span><input name="media_alt" maxlength="500" placeholder="Describe the media for accessibility"></label>
+<label><span>Optional same-origin destination</span><input name="link_url" maxlength="2048" placeholder="<?=e(app_url('blog-post.php?...'))?>"></label>
+<p class="story-policy-note">Stories are not end-to-end encrypted; recipients can retain content they receive.</p>
+<button class="stories-button" type="submit">Publish story</button>
+</form>
+<?php endif;?>
+</div>
+<?php portal_footer(); ?>
+''')
+
+          write('assets/js/publishing-complete-v66q.js', "window.parent?.postMessage({type:'nmm-publishing-complete'}, window.location.origin);\n")
+
+          # Feed-first Social Posts page.
+          write('portal/social-posts.php', r'''<?php
+declare(strict_types=1);
+
+require __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/activitypub-service.php';
+require_once __DIR__ . '/social-posts-service.php';
+require_once __DIR__ . '/stories-service.php';
+
+$user = require_role('admin');
+$userId = (int)$user['id'];
+
+if (is_post()) {
+    if (!same_origin_request()) { http_response_code(403); exit('Cross-origin request denied.'); }
+    verify_csrf();
+    enforce_authenticated_action_limit($user);
+    try {
+        $action = input('action');
+        if ($action === 'delete_post') {
+            social_posts_delete(int_input('post_id'), $userId);
+            flash('success','The post was deleted and a signed Tombstone was queued when required.');
+        } elseif ($action === 'save_settings') {
+            $mode = input('landing_mode','tabs');
+            if (!in_array($mode,['none','blogs','social','tabs'],true)) $mode='tabs';
+            $visibility = input('default_visibility','public');
+            if (!in_array($visibility,['public','followers'],true)) $visibility='public';
+            social_posts_save_settings([
+                'social_posts_enabled'=>isset($_POST['social_posts_enabled'])?'1':'0',
+                'social_posts_default_visibility'=>$visibility,
+                'social_posts_allow_public'=>isset($_POST['allow_public'])?'1':'0',
+                'social_posts_landing_mode'=>$mode,
+                'social_posts_landing_limit'=>(string)max(1,min(12,int_input('landing_limit',6))),
+                'social_posts_show_follow_button'=>isset($_POST['show_follow_button'])?'1':'0',
+            ]);
+            flash('success','Social Feed settings were updated.');
+        } else throw new RuntimeException('Unsupported Social Feed action.');
+    } catch (Throwable $exception) { flash('error',$exception->getMessage()); }
+    redirect('portal/social-posts.php');
+}
+
+$schemaAvailable = social_posts_schema_available();
+$settings = social_posts_settings();
+$allPosts = $schemaAvailable ? social_posts_owner_posts($userId,150) : [];
+$posts = array_values(array_filter($allPosts, static fn(array $post): bool => (string)$post['status']==='published'));
+$drafts = array_values(array_filter($allPosts, static fn(array $post): bool => (string)$post['status']==='draft'));
+$storiesAvailable = nmm_module_enabled('stories') && stories_schema_available();
+$activitySettings = activitypub_settings();
+
+portal_header('Social Feed','social-posts',$user);
+?>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/stories-v66o.css?v=20260731-v66O'))?>">
+<div class="social-feed-admin" data-stories-app data-story-view-endpoint="<?=e(app_url('api/story-view.php'))?>" data-csrf="<?=e(csrf_token())?>">
+<div class="social-feed-toolbar">
+<div><span>@<?=e(activitypub_account())?></span><strong>Posts and Stories</strong></div>
+<div><button type="button" data-publishing-open="story">Add story</button><button type="button" data-publishing-open="social-post">Create post</button><button type="button" data-feed-settings-open aria-label="Open Social Feed settings">Settings</button><a href="<?=e(app_url('social-feed.php'))?>" target="_blank" rel="noopener">Public feed</a></div>
+</div>
+
+<?php if(!$schemaAvailable):?><section class="pod-social-warning"><strong>Social Posts migration required.</strong> Import <code>database/social_posts_v66p.sql</code>.</section><?php endif;?>
+<?php if(nmm_module_enabled('stories')&&!$storiesAvailable):?><section class="pod-social-warning"><strong>Stories migration required.</strong> Import <code>database/stories_v66o.sql</code>.</section><?php endif;?>
+
+<?php if($storiesAvailable):?>
+<section class="social-feed-stories"><header><div><span>Stories</span><h2>Recent updates</h2></div><button type="button" data-publishing-open="story">+</button></header><?php stories_render_rail($userId,40);?></section>
+<?php endif;?>
+
+<main class="social-feed-column" aria-label="Published social posts">
+<?php foreach($posts as $post):?>
+<section class="social-feed-record"><?php social_posts_render_card($post);?><div class="social-feed-record-actions"><button type="button" data-publishing-open="social-post" data-publishing-url="<?=e(app_url('portal/publish-social-post.php?modal=1&id='.(int)$post['id']))?>">Edit</button><form method="post" data-confirm data-confirm-title="Delete this social post?" data-confirm="The post will be removed and a signed Tombstone will be queued when required."><?=csrf_field()?><input type="hidden" name="action" value="delete_post"><input type="hidden" name="post_id" value="<?=(int)$post['id']?>"><button type="submit">Delete</button></form></div></section>
+<?php endforeach;?>
+<?php if(!$posts):?><section class="social-feed-empty"><span>Social Feed</span><h2>No posts yet.</h2><p>Use Publishing + to create the first permanent post.</p><button type="button" data-publishing-open="social-post">Create post</button></section><?php endif;?>
+<?php if($drafts):?><section class="social-feed-drafts"><strong><?=count($drafts)?> draft<?=count($drafts)===1?'':'s'?></strong><div><?php foreach($drafts as $draft):?><button type="button" data-publishing-open="social-post" data-publishing-url="<?=e(app_url('portal/publish-social-post.php?modal=1&id='.(int)$draft['id']))?>"><?=e(mb_substr((string)($draft['body_text']?:'Untitled draft'),0,70))?></button><?php endforeach;?></div></section><?php endif;?>
+</main>
+
+<dialog class="social-feed-settings" data-feed-settings-dialog>
+<header><div><span>Social Feed</span><h2>Publishing settings</h2></div><button type="button" data-feed-settings-close aria-label="Close settings">×</button></header>
+<form method="post" class="pod-social-settings"><?=csrf_field()?><input type="hidden" name="action" value="save_settings">
+<label><input type="checkbox" name="social_posts_enabled" <?=$settings['enabled']?'checked':''?>><span><strong>Enable social publishing</strong><small>Allow permanent local ActivityPub Notes.</small></span></label>
+<label><input type="checkbox" name="allow_public" <?=$settings['allow_public']?'checked':''?>><span><strong>Allow public posts</strong><small>Public posts can appear on the landing page and public feed.</small></span></label>
+<label><input type="checkbox" name="show_follow_button" <?=$settings['show_follow_button']?'checked':''?>><span><strong>Show Follow this POD</strong><small>Display the remote-follow helper when ActivityPub is active.</small></span></label>
+<label><span><strong>Landing content</strong><small>Blog, social, or both</small></span><select name="landing_mode"><option value="none" <?=$settings['landing_mode']==='none'?'selected':''?>>Do not display</option><option value="blogs" <?=$settings['landing_mode']==='blogs'?'selected':''?>>Blog posts</option><option value="social" <?=$settings['landing_mode']==='social'?'selected':''?>>Social posts</option><option value="tabs" <?=$settings['landing_mode']==='tabs'?'selected':''?>>Tabbed blog + social</option></select></label>
+<label><span><strong>Default visibility</strong><small>New social posts</small></span><select name="default_visibility"><option value="public" <?=$settings['default_visibility']==='public'?'selected':''?>>Public</option><option value="followers" <?=$settings['default_visibility']==='followers'?'selected':''?>>Followers only</option></select></label>
+<label><span><strong>Landing limit</strong><small>1–12 items per source</small></span><input type="number" name="landing_limit" min="1" max="12" value="<?=$settings['landing_limit']?>"></label>
+<button class="pod-social-button" type="submit">Save settings</button></form>
+</dialog>
+
+<?php if($storiesAvailable):?>
+<dialog class="story-viewer" data-story-dialog aria-label="Story viewer"><div class="story-viewer-progress"><i data-story-progress></i></div><header><div><strong data-story-author></strong><span data-story-time></span></div><button type="button" data-story-close aria-label="Close story">×</button></header><main><div class="story-viewer-media" data-story-media hidden></div><span class="story-viewer-type" data-story-type></span><h2 data-story-title></h2><p data-story-body></p><a data-story-link target="_blank" rel="noopener noreferrer nofollow" hidden>Open story link</a></main><footer><button type="button" data-story-previous aria-label="Previous story">‹</button><button type="button" data-story-next aria-label="Next story">›</button></footer></dialog>
+<?php endif;?>
+</div>
+<script src="<?=e(app_url('assets/js/social-posts-v66p.js?v=20260731-v66P'))?>"></script>
+<?php if($storiesAvailable):?><script src="<?=e(app_url('assets/js/stories-v66o.js?v=20260731-v66O'))?>"></script><?php endif;?>
+<?php portal_footer(); ?>
+''')
+
+          # Shared styles.
+          write('assets/css/publishing-center-v66q.css', r'''/* North Mountain Media build: 20260731-publishing-center-v66Q */
+.portal-header-user{gap:10px}.publishing-center-trigger,.agent-publish-button{background:#0f766e!important;border-color:#0f766e!important;color:#fff!important}.publishing-center[hidden]{display:none}.publishing-center{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px}.publishing-center-backdrop{position:absolute;inset:0;border:0;background:rgba(8,18,29,.68);backdrop-filter:blur(8px)}.publishing-center-dialog{position:relative;width:min(1180px,96vw);height:min(820px,92vh);overflow:hidden;background:#fff;border-radius:24px;box-shadow:0 34px 100px rgba(5,14,24,.34);display:flex;flex-direction:column}.publishing-center-header{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 26px;border-bottom:1px solid #e2e8ee}.publishing-center-header span,.publishing-center-menu section>span,.agent-home span,.social-feed-toolbar span,.social-feed-stories header span{display:block;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800;color:#0f766e}.publishing-center-header h2{margin:3px 0 5px;font-size:28px}.publishing-center-header p{margin:0;color:#627083}.publishing-center-header>button{border:0;background:#eef2f5;width:40px;height:40px;border-radius:50%;font-size:24px}.publishing-center-layout{min-height:0;display:grid;grid-template-columns:310px 1fr;flex:1}.publishing-center-menu{overflow:auto;padding:18px;background:#f4f7f9;border-right:1px solid #e2e8ee}.publishing-center-menu section{margin-bottom:20px}.publishing-center-menu section>span{padding:0 8px 7px}.publishing-center-menu button{width:100%;display:block;text-align:left;border:0;background:transparent;border-radius:13px;padding:11px 12px;margin:2px 0;color:#172231}.publishing-center-menu button:hover,.publishing-center-menu button.is-active{background:#fff;box-shadow:0 8px 22px rgba(18,32,48,.08)}.publishing-center-menu strong,.publishing-center-menu small{display:block}.publishing-center-menu small{margin-top:3px;color:#6d7988;line-height:1.35}.publishing-center-stage{position:relative;min-width:0;background:#eef2f5}.publishing-center-stage iframe{width:100%;height:100%;border:0;background:#eef2f5}.publishing-center-empty,.publishing-center-loading{height:100%;display:grid;place-content:center;text-align:center;padding:34px}.publishing-center-empty>span{margin:auto;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#122334;color:#fff;font-size:28px}.publishing-center-empty h3{margin:16px 0 6px}.publishing-center-empty p{max-width:520px;margin:0;color:#697688}.publishing-center-loading span{width:38px;height:38px;border:4px solid #cdd8df;border-top-color:#0f766e;border-radius:50%;animation:publish-spin .8s linear infinite;margin:0 auto 14px}@keyframes publish-spin{to{transform:rotate(360deg)}}body.publishing-center-open{overflow:hidden}.portal-body[data-portal-modal="1"] .portal-sidebar,.portal-body[data-portal-modal="1"] .portal-sidebar-backdrop,.portal-body[data-portal-modal="1"] .portal-topbar,.portal-body[data-portal-modal="1"] .portal-global-call-alert,.portal-body[data-portal-modal="1"] .admin-assistant-footer,.portal-body[data-portal-modal="1"] .admin-assistant-chat,.portal-body[data-portal-modal="1"] .admin-assistant-loading{display:none!important}.portal-body[data-portal-modal="1"] .portal-shell{display:block}.portal-body[data-portal-modal="1"] .portal-main{margin:0;min-height:auto}.portal-body[data-portal-modal="1"] .portal-content{padding:22px;max-width:none}.publishing-form-shell{max-width:820px;margin:0 auto;background:#fff;border:1px solid #dfe6ec;border-radius:20px;padding:24px}.publishing-form-shell>header{margin-bottom:20px}.publishing-form-shell>header span{display:block;color:#0f766e;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800}.publishing-form-shell>header h2{font-size:28px;margin:5px 0}.publishing-form-shell>header p{margin:0;color:#667487}.publishing-form-success{min-height:360px;display:grid;place-content:center;text-align:center}.publishing-form-success strong{font-size:32px}.publishing-form-success p{color:#687688}.agent-home{max-width:1180px;margin:0 auto;padding-bottom:20px}.agent-home-intro{display:flex;justify-content:space-between;gap:24px;align-items:center;background:linear-gradient(135deg,#122334,#0f766e);color:#fff;border-radius:24px;padding:30px}.agent-home-intro span{color:#83e8dc}.agent-home-intro h2{font-size:42px;margin:5px 0}.agent-home-intro p{max-width:720px;margin:0;color:#d5e5e6}.agent-publish-button{border:0;border-radius:999px;padding:13px 18px;font-weight:800;white-space:nowrap}.agent-quick-prompts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}.agent-quick-prompts button{border:1px solid #dfe6ec;background:#fff;border-radius:16px;text-align:left;padding:16px}.agent-quick-prompts strong,.agent-quick-prompts span{display:block}.agent-quick-prompts span{margin-top:5px;text-transform:none;letter-spacing:0;font-weight:500;line-height:1.4;color:#687688}.agent-setup-section{background:#fff;border:1px solid #dfe6ec;border-radius:20px;padding:22px}.agent-setup-section>header{display:flex;justify-content:space-between;align-items:center}.agent-setup-section h2{margin:4px 0 18px}.agent-setup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.agent-setup-grid article{display:flex;flex-direction:column;justify-content:space-between;min-height:190px;border:1px solid #e0e7ec;border-radius:16px;padding:17px}.agent-setup-grid h3{font-size:18px;margin:5px 0}.agent-setup-grid p{color:#697688;line-height:1.45}.agent-setup-grid a,.agent-setup-grid button{align-self:flex-start;border:0;background:#eef3f5;border-radius:999px;padding:9px 13px;color:#172231;text-decoration:none;font-weight:800}.portal-body[data-portal-active="agent"] .admin-assistant-chat{position:relative;inset:auto;max-width:1180px;width:auto;height:420px;margin:18px auto 0;border-radius:20px;box-shadow:none;border:1px solid #dfe6ec}.portal-body[data-portal-active="agent"] .admin-assistant-footer{position:sticky;bottom:0;max-width:1180px;margin:0 auto}.social-feed-admin{max-width:980px;margin:0 auto}.social-feed-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.social-feed-toolbar strong{display:block;font-size:22px}.social-feed-toolbar>div:last-child{display:flex;flex-wrap:wrap;gap:8px}.social-feed-toolbar button,.social-feed-toolbar a,.social-feed-stories header button{border:1px solid #dce4e9;background:#fff;color:#172231;border-radius:999px;padding:9px 13px;font-weight:800;text-decoration:none}.social-feed-stories{background:#fff;border:1px solid #dfe6ec;border-radius:20px;padding:16px;margin-bottom:18px}.social-feed-stories>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.social-feed-stories h2{margin:2px 0;font-size:18px}.social-feed-stories header button{width:38px;height:38px;padding:0;font-size:22px}.social-feed-column{width:min(680px,100%);margin:0 auto;display:grid;gap:16px}.social-feed-record{background:#fff;border:1px solid #dfe6ec;border-radius:20px;overflow:hidden}.social-feed-record .pod-social-card{border:0;border-radius:0;box-shadow:none}.social-feed-record-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 14px}.social-feed-record-actions button{border:0;background:#eef3f5;border-radius:999px;padding:8px 12px;font-weight:800}.social-feed-empty{text-align:center;background:#fff;border:1px dashed #ccd7de;border-radius:20px;padding:52px 24px}.social-feed-empty span{color:#0f766e;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800}.social-feed-empty button{border:0;background:#0f766e;color:#fff;border-radius:999px;padding:11px 16px;font-weight:800}.social-feed-drafts{background:#fff;border:1px solid #dfe6ec;border-radius:16px;padding:15px}.social-feed-drafts div{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.social-feed-drafts button{border:1px solid #dfe6ec;background:#f7f9fa;border-radius:999px;padding:8px 11px}.social-feed-settings{width:min(520px,94vw);border:0;border-radius:20px;padding:0;box-shadow:0 28px 90px rgba(10,20,30,.28)}.social-feed-settings::backdrop{background:rgba(8,18,29,.6);backdrop-filter:blur(5px)}.social-feed-settings>header{display:flex;justify-content:space-between;padding:20px;border-bottom:1px solid #e2e8ee}.social-feed-settings>header h2{margin:3px 0}.social-feed-settings>header button{border:0;background:#eef3f5;border-radius:50%;width:38px;height:38px;font-size:22px}.social-feed-settings form{padding:20px}.portal-body:not([data-portal-modal="1"]) .page-actions a[href*="edit=new"],.portal-body:not([data-portal-modal="1"]) .page-actions a[href*="type=new"],.portal-body:not([data-portal-modal="1"]) [data-crm-contact-open]{display:none!important}@media(max-width:860px){.publishing-center{padding:0}.publishing-center-dialog{width:100vw;height:100vh;border-radius:0}.publishing-center-layout{grid-template-columns:1fr}.publishing-center-menu{max-height:42vh;border-right:0;border-bottom:1px solid #dfe6ec}.agent-home-intro{align-items:flex-start;flex-direction:column}.agent-quick-prompts,.agent-setup-grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.agent-quick-prompts,.agent-setup-grid{grid-template-columns:1fr}.social-feed-toolbar{align-items:flex-start;flex-direction:column}}
+''')
+
+          # Publishing modal behavior and settings dialog.
+          write('assets/js/publishing-center-v66q.js', r'''(() => {
+  const modal=document.querySelector('[data-publishing-center]');
+  const frame=modal?.querySelector('[data-publishing-frame]');
+  const empty=modal?.querySelector('[data-publishing-empty]');
+  const loading=modal?.querySelector('[data-publishing-loading]');
+  const options=Array.from(modal?.querySelectorAll('[data-publishing-option]')||[]);
+  let returnFocus=null;
+  const select=(key,forcedUrl='')=>{
+    if(!modal||!frame)return;
+    const option=options.find(item=>item.dataset.publishingOption===key)||options[0];
+    const url=forcedUrl||option?.dataset.publishingUrl||'';
+    if(!url)return;
+    options.forEach(item=>item.classList.toggle('is-active',item===option));
+    if(empty)empty.hidden=true;if(loading)loading.hidden=false;frame.hidden=true;frame.src=url;
+    try{localStorage.setItem('nmm.publishing.last',option?.dataset.publishingOption||key)}catch(e){}
+  };
+  const open=(key='',url='')=>{
+    if(!modal)return;returnFocus=document.activeElement;modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('publishing-center-open');
+    const remembered=(()=>{try{return localStorage.getItem('nmm.publishing.last')||''}catch(e){return''}})();
+    if(key||url)select(key||remembered,url);else if(options.length){if(empty)empty.hidden=false;if(frame)frame.hidden=true;if(loading)loading.hidden=true;}
+    modal.querySelector('[data-publishing-close]')?.focus();
+  };
+  const close=(reload=false)=>{if(!modal)return;modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.classList.remove('publishing-center-open');if(frame){frame.src='about:blank';frame.hidden=true;}if(empty)empty.hidden=false;if(loading)loading.hidden=true;options.forEach(item=>item.classList.remove('is-active'));if(reload)window.location.reload();else if(returnFocus instanceof HTMLElement)returnFocus.focus();};
+  document.addEventListener('click',event=>{const trigger=event.target.closest('[data-publishing-open]');if(trigger){event.preventDefault();open(trigger.dataset.publishingOpen||'',trigger.dataset.publishingUrl||'');return;}const option=event.target.closest('[data-publishing-option]');if(option){select(option.dataset.publishingOption||'',option.dataset.publishingUrl||'');}});
+  modal?.querySelectorAll('[data-publishing-close]').forEach(button=>button.addEventListener('click',()=>close()));
+  frame?.addEventListener('load',()=>{if(loading)loading.hidden=true;frame.hidden=false;try{const url=new URL(frame.contentWindow.location.href);if(url.searchParams.get('done')==='1'||(url.origin===location.origin&&!url.searchParams.has('modal')&&url.href!=='about:blank'))close(true);}catch(e){}});
+  window.addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='nmm-publishing-complete')close(true);});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&modal&&!modal.hidden)close();});
+  const settings=document.querySelector('[data-feed-settings-dialog]');
+  document.querySelector('[data-feed-settings-open]')?.addEventListener('click',()=>settings?.showModal());
+  document.querySelectorAll('[data-feed-settings-close]').forEach(button=>button.addEventListener('click',()=>settings?.close()));
+  if(new URLSearchParams(location.search).get('create')==='1')window.requestAnimationFrame(()=>document.querySelector('[data-crm-contact-open]')?.click());
+})();
+''')
+
+          # Bootstrap integration.
+          path = 'portal/bootstrap.php'
+          text = read(path)
+          text = replace_once(text, "require_once __DIR__ . '/site-builder-core.php';", "require_once __DIR__ . '/site-builder-core.php';\nrequire_once __DIR__ . '/publishing-center.php';", 'publishing center include')
+          text = replace_once(text, "        'Operations' => [\n            'dashboard' => 'Dashboard',", "        'Operations' => [\n            'agent' => 'Agent Chat',\n            'dashboard' => 'Dashboard',", 'agent nav')
+          anchor = """    if (!nmm_module_enabled('feed_reader', true)) {
+        if ($isAdmin) {
+            unset($adminNavigationGroups['Work']['feeds']);
+        } else {
+            unset($navigation['feeds']);
+        }
+    }
+"""
+          addition = anchor + """
+    if ($isAdmin) {
+        $moduleNavigationMap = [
+            'clients' => ['Relationships','clients'],
+            'leads' => ['Relationships','leads'],
+            'portfolio' => ['Work','portfolio'],
+            'resume' => ['Work','resume'],
+            'music_library' => ['Operations','music'],
+            'blog' => ['Work','blog'],
+            'rss' => ['Work','syndication'],
+            'social_feed' => ['Work','social-posts'],
+            'events' => ['Work','events'],
+            'bookings' => ['Work','bookings'],
+        ];
+        foreach ($moduleNavigationMap as $moduleKey => [$groupName,$itemKey]) {
+            if (!nmm_module_enabled($moduleKey)) unset($adminNavigationGroups[$groupName][$itemKey]);
+        }
+    }
+"""
+          text = replace_once(text, anchor, addition, 'module nav filtering')
+          text = replace_once(text, "    <link rel=\"stylesheet\" href=\"<?= e(app_url('assets/css/portal.css?v=20260728-content-controls-v62.1')) ?>\">", "    <link rel=\"stylesheet\" href=\"<?= e(app_url('assets/css/portal.css?v=20260728-content-controls-v62.1')) ?>\">\n    <link rel=\"stylesheet\" href=\"<?= e(app_url('assets/css/publishing-center-v66q.css?v=20260731-v66Q')) ?>\">", 'publishing center stylesheet')
+          text = replace_once(text, "    data-admin-assistant-api=\"<?= e($adminAssistantApiUrl) ?>\"\n>", "    data-admin-assistant-api=\"<?= e($adminAssistantApiUrl) ?>\"\n    data-portal-active=\"<?= e($active) ?>\"\n    data-portal-modal=\"<?= isset($_GET['modal']) && $_GET['modal']==='1' ? '1' : '0' ?>\"\n>", 'body data')
+          old_href = """                                    href="<?= e($key === 'social-posts'
+                                        ? app_url('portal/social-posts.php')
+                                        : app_url(
+                                            'portal/' . $script .
+                                            ($key === 'dashboard' ? '' : '?view=' . $key)
+                                        )) ?>"""
+          new_href = """                                    href="<?= e($key === 'social-posts'
+                                        ? app_url('portal/social-posts.php')
+                                        : app_url(
+                                            'portal/' . $script .
+                                            ($key === 'agent' ? '' : '?view=' . $key)
+                                        )) ?>"""
+          text = replace_once(text, old_href, new_href, 'agent/dashboard nav urls')
+          old = """            <div class="portal-header-user">
+                <a class="portal-top-action" href="<?= e($callCenterUrl) ?>">"""
+          new = """            <div class="portal-header-user">
+                <?php if($isAdmin):?><button class="portal-top-action publishing-center-trigger" type="button" data-publishing-open>Publishing +</button><?php endif;?>
+                <a class="portal-top-action" href="<?= e($callCenterUrl) ?>">"""
+          text = replace_once(text, old, new, 'publishing header button')
+          text = replace_once(text, "<section\n    class=\"portal-confirm-modal\"", "<?php publishing_center_render_modal(); ?>\n\n<section\n    class=\"portal-confirm-modal\"", 'publishing modal render')
+          text = replace_once(text, "<script src=\"<?= e(app_url('assets/js/portal.js?v=20260728-content-controls-v62.1')) ?>\"></script>", "<script src=\"<?= e(app_url('assets/js/portal.js?v=20260728-content-controls-v62.1')) ?>\"></script>\n<script src=\"<?= e(app_url('assets/js/publishing-center-v66q.js?v=20260731-v66Q')) ?>\"></script>", 'publishing center script')
+          write(path, text)
+
+          # Admin default and Agent Chat view.
+          path = 'portal/admin.php'
+          text = read(path)
+          text = replace_once(text, "require_once __DIR__ . '/notification-delivery-admin.php';", "require_once __DIR__ . '/notification-delivery-admin.php';\nrequire_once __DIR__ . '/agent-chat-view.php';", 'agent view include')
+          text = replace_once(text, "$view=(string)($_GET['view']??'dashboard');", "$view=(string)($_GET['view']??'agent');", 'admin default agent')
+          text = replace_once(text, "$allowed=['dashboard',", "$allowed=['agent','dashboard',", 'agent allowed')
+          match = re.search(r"portal_header\(([^;]+)\);", text)
+          if not match:
+              raise SystemExit('Could not locate portal_header call in admin.php')
+          original = match.group(0)
+          if "$view" in original:
+              replacement = original.replace('portal_header(', "portal_header($view==='agent'?'Agent Chat':")
+              replacement = replacement[:-2] + ");"
+              # The simple wrap above can be ambiguous; use title variable fallback instead.
+              first_arg = match.group(1).split(',',1)[0]
+              replacement = original.replace(first_arg, "$view==='agent'?'Agent Chat':("+first_arg+")",1)
+          else:
+              replacement = original
+          text = text[:match.start()] + replacement + "\nif($view==='agent'){ agent_chat_render($user); }" + text[match.end():]
+          write(path, text)
+
+          # Persist sidebar accordion state and auto-open Agent Chat.
+          path = 'assets/js/portal.js'
+          text = read(path)
+          old = """const navigationGroups = document.querySelectorAll(
+  '[data-nav-group]'
+);
+
+navigationGroups.forEach((group) => {
+  const toggle = group.querySelector(
+    '[data-nav-group-toggle]'
+  );
+  const links = group.querySelector(
+    '[data-nav-group-links]'
+  );
+
+  toggle?.addEventListener('click', () => {
+    const expanded =
+      toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute(
+      'aria-expanded',
+      expanded ? 'false' : 'true'
+    );
+    group.classList.toggle('is-collapsed', expanded);
+
+    if (links) {
+      links.hidden = expanded;
+    }
+  });
+});
+"""
+          new = """const navigationGroups = document.querySelectorAll(
+  '[data-nav-group]'
+);
+
+navigationGroups.forEach((group, index) => {
+  const toggle = group.querySelector('[data-nav-group-toggle]');
+  const links = group.querySelector('[data-nav-group-links]');
+  const groupKey = links?.id || `group-${index}`;
+  const storageKey = `nmm.portal.navigation.${groupKey}`;
+  let expanded = true;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (stored === 'expanded' || stored === 'collapsed') expanded = stored === 'expanded';
+  } catch (error) {}
+  const apply = (nextExpanded) => {
+    expanded = Boolean(nextExpanded);
+    toggle?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    group.classList.toggle('is-collapsed', !expanded);
+    if (links) links.hidden = !expanded;
+    try { localStorage.setItem(storageKey, expanded ? 'expanded' : 'collapsed'); } catch (error) {}
+  };
+  apply(expanded);
+  toggle?.addEventListener('click', () => apply(!expanded));
+});
+"""
+          text = replace_once(text, old, new, 'persistent accordion')
+          marker = "adminChatNew?.addEventListener(\n  'click',\n  clearAdminChat\n);"
+          text = replace_once(text, marker, marker + "\n\nif (document.body.dataset.portalActive === 'agent') {\n  window.requestAnimationFrame(openAdminChat);\n}", 'agent chat auto open')
+          write(path, text)
+
+          # Permanent source regression.
+          write('tests/publishing-center-v66q.php', r'''<?php
+declare(strict_types=1);
+$root=dirname(__DIR__);
+$checks=[
+ 'portal/publishing-center.php'=>['publishing_center_catalog','data-publishing-option','portal/publish-story.php'],
+ 'portal/bootstrap.php'=>['Publishing +','data-portal-active','moduleNavigationMap','publishing_center_render_modal'],
+ 'portal/admin.php'=>["??'agent'",'agent_chat_render'],
+ 'portal/social-posts.php'=>['Posts and Stories','stories_render_rail','data-publishing-open="social-post"'],
+ 'assets/js/portal.js'=>['nmm.portal.navigation.','dataset.portalActive'],
+ 'portal/site-settings.php'=>["'clients' =>","'leads' =>","'rss' =>","'social_feed' =>"],
+];
+foreach($checks as $file=>$needles){$content=file_get_contents($root.'/'.$file);if($content===false)throw new RuntimeException('Missing '.$file);foreach($needles as $needle)if(!str_contains($content,$needle))throw new RuntimeException($file.' missing '.$needle);}
+echo "Publishing Center v66Q source contract passed\n";
+''')
+          write('.github/workflows/publishing-center-quality.yml', r'''name: Publishing Center Quality
+on:
+  pull_request:
+    paths:
+      - 'portal/**'
+      - 'assets/js/**'
+      - 'assets/css/**'
+      - 'tests/publishing-center-v66q.php'
+      - '.github/workflows/publishing-center-quality.yml'
+permissions:
+  contents: read
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP syntax
+        run: find portal -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: JavaScript syntax
+        run: |
+          node --check assets/js/portal.js
+          node --check assets/js/publishing-center-v66q.js
+          node --check assets/js/publishing-complete-v66q.js
+      - name: Publishing Center contract
+        run: php tests/publishing-center-v66q.php
+''')
+
+          # Remove this temporary builder from the permanent tree.
+          Path('.github/workflows/build-publishing-center-v66q.yml').unlink()
+          PY
+      - name: Validate generated source
+        run: |
+          php -l portal/publishing-center.php
+          php -l portal/agent-chat-view.php
+          php -l portal/publish-social-post.php
+          php -l portal/publish-story.php
+          php -l portal/social-posts.php
+          php -l portal/bootstrap.php
+          php -l portal/admin.php
+          node --check assets/js/portal.js
+          node --check assets/js/publishing-center-v66q.js
+          php tests/publishing-center-v66q.php
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Build Publishing Center and Agent Chat v66Q"
+          git push origin HEAD
