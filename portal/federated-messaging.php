@@ -324,6 +324,7 @@ function federated_messaging_ingest_create(int $inboxId, array $payload, array $
     $attachments = federated_messaging_attachments($object);
     $trust = federated_messaging_actor_trust((int)$remoteActor['id']);
     $trusted = $trust !== 'unknown';
+    if ($settings['accept_mode'] === 'trusted' && !$trusted) return true;
     $risk = federated_messaging_risk_score($remoteActor, $body, $attachments, $trusted);
     $thread = federated_messaging_thread_for_actor($remoteActor, $payload, $object, $risk);
     $status = $risk >= 80 ? 'spam' : ((string)$thread['status'] === 'request' ? 'request' : 'visible');
@@ -372,7 +373,7 @@ function federated_messaging_ingest_create(int $inboxId, array $payload, array $
         'link_only_attachments' => count($attachments),
     ]);
     if ($status === 'spam') {
-        federated_messaging_notify('Federated message held as spam', $body, 'activitypub_message', $messageId, 'high');
+        federated_messaging_notify('Federated message held as spam', $body, 'activitypub_message_thread', (int)$thread['id'], 'high');
     } elseif ($status === 'request') {
         federated_messaging_notify('New federated message request', $body, 'activitypub_message_thread', (int)$thread['id'], 'normal');
     } elseif (!federated_interactions_actor_muted($remoteActor)) {
@@ -656,7 +657,11 @@ function federated_messaging_send(int $threadId, string $body, int $userId, ?str
     if (!$thread || !in_array((string)$thread['status'], ['open','muted','archived'], true)) {
         throw new RuntimeException('Accept or reopen the federated conversation before replying.');
     }
-    if (!federated_interactions_actor_allowed($thread)) {
+    if (!federated_interactions_actor_allowed([
+        'id' => (int)$thread['remote_actor_id'],
+        'actor_uri' => (string)$thread['actor_uri'],
+        'status' => (string)($thread['actor_status'] ?? 'active'),
+    ])) {
         throw new RuntimeException('The remote actor or domain is blocked.');
     }
     $body = federated_messaging_clean_text($body);

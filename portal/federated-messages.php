@@ -25,12 +25,12 @@ if (is_post()) {
     $threadId = int_input('thread_id');
     try {
         if ($action === 'save_settings') {
-            $enabled = isset($_POST['messages_enabled']) ? '1' : '0';
+            $enabled = input('messages_enabled') === '1' ? '1' : '0';
             $mode = input('accept_mode');
             if (!in_array($mode, ['requests','trusted','none'], true)) $mode = 'requests';
             $retention = (string)max(7, min(730, int_input('retention_days', 180)));
             $limit = (string)max(3, min(120, int_input('actor_hourly_limit', 30)));
-            $assist = isset($_POST['homeserver_assistance']) ? '1' : '0';
+            $assist = input('homeserver_assistance') === '1' ? '1' : '0';
             $saveSetting('activitypub_messages_enabled', $enabled);
             $saveSetting('activitypub_messages_accept_mode', $mode);
             $saveSetting('activitypub_messages_retention_days', $retention);
@@ -136,9 +136,6 @@ portal_header('Federated Messages', 'communications', $user);
             <label><span>Remote media</span><input value="Link only" disabled></label>
             <label><span>HomeServer</span><select name="homeserver_assistance"><option value="1" <?=$settings['homeserver_assistance']?'selected':''?>>Owner-approved assistance</option><option value="0" <?=!$settings['homeserver_assistance']?'selected':''?>>Disabled</option></select></label>
         </div>
-        <input type="hidden" name="messages_enabled" value="1" <?=$settings['enabled']?'':'disabled'?>>
-        <?php if($settings['enabled']):?><input type="checkbox" name="messages_enabled" value="1" checked hidden><?php endif;?>
-        <?php if($settings['homeserver_assistance']):?><input type="checkbox" name="homeserver_assistance" value="1" checked hidden><?php endif;?>
         <div class="fm-actions"><button class="fm-button" type="submit">Save policy</button><span class="fm-badge <?=$homeServer['mode']==='connected'?'safe':''?>">HomeServer: <?=e((string)$homeServer['mode'])?></span></div>
     </form>
 </section>

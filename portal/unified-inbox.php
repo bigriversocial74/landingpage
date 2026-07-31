@@ -10,12 +10,14 @@ if (is_file(__DIR__ . '/pod-messaging.php')) require_once __DIR__ . '/pod-messag
 if (is_file(__DIR__ . '/content-interactions.php')) require_once __DIR__ . '/content-interactions.php';
 if (is_file(__DIR__ . '/federated-interactions.php')) require_once __DIR__ . '/federated-interactions.php';
 if (is_file(__DIR__ . '/federated-timeline.php')) require_once __DIR__ . '/federated-timeline.php';
+if (is_file(__DIR__ . '/federated-messaging.php')) require_once __DIR__ . '/federated-messaging.php';
 
 function unified_inbox_source_catalog(): array
 {
     return [
         'communication' => ['label' => 'Communications', 'category' => 'messages', 'icon' => '✉'],
         'pod_message' => ['label' => 'POD Messages', 'category' => 'messages', 'icon' => '◈'],
+        'federated_message' => ['label' => 'Federated Messages', 'category' => 'messages', 'icon' => '@'],
         'content_comment' => ['label' => 'Blog Activity', 'category' => 'social', 'icon' => '♥'],
         'federated_comment' => ['label' => 'Federated Reply', 'category' => 'social', 'icon' => '◌'],
         'federated_reaction' => ['label' => 'Federated Reaction', 'category' => 'social', 'icon' => '↻'],
@@ -301,7 +303,7 @@ function unified_inbox_call_items(): array
 function unified_inbox_notification_items(int $userId): array
 {
     if (!unified_inbox_table_exists('portal_notifications')) return [];
-    $duplicateEntities = ['content_comment', 'federated_comment', 'federated_reaction', 'federated_follow', 'federated_post', 'federated_timeline_action', 'communication_call', 'communication_thread', 'call_center_request', 'pod_message', 'pod_message_thread'];
+    $duplicateEntities = ['content_comment', 'federated_comment', 'federated_reaction', 'federated_follow', 'federated_post', 'federated_timeline_action', 'activitypub_message', 'activitypub_message_thread', 'communication_call', 'communication_thread', 'call_center_request', 'pod_message', 'pod_message_thread'];
     try {
         $statement = db()->prepare(
             'SELECT * FROM portal_notifications WHERE recipient_user_id=:user_id
@@ -337,6 +339,34 @@ function unified_inbox_notification_items(int $userId): array
     return $items;
 }
 
+function unified_inbox_federated_message_items(int $userId): array
+{
+    if (!function_exists('federated_messaging_inbox_items')) return [];
+    try {
+        $rows = federated_messaging_inbox_items($userId);
+    } catch (Throwable) {
+        return [];
+    }
+    $items = [];
+    foreach ($rows as $row) {
+        $items[] = unified_inbox_item([
+            'source_type' => 'federated_message',
+            'source_id' => (int)$row['source_id'],
+            'title' => (string)$row['title'],
+            'participant' => (string)$row['actor_name'],
+            'preview' => (string)$row['preview'],
+            'occurred_at' => (string)$row['occurred_at'],
+            'native_unread' => !empty($row['unread']),
+            'native_status' => !empty($row['needs_response']) ? 'waiting' : 'open',
+            'native_priority' => (string)$row['priority'],
+            'native_needs_response' => !empty($row['needs_response']),
+            'href' => app_url((string)$row['deep_link']),
+            'metadata' => ['thread_key' => (string)$row['thread_key']],
+        ]);
+    }
+    return $items;
+}
+
 function unified_inbox_state_maps(int $userId): array
 {
     if (!unified_inbox_schema_available()) return [[], []];
@@ -366,6 +396,7 @@ function unified_inbox_collect(array $user): array
     $items = array_merge(
         unified_inbox_communication_items($user),
         unified_inbox_pod_items(),
+        unified_inbox_federated_message_items((int)$user['id']),
         unified_inbox_comment_items((int)$user['id']),
         function_exists('federated_interactions_inbox_items') ? federated_interactions_inbox_items() : [],
         function_exists('federated_timeline_inbox_items') ? federated_timeline_inbox_items() : [],
