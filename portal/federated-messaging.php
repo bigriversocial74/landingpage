@@ -268,6 +268,29 @@ function federated_messaging_actor_hour_count(int $remoteActorId): int
     return (int)$statement->fetchColumn();
 }
 
+function federated_messaging_domain_hour_count(string $actorUri): int
+{
+    if (!federated_messaging_schema_available()) return 0;
+    $host = strtolower((string)parse_url($actorUri, PHP_URL_HOST));
+    if ($host === '') return 0;
+    $rows = db()->query(
+        'SELECT actor.actor_uri,COUNT(*) AS message_count
+         FROM activitypub_messages message
+         JOIN activitypub_remote_actors actor ON actor.id=message.remote_actor_id
+         WHERE message.direction="inbound"
+           AND message.created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 HOUR)
+         GROUP BY actor.id,actor.actor_uri
+         LIMIT 500'
+    )->fetchAll();
+    $count = 0;
+    foreach ($rows as $row) {
+        if (strtolower((string)parse_url((string)$row['actor_uri'], PHP_URL_HOST)) === $host) {
+            $count += (int)$row['message_count'];
+        }
+    }
+    return $count;
+}
+
 function federated_messaging_risk_score(array $remoteActor, string $body, array $attachments, bool $trusted): int
 {
     $score = $trusted ? 0 : 35;
@@ -318,6 +341,9 @@ function federated_messaging_ingest_create(int $inboxId, array $payload, array $
     $settings = federated_messaging_settings();
     if (federated_messaging_actor_hour_count((int)$remoteActor['id']) >= $settings['actor_hourly_limit']) {
         throw new RuntimeException('The remote actor exceeded the federated message rate limit.');
+    }
+    if (federated_messaging_domain_hour_count((string)$remoteActor['actor_uri']) >= $settings['actor_hourly_limit'] * 4) {
+        throw new RuntimeException('The remote domain exceeded the federated message rate limit.');
     }
     $body = federated_messaging_clean_text((string)($object['content'] ?? $object['summary'] ?? $object['name'] ?? ''));
     if ($body === '') throw new RuntimeException('The federated message does not contain readable text.');
@@ -562,6 +588,17 @@ function federated_messaging_mark_read(int $threadId, int $userId): void
     )->execute(['thread_id' => $threadId, 'user_id' => $userId, 'message_id' => $messageId > 0 ? $messageId : null]);
 }
 
+function federated_messaging_mark_unread(int $threadId, int $userId): void
+{
+    if ($threadId <= 0 || $userId <= 0) return;
+    federated_messaging_require_schema();
+    db()->prepare(
+        'INSERT INTO activitypub_message_user_state (thread_id,user_id,last_read_message_id,read_at)
+         VALUES (:thread_id,:user_id,NULL,NULL)
+         ON DUPLICATE KEY UPDATE last_read_message_id=NULL,read_at=NULL'
+    )->execute(['thread_id' => $threadId, 'user_id' => $userId]);
+}
+
 function federated_messaging_set_user_state(int $threadId, int $userId, string $action): void
 {
     if (!in_array($action, ['archive','unarchive','mute','unmute','pin','unpin','hide','unhide'], true)) {
@@ -587,8 +624,22 @@ function federated_messaging_moderate_thread(int $threadId, string $decision, in
     federated_messaging_require_schema();
     $thread = federated_messaging_thread($threadId);
     if (!$thread) throw new RuntimeException('The federated message thread was not found.');
-    if (!in_array($decision, ['accept','reject','reopen','close','block'], true)) {
+    if (!in_array($decision, ['accept','reject','reopen','close','block','report','delete_local'], true)) {
         throw new RuntimeException('Unsupported federated message moderation decision.');
+    }
+    if ($decision === 'delete_local') {
+        federated_messaging_event($threadId, null, 'thread_deleted_local', $note !== '' ? $note : null, null, $userId);
+        db()->prepare('DELETE FROM activitypub_message_threads WHERE id=:id')->execute(['id' => $threadId]);
+        return;
+    }
+    if ($decision === 'report') {
+        $reportNote = mb_substr(trim($note), 0, 1000) ?: 'Reported by the POD owner';
+        federated_messaging_event($threadId, null, 'thread_reported', $reportNote, [
+            'remote_actor_id' => (int)$thread['remote_actor_id'],
+            'actor_uri' => (string)$thread['actor_uri'],
+        ], $userId);
+        federated_messaging_notify('Federated conversation reported', $reportNote, 'activitypub_message_thread', $threadId, 'high');
+        return;
     }
     if ($decision === 'accept') {
         db()->prepare(

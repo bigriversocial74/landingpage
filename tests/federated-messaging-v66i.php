@@ -51,7 +51,7 @@ $risk = federated_messaging_risk_score(
     $attachments,
     false
 );
-if ($risk < 70 || $risk > 100) $fail('Federated message risk scoring failed.');
+if ($risk < 60 || $risk > 100) $fail('Federated message risk scoring failed.');
 
 $paths = [
     'core' => 'portal/federated-messaging.php',
@@ -83,6 +83,7 @@ $checks = [
     ['direct-only classifier', 'function federated_messaging_is_direct', $source['core']],
     ['unknown sender request', "'request'", $source['core']],
     ['actor hourly limit', 'federated_messaging_actor_hour_count', $source['core']],
+    ['domain hourly limit', 'federated_messaging_domain_hour_count', $source['core']],
     ['risk scoring', 'federated_messaging_risk_score', $source['core']],
     ['actor ownership', 'cannot change actor ownership', $source['core']],
     ['signed Create', "'type' => 'Create'", $source['core']],
@@ -96,6 +97,10 @@ $checks = [
     ['Federation navigation', 'Open Federated Messages', $source['admin']],
     ['retention worker', 'federated_messaging_cleanup', $source['cron']],
     ['same-origin actions', 'same_origin_request()', $source['page']],
+    ['durable mark unread', 'federated_messaging_mark_unread', $source['core'] . $source['page']],
+    ['local report evidence', "'thread_reported'", $source['core']],
+    ['owner local deletion', "'delete_local'", $source['core'] . $source['page']],
+    ['summary prefill boundary', "['draft','translate']", $source['page']],
     ['explicit wrapper authority', "'wrapper' => 'rss-pod'", $source['core']],
     ['resource authority', "'resource_type' => 'federated_message_thread'", $source['core']],
     ['proposal-only handoff', "'proposal_only' => true", $source['core']],

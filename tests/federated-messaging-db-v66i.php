@@ -147,6 +147,8 @@ $assert = static function (bool $condition, string $message) use ($fail): void {
 };
 
 $pdo = db();
+$pdo->prepare('UPDATE settings SET setting_value="1" WHERE setting_key="activitypub_messages_enabled"')->execute();
+$pdo->prepare('UPDATE settings SET setting_value="requests" WHERE setting_key="activitypub_messages_accept_mode"')->execute();
 $pdo->exec("INSERT INTO users(role,email,password_hash,display_name,status) VALUES ('admin','v66i@example.test','x','V66I Admin','active')");
 $userId = (int)$pdo->lastInsertId();
 
@@ -280,8 +282,12 @@ $assert(!str_contains((string)$assistance['receipt_json'], 'private_key'), 'Unsa
 
 federated_messaging_set_user_state((int)$aliceThread['id'], $userId, 'pin');
 federated_messaging_set_user_state((int)$aliceThread['id'], $userId, 'archive');
+federated_messaging_mark_unread((int)$aliceThread['id'], $userId);
+federated_messaging_moderate_thread((int)$aliceThread['id'], 'report', $userId, 'Synthetic safety report');
 $state = $pdo->query('SELECT * FROM activitypub_message_user_state WHERE thread_id=' . (int)$aliceThread['id'] . ' AND user_id=' . $userId)->fetch();
-$assert(!empty($state['pinned_at']) && !empty($state['archived_at']), 'Per-user conversation state failed.');
+$assert(!empty($state['pinned_at']) && !empty($state['archived_at']) && empty($state['read_at']), 'Per-user conversation state or mark-unread failed.');
+$reportCount = (int)$pdo->query('SELECT COUNT(*) FROM activitypub_message_events WHERE thread_id=' . (int)$aliceThread['id'] . ' AND event_type="thread_reported"')->fetchColumn();
+$assert($reportCount === 1, 'Local federated conversation report evidence was not stored.');
 
 federated_messaging_delete_outbound((int)$edited['id'], $userId);
 $tombstone = federated_messaging_message_object((string)$edited['message_uuid']);

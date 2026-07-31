@@ -41,9 +41,14 @@ if (is_post()) {
         } elseif (in_array($action, ['archive','unarchive','mute','unmute','pin','unpin','hide','unhide'], true)) {
             federated_messaging_set_user_state($threadId, (int)$user['id'], $action);
             flash('success', 'Conversation state updated.');
-        } elseif (in_array($action, ['accept','reject','reopen','close','block'], true)) {
+        } elseif ($action === 'mark_unread') {
+            federated_messaging_mark_unread($threadId, (int)$user['id']);
+            $_SESSION['federated_message_keep_unread_once'] = $threadId;
+            flash('success', 'Conversation marked unread.');
+        } elseif (in_array($action, ['accept','reject','reopen','close','block','report','delete_local'], true)) {
             federated_messaging_moderate_thread($threadId, $action, (int)$user['id'], input('moderation_note'));
-            flash('success', 'Federated conversation updated.');
+            if ($action === 'delete_local') $threadId = 0;
+            flash('success', $action === 'delete_local' ? 'The local federated conversation copy was deleted.' : 'Federated conversation updated.');
         } elseif ($action === 'send_message') {
             federated_messaging_send($threadId, input('body'), (int)$user['id'], input('in_reply_to') ?: null);
             unset($_SESSION['federated_message_assist_once']);
@@ -104,14 +109,25 @@ if (!$selectedThread && $threads) {
     $selectedThreadId = (int)$selectedThread['id'];
 }
 $messages = $selectedThread ? federated_messaging_thread_messages((int)$selectedThread['id']) : [];
-if ($selectedThread) federated_messaging_mark_read((int)$selectedThread['id'], (int)$user['id']);
+$keepUnread = (int)($_SESSION['federated_message_keep_unread_once'] ?? 0) === $selectedThreadId;
+unset($_SESSION['federated_message_keep_unread_once']);
+if ($selectedThread && !$keepUnread) federated_messaging_mark_read((int)$selectedThread['id'], (int)$user['id']);
+$selectedState = null;
+if ($selectedThread) {
+    $stateStatement = db()->prepare(
+        'SELECT * FROM activitypub_message_user_state WHERE thread_id=:thread_id AND user_id=:user_id LIMIT 1'
+    );
+    $stateStatement->execute(['thread_id' => $selectedThreadId, 'user_id' => (int)$user['id']]);
+    $selectedState = $stateStatement->fetch() ?: [];
+}
 $homeServer = homeserver_adapter_status();
 $assistOnce = $_SESSION['federated_message_assist_once'] ?? null;
 unset($_SESSION['federated_message_assist_once']);
 if (!is_array($assistOnce) || (int)($assistOnce['thread_id'] ?? 0) !== $selectedThreadId || time() - (int)($assistOnce['created_at'] ?? 0) > 900) {
     $assistOnce = null;
 }
-$draftText = is_array($assistOnce) ? (string)($assistOnce['text'] ?? '') : '';
+$draftText = is_array($assistOnce) && in_array((string)($assistOnce['kind'] ?? ''), ['draft','translate'], true)
+    ? (string)($assistOnce['text'] ?? '') : '';
 
 portal_header('Federated Messages', 'communications', $user);
 ?>
@@ -174,10 +190,14 @@ portal_header('Federated Messages', 'communications', $user);
 ?>
     <div class="fm-thread-head"><div><span class="fm-kicker">Federated conversation</span><h2><?=e($name)?></h2><div class="fm-id"><?=e((string)$selectedThread['actor_uri'])?></div><div class="fm-actions"><span class="fm-badge <?=e((string)$selectedThread['status'])?>"><?=e(status_label((string)$selectedThread['status']))?></span><span class="fm-badge">Trust: <?=e(status_label((string)$selectedThread['trust_level']))?></span><span class="fm-badge">Risk: <?=(int)$selectedThread['risk_score']?></span></div></div>
     <div class="fm-actions">
-        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="pin"><button class="fm-button secondary" type="submit">Pin</button></form>
-        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="archive"><button class="fm-button secondary" type="submit">Archive</button></form>
-        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="mute"><button class="fm-button secondary" type="submit">Mute</button></form>
+        <?php $pinAction=!empty($selectedState['pinned_at'])?'unpin':'pin';$archiveAction=!empty($selectedState['archived_at'])?'unarchive':'archive';$muteAction=!empty($selectedState['muted_at'])?'unmute':'mute';?>
+        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="<?=e($pinAction)?>"><button class="fm-button secondary" type="submit"><?=e(ucfirst($pinAction))?></button></form>
+        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="<?=e($archiveAction)?>"><button class="fm-button secondary" type="submit"><?=e(ucfirst($archiveAction))?></button></form>
+        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="<?=e($muteAction)?>"><button class="fm-button secondary" type="submit"><?=e(ucfirst($muteAction))?></button></form>
+        <form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="mark_unread"><button class="fm-button secondary" type="submit">Mark unread</button></form>
     </div></div>
+
+    <details><summary>Conversation safety</summary><div class="fm-request-controls"><form class="fm-form" method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="report"><label><span>Report note</span><input name="moderation_note" maxlength="1000" placeholder="Reason for the local report" required></label><button class="fm-button secondary" type="submit">Record report</button></form><form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="delete_local"><input type="hidden" name="moderation_note" value="Deleted by the POD owner"><button class="fm-button danger" type="submit">Delete local copy</button></form></div></details>
 
     <?php if((string)$selectedThread['status']==='request'):?><div class="fm-request-controls"><strong>Message request</strong><span>This sender cannot receive a reply until you accept the conversation.</span><form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="accept"><button class="fm-button" type="submit">Accept</button></form><form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="reject"><button class="fm-button secondary" type="submit">Reject</button></form><form method="post"><?=csrf_field()?><input type="hidden" name="thread_id" value="<?=$selectedThreadId?>"><input type="hidden" name="action" value="block"><input type="hidden" name="moderation_note" value="Blocked from a Federated Message request"><button class="fm-button danger" type="submit">Block actor</button></form></div><?php endif;?>
 
