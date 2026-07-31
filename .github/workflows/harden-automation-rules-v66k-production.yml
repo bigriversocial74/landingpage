@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/harden-automation-rules-v66k-production.yml'
-      - 'tools/harden-automation-rules-v66k-production-v2.py'
+      - 'tools/harden-automation-rules-v66k-production-v3.py'
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
       - name: Apply final production hardening
         run: |
           set -euo pipefail
-          python3 tools/harden-automation-rules-v66k-production-v2.py
+          python3 tools/harden-automation-rules-v66k-production-v3.py
       - name: Install PHP when absent
         run: |
           set -euo pipefail
@@ -46,6 +46,7 @@ jobs:
           grep -F 'automation_retry_approval' portal/automation-rules.php >/dev/null
           grep -F 'automation_notify_owner' portal/automation-rules.php >/dev/null
           grep -F "(\$evidence['matched'] ?? null) === true" portal/automation-rules.php >/dev/null
+          grep -F 'CREATE TABLE IF NOT EXISTS automation_settings' database/north_mountain_portal.sql >/dev/null
           grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/automation_rules_v66k.sql >/dev/null
           grep -F "array_replace(\$settings, ['enabled' => false])" portal/automation-admin.php >/dev/null
           ! grep -F 'DELETE FROM automation_rules' portal/automation-admin.php
