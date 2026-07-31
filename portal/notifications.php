@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/notification-delivery.php';
 require_once __DIR__ . '/automation-rules.php';
+require_once __DIR__ . '/operations-analytics.php';
+require_once __DIR__ . '/operations-analytics-extensions.php';
 
 function automation_admin_portal_decorate(string $html): string
 {
@@ -88,6 +90,73 @@ function automation_admin_portal_bootstrap(): void
 }
 
 automation_admin_portal_bootstrap();
+
+function operations_admin_portal_decorate(string $html): string
+{
+    if (!function_exists('app_url') || !str_contains($html, 'data-admin-navigation')) return $html;
+    $active = (string)($_GET['view'] ?? '') === 'operations';
+    if (!str_contains($html, 'portal/admin.php?view=operations')) {
+        $link = '<a class="' . ($active ? 'active' : '') . '" href="'
+            . e(app_url('portal/admin.php?view=operations'))
+            . '">Operations</a>';
+        $decorated = preg_replace(
+            '/(<div\s+class="portal-nav-group-links"\s+id="admin-nav-system"[^>]*>)/s',
+            '$1' . $link,
+            $html,
+            1
+        );
+        if (is_string($decorated)) $html = $decorated;
+    }
+    if ($active) {
+        $css = '<link rel="stylesheet" href="'
+            . e(app_url('assets/css/operations-analytics.css?v=20260731-v66L'))
+            . '">';
+        $html = str_replace('</head>', $css . '</head>', $html);
+    }
+    if (function_exists('operations_extended_decorate')) $html = operations_extended_decorate($html);
+    return $html;
+}
+
+function operations_admin_portal_bootstrap(): void
+{
+    static $bootstrapped = false;
+    if ($bootstrapped) return;
+    $bootstrapped = true;
+    if (basename((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) !== 'admin.php') return;
+
+    ob_start('operations_admin_portal_decorate');
+    if ((string)($_GET['view'] ?? '') !== 'operations') return;
+
+    require_once __DIR__ . '/operations-admin.php';
+    $user = require_role('admin');
+
+    if ((string)($_GET['export'] ?? '') === 'csv') {
+        enforce_authenticated_action_limit($user);
+        operations_admin_export_csv();
+    }
+
+    if (is_post()) {
+        verify_csrf();
+        enforce_authenticated_action_limit($user);
+        try {
+            $action = input('action');
+            $handled = operations_extended_handle_admin_action($action, $user);
+            if (!$handled && !operations_handle_admin_action($action, $user)) {
+                throw new RuntimeException('Unsupported Operations request.');
+            }
+        } catch (Throwable $exception) {
+            flash('error', $exception->getMessage());
+            operations_admin_redirect(trim((string)($_GET['section'] ?? 'overview')) ?: 'overview');
+        }
+    }
+
+    portal_header('POD Operations', 'operations', $user);
+    operations_render_admin($user);
+    portal_footer();
+    exit;
+}
+
+operations_admin_portal_bootstrap();
 
 function notification_create(
     int $recipientUserId,
