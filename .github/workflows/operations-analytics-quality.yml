@@ -14,12 +14,14 @@ on:
       - 'cron/process-operations-analytics.php'
       - 'database/operations_analytics_v66l.sql'
       - 'database/north_mountain_portal.sql'
+      - 'database/north_mountain_portal_v66l.sql'
       - 'database/vp3_pod_licensing_v64.sql'
       - 'database/vp3_pod_managed_updates_v65.sql'
       - 'tests/operations-analytics-v66l.php'
       - 'tests/operations-analytics-db-v66l.php'
       - 'tests/operations-analytics-extended-db-v66l.php'
       - 'OPERATIONS-ANALYTICS-SPEC-v66L.md'
+      - 'OPERATIONS-ANALYTICS-SETUP-v66L.md'
       - 'V66L-SCORECARD.md'
 
 permissions:
@@ -66,6 +68,10 @@ jobs:
           grep -F 'operations_extended_handle_admin_action' portal/notifications.php >/dev/null
           grep -F 'operations_admin_export_csv' portal/operations-admin.php >/dev/null
           grep -F "preg_match('/^[=+\\-@]/'" portal/operations-admin.php >/dev/null
+          grep -F 'SOURCE database/north_mountain_portal.sql;' database/north_mountain_portal_v66l.sql >/dev/null
+          grep -F 'SOURCE database/vp3_pod_licensing_v64.sql;' database/north_mountain_portal_v66l.sql >/dev/null
+          grep -F 'SOURCE database/vp3_pod_managed_updates_v65.sql;' database/north_mountain_portal_v66l.sql >/dev/null
+          grep -F 'SOURCE database/operations_analytics_v66l.sql;' database/north_mountain_portal_v66l.sql >/dev/null
           if grep -E 'permissions:[[:space:]]*write|contents:[[:space:]]*write' .github/workflows/operations-analytics-quality.yml; then exit 1; fi
 
   mysql-8-integration:
@@ -87,13 +93,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install PHP database extensions
         run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
-      - name: Import platform prerequisites and repeat-safe v66L migration
+      - name: Import complete v66L fresh schema and repeat-safe migration
         run: |
           set -euo pipefail
-          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
-          mysql -h 127.0.0.1 -uroot -proot nmm < database/vp3_pod_licensing_v64.sql
-          mysql -h 127.0.0.1 -uroot -proot nmm < database/vp3_pod_managed_updates_v65.sql
-          mysql -h 127.0.0.1 -uroot -proot nmm < database/operations_analytics_v66l.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal_v66l.sql
           mysql -h 127.0.0.1 -uroot -proot nmm < database/operations_analytics_v66l.sql
       - name: Live core Operations Analytics integration
         env:
@@ -131,13 +134,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install MariaDB client and PHP extensions
         run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
-      - name: Import platform prerequisites and repeat-safe v66L migration
+      - name: Import complete v66L fresh schema and repeat-safe migration
         run: |
           set -euo pipefail
-          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal.sql
-          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/vp3_pod_licensing_v64.sql
-          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/vp3_pod_managed_updates_v65.sql
-          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/operations_analytics_v66l.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal_v66l.sql
           mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/operations_analytics_v66l.sql
       - name: Live core Operations Analytics integration
         env:
