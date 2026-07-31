@@ -68,6 +68,8 @@ jobs:
           done
           test ! -e tools/apply-notification-delivery-v66j.py
           test ! -e .github/workflows/apply-notification-delivery-v66j.yml
+          test ! -e tools/harden-notification-delivery-v66j.py
+          test ! -e .github/workflows/harden-notification-delivery-v66j.yml
           grep -F 'notification_delivery_enqueue_notification($notificationId)' portal/notifications.php >/dev/null
           grep -F 'external notification enqueue failed' portal/notifications.php >/dev/null
           grep -F "'notification_delivery_secret'" config-example.php >/dev/null
@@ -75,6 +77,8 @@ jobs:
           grep -F "'resource_authority' => 'notification_metadata'" portal/notification-delivery.php >/dev/null
           grep -F "'proposal_only' => true" portal/notification-delivery.php >/dev/null
           grep -F "'send_allowed' => false" portal/notification-delivery.php >/dev/null
+          grep -F 'notification_delivery_runtime_authorization' portal/notification-delivery.php >/dev/null
+          grep -F 'AND status="leased" AND lease_token=:lease_token' portal/notification-delivery.php >/dev/null
           grep -F 'url.origin === self.location.origin' notification-service-worker.js >/dev/null
           if grep -E 'https?://[^[:space:]]+\.js' notification-service-worker.js assets/js/notification-delivery.js; then exit 1; fi
 
