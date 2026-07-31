@@ -625,13 +625,13 @@ function notification_delivery_vapid_jwt(string $endpoint, array $key, string $p
     return $signing . '.' . notification_delivery_b64url_encode(notification_delivery_es256_jose($signature));
 }
 
-function notification_delivery_encrypt_push_payload(string $payload, string $clientPublicB64, string $authB64, string $privatePem): array
+function notification_delivery_encrypt_push_payload(string $payload, string $clientPublicB64, string $authB64): array
 {
     $clientRaw = notification_delivery_b64url_decode($clientPublicB64);
     $auth = notification_delivery_b64url_decode($authB64);
     $clientPem = notification_delivery_public_key_pem($clientRaw);
     $clientKey = $clientPem !== '' ? openssl_pkey_get_public($clientPem) : false;
-    $serverKey = openssl_pkey_get_private($privatePem);
+    $serverKey = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
     if (!$clientKey || !$serverKey) throw new RuntimeException('The Web Push encryption keys are invalid.');
     $secret = openssl_pkey_derive($clientKey, $serverKey, 32);
     $details = openssl_pkey_get_details($serverKey);
@@ -659,7 +659,7 @@ function notification_delivery_send_web_push(array $subscription, array $payload
     if ($privatePem === '') return ['ok' => false, 'permanent' => true, 'code' => 'vapid_key_unavailable', 'message' => 'The Web Push private key is unavailable.'];
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     if (strlen($json) > 3500) $json = json_encode(['title' => mb_substr((string)($payload['title'] ?? 'Notification'), 0, 100), 'body' => '', 'url' => (string)($payload['url'] ?? app_url('portal/admin.php?view=notifications'))], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-    $encrypted = notification_delivery_encrypt_push_payload($json, (string)$subscription['keys']['p256dh'], (string)$subscription['keys']['auth'], $privatePem);
+    $encrypted = notification_delivery_encrypt_push_payload($json, (string)$subscription['keys']['p256dh'], (string)$subscription['keys']['auth']);
     $jwt = notification_delivery_vapid_jwt($endpoint, $vapidKey, $privatePem);
     $resolution = notification_delivery_public_resolution($endpoint);
     $handle = curl_init($endpoint);
@@ -962,13 +962,13 @@ function notification_delivery_process_item(array $item): array
     db()->prepare(
         'UPDATE notification_delivery_queue
          SET status=:status,attempt_count=attempt_count+1,lease_token=NULL,leased_until=NULL,
-             available_at=CASE WHEN :retry_status="pending" THEN DATE_ADD(UTC_TIMESTAMP(),INTERVAL :delay SECOND) ELSE available_at END,
+             available_at=CASE WHEN :retry_status="pending" THEN :retry_at ELSE available_at END,
              last_error_code=:error_code,last_error_message=:error_message
          WHERE id=:id'
     )->execute([
         'status' => $status,
         'retry_status' => $status,
-        'delay' => $delay,
+        'retry_at' => gmdate('Y-m-d H:i:s', time() + $delay),
         'error_code' => mb_substr((string)($result['code'] ?? 'delivery_failed'), 0, 100),
         'error_message' => mb_substr((string)($result['message'] ?? 'Delivery failed.'), 0, 1000),
         'id' => (int)$item['id'],
