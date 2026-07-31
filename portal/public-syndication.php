@@ -332,6 +332,7 @@ function syndication_send(string $body, string $contentType, int $lastModified):
 
 function syndication_discovery_links(?array $filter = null, bool $includeWebmention = true): string
 {
+    if (function_exists('nmm_module_enabled') && !nmm_module_enabled('rss')) return '';
     $settings = syndication_settings();
     $filter ??= ['category'=>'','tag'=>'','author'=>''];
     $query = syndication_filter_query($filter);

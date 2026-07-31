@@ -54,6 +54,7 @@ portal_header('Social Feed','social-posts',$user);
 <div><span>@<?=e(activitypub_account())?></span><strong>Posts and Stories</strong></div>
 <div><button type="button" data-publishing-open="story">Add story</button><button type="button" data-publishing-open="social-post">Create post</button><button type="button" data-feed-settings-open aria-label="Open Social Feed settings">Settings</button><a href="<?=e(app_url('social-feed.php'))?>" target="_blank" rel="noopener">Public feed</a></div>
 </div>
+<p class="social-feed-guidance">Create a post with Publishing +, publish immediately, or choose <strong>Save draft</strong> for later. Blog and RSS remain independent from the Social Feed.</p>
 
 <?php if(!$schemaAvailable):?><section class="pod-social-warning"><strong>Social Posts migration required.</strong> Import <code>database/social_posts_v66p.sql</code>.</section><?php endif;?>
 <?php if(nmm_module_enabled('stories')&&!$storiesAvailable):?><section class="pod-social-warning"><strong>Stories migration required.</strong> Import <code>database/stories_v66o.sql</code>.</section><?php endif;?>

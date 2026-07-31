@@ -627,6 +627,7 @@ function social_posts_render_social_cards(array $posts): void
 
 function social_posts_render_landing(): void
 {
+    if (function_exists('nmm_module_enabled') && !nmm_module_enabled('social_feed')) return;
     $settings = social_posts_settings();
     $mode = $settings['landing_mode'];
     if ($mode === 'none') return;
@@ -654,11 +655,11 @@ function social_posts_render_landing(): void
 <button type="button" role="tab" aria-selected="false" aria-controls="podBlogPanel" data-pod-tab="blogs">Blog posts</button>
 </div>
 <div id="podSocialPanel" role="tabpanel" data-pod-panel="social"><?php social_posts_render_social_cards($social);?></div>
-<div id="podBlogPanel" role="tabpanel" data-pod-panel="blogs" hidden><?php social_posts_render_blog_cards($blogs);?><div class="pod-rss-link"><a href="<?=e(app_url('blog-feed.php'))?>">RSS feed</a></div></div>
+<div id="podBlogPanel" role="tabpanel" data-pod-panel="blogs" hidden><?php social_posts_render_blog_cards($blogs);?><?php if(nmm_module_enabled('rss')):?><div class="pod-rss-link"><a href="<?=e(app_url('blog-feed.php'))?>">RSS feed</a></div><?php endif;?></div>
 <?php elseif($mode==='social'):?>
 <?php social_posts_render_social_cards($social);?>
 <?php else:?>
-<?php social_posts_render_blog_cards($blogs);?><div class="pod-rss-link"><a href="<?=e(app_url('blog-feed.php'))?>">RSS feed</a></div>
+<?php social_posts_render_blog_cards($blogs);?><?php if(nmm_module_enabled('rss')):?><div class="pod-rss-link"><a href="<?=e(app_url('blog-feed.php'))?>">RSS feed</a></div><?php endif;?>
 <?php endif;?>
 </section>
 <?php

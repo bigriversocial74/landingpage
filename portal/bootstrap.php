@@ -1152,19 +1152,26 @@ function portal_header(string $title, string $active, array $user): void
 
     if ($isAdmin) {
         $moduleNavigationMap = [
-  'clients' => ['Relationships','clients'],
-  'leads' => ['Relationships','leads'],
-  'portfolio' => ['Work','portfolio'],
-  'resume' => ['Work','resume'],
-  'music_library' => ['Operations','music'],
-  'blog' => ['Work','blog'],
-  'rss' => ['Work','syndication'],
-  'social_feed' => ['Work','social-posts'],
-  'events' => ['Work','events'],
-  'bookings' => ['Work','bookings'],
+            'clients' => [
+                ['Relationships','clients'],
+                ['Work','projects'],
+                ['Work','files'],
+            ],
+            'leads' => [['Relationships','leads']],
+            'portfolio' => [['Work','portfolio']],
+            'resume' => [['Work','resume']],
+            'music_library' => [['Operations','music']],
+            'blog' => [['Work','blog']],
+            'rss' => [['Work','syndication']],
+            'social_feed' => [['Work','social-posts']],
+            'events' => [['Work','events']],
+            'bookings' => [['Work','bookings']],
         ];
-        foreach ($moduleNavigationMap as $moduleKey => [$groupName,$itemKey]) {
-  if (!nmm_module_enabled($moduleKey)) unset($adminNavigationGroups[$groupName][$itemKey]);
+        foreach ($moduleNavigationMap as $moduleKey => $locations) {
+            if (nmm_module_enabled($moduleKey)) continue;
+            foreach ($locations as [$groupName,$itemKey]) {
+                unset($adminNavigationGroups[$groupName][$itemKey]);
+            }
         }
     }
 
