@@ -40,7 +40,8 @@ jobs:
           Path('/tmp/build-v66q.py').write_text(payload,encoding='utf-8')
           PY
           python3 /tmp/build-v66q.py
-          rm -f .github/workflows/run-publishing-builder-v66q.yml .github/v66q-build-trigger
+          git checkout HEAD -- .github/workflows/build-publishing-center-v66q.yml .github/workflows/run-publishing-builder-v66q.yml
+          rm -f .github/workflows/publishing-center-quality.yml .github/v66q-build-trigger
       - name: Validate generated source
         run: |
           php -l portal/publishing-center.php
@@ -53,7 +54,7 @@ jobs:
           node --check assets/js/portal.js
           node --check assets/js/publishing-center-v66q.js
           php tests/publishing-center-v66q.php
-      - name: Commit permanent implementation
+      - name: Commit permanent product source
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
