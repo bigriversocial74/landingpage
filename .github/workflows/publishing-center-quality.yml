@@ -1,0 +1,31 @@
+name: Publishing Center Quality
+
+on:
+  pull_request:
+    paths:
+      - 'portal/**'
+      - 'assets/js/**'
+      - 'assets/css/**'
+      - 'tests/publishing-center-v66q.php'
+      - '.github/workflows/publishing-center-quality.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: PHP syntax
+        run: find portal -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: JavaScript syntax
+        run: |
+          node --check assets/js/portal.js
+          node --check assets/js/publishing-center-v66q.js
+          node --check assets/js/publishing-complete-v66q.js
+      - name: Publishing Center contract
+        run: php tests/publishing-center-v66q.php
