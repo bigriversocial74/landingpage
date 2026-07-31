@@ -16,12 +16,15 @@ $admin = file_get_contents($root . '/portal/operations-admin.php');
 $notifications = file_get_contents($root . '/portal/notifications.php');
 $worker = file_get_contents($root . '/cron/process-operations-analytics.php');
 $migration = file_get_contents($root . '/database/operations_analytics_v66l.sql');
+$freshInstall = file_get_contents($root . '/database/north_mountain_portal_v66l.sql');
 $styles = file_get_contents($root . '/assets/css/operations-analytics.css');
 $extendedStyles = file_get_contents($root . '/assets/css/operations-analytics-extended.css');
 $spec = file_get_contents($root . '/OPERATIONS-ANALYTICS-SPEC-v66L.md');
+$setup = file_get_contents($root . '/OPERATIONS-ANALYTICS-SETUP-v66L.md');
 operations_source_assert(
     is_string($source) && is_string($extended) && is_string($admin) && is_string($notifications)
-        && is_string($worker) && is_string($migration) && is_string($styles) && is_string($extendedStyles) && is_string($spec),
+        && is_string($worker) && is_string($migration) && is_string($freshInstall)
+        && is_string($styles) && is_string($extendedStyles) && is_string($spec) && is_string($setup),
     'Required v66L source files are unreadable.'
 );
 
@@ -95,6 +98,26 @@ operations_source_assert(str_contains($migration, 'UNIQUE KEY uq_operations_metr
 operations_source_assert(str_contains($migration, 'UNIQUE KEY uq_operations_worker_window'), 'Worker-window idempotency key is missing.');
 operations_source_assert(str_contains($migration, 'UNIQUE KEY uq_operations_incident_open'), 'Open-incident idempotency key is missing.');
 operations_source_assert(!preg_match('/(?:message|email|crm|transcript|credential|private_key).*?(?:TEXT|JSON)/i', $migration), 'Migration appears to persist private source content.');
+
+$orderedSources = [
+    'SOURCE database/north_mountain_portal.sql;',
+    'SOURCE database/vp3_pod_licensing_v64.sql;',
+    'SOURCE database/vp3_pod_managed_updates_v65.sql;',
+    'SOURCE database/operations_analytics_v66l.sql;',
+];
+$lastPosition = -1;
+foreach ($orderedSources as $sourceLine) {
+    $position = strpos($freshInstall, $sourceLine);
+    operations_source_assert($position !== false && $position > $lastPosition, 'Fresh-install order is incomplete or unsafe: ' . $sourceLine);
+    $lastPosition = $position;
+}
+operations_source_assert(str_contains($setup, 'database/north_mountain_portal_v66l.sql'), 'Deployment guide does not use the certified fresh-install entrypoint.');
+operations_source_assert(str_contains($setup, 'preserving the live `config.php`'), 'Deployment guide does not preserve live configuration.');
+operations_source_assert(str_contains($setup, 'complete `storage/` directory'), 'Deployment guide does not preserve storage.');
+operations_source_assert(str_contains($setup, 'cron/process-operations-analytics.php hour'), 'Hourly worker deployment is missing.');
+operations_source_assert(str_contains($setup, 'cron/process-operations-analytics.php day'), 'Daily worker deployment is missing.');
+operations_source_assert(str_contains($setup, 'Notification Delivery'), 'Scheduled-report delivery authority is not documented.');
+operations_source_assert(str_contains($setup, 'DROP TABLE IF EXISTS operations_worker_runs;'), 'Rollback order is missing.');
 operations_source_assert(str_contains($spec, 'must not copy'), 'Permanent privacy boundary is missing from the specification.');
 operations_source_assert(str_contains($spec, 'Canonical source tables remain authoritative'), 'Canonical source authority is not documented.');
 
