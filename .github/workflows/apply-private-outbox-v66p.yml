@@ -1,0 +1,127 @@
+name: Apply Private Outbox Filter v66P
+
+on:
+  push:
+    branches:
+      - feature/pod-social-post-publisher-v66p-20260731
+    paths:
+      - '.github/workflows/apply-private-outbox-v66p.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pod-social-post-publisher-v66p-20260731
+          fetch-depth: 0
+      - name: Filter follower-only payloads from public outbox
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('portal/activitypub-service.php')
+          text=path.read_text(encoding='utf-8')
+          old='''function activitypub_outbox_document(): array
+{
+    activitypub_require_schema();
+    $count = (int)db()->query(
+        'SELECT COUNT(*) FROM activitypub_outbox_activities
+         WHERE activity_type IN ("Create","Update","Delete")'
+    )->fetchColumn();
+    $rows = db()->query(
+        'SELECT payload_json FROM activitypub_outbox_activities
+         WHERE activity_type IN ("Create","Update","Delete")
+         ORDER BY published_at DESC,id DESC LIMIT 50'
+    )->fetchAll();
+    $items = [];
+    foreach ($rows as $row) {
+        $payload = json_decode((string)$row['payload_json'], true);
+        if (is_array($payload)) $items[] = $payload;
+    }
+    return [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id' => activitypub_outbox_url(),
+        'type' => 'OrderedCollection',
+        'totalItems' => $count,
+        'orderedItems' => $items,
+    ];
+}
+'''
+          new='''function activitypub_audience_contains_public(mixed $audience): bool
+{
+    $public = 'https://www.w3.org/ns/activitystreams#Public';
+    if (is_string($audience)) {
+        return activitypub_normalize_url($audience) === activitypub_normalize_url($public);
+    }
+    if (!is_array($audience)) return false;
+    foreach ($audience as $value) {
+        if (activitypub_audience_contains_public($value)) return true;
+    }
+    return false;
+}
+
+function activitypub_payload_is_public(array $payload): bool
+{
+    foreach (['to', 'cc', 'audience'] as $field) {
+        if (activitypub_audience_contains_public($payload[$field] ?? null)) return true;
+    }
+    $object = $payload['object'] ?? null;
+    if (is_array($object)) {
+        foreach (['to', 'cc', 'audience'] as $field) {
+            if (activitypub_audience_contains_public($object[$field] ?? null)) return true;
+        }
+    }
+    return false;
+}
+
+function activitypub_outbox_document(): array
+{
+    activitypub_require_schema();
+    $statement = db()->prepare(
+        'SELECT payload_json FROM activitypub_outbox_activities
+         WHERE activity_type IN ("Create","Update","Delete")
+           AND payload_json LIKE :public_marker
+         ORDER BY published_at DESC,id DESC'
+    );
+    $statement->execute([
+        'public_marker' => '%https://www.w3.org/ns/activitystreams#Public%',
+    ]);
+    $items = [];
+    $count = 0;
+    while ($row = $statement->fetch()) {
+        $payload = json_decode((string)$row['payload_json'], true);
+        if (!is_array($payload) || !activitypub_payload_is_public($payload)) continue;
+        $count++;
+        if (count($items) < 50) $items[] = $payload;
+    }
+    return [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id' => activitypub_outbox_url(),
+        'type' => 'OrderedCollection',
+        'totalItems' => $count,
+        'orderedItems' => $items,
+    ];
+}
+'''
+          if new not in text:
+              if old not in text: raise SystemExit('Outbox function anchor not found.')
+              text=text.replace(old,new,1)
+          path.write_text(text,encoding='utf-8')
+          PY
+      - name: Validate PHP and retained ActivityPub regression
+        run: |
+          php -l portal/activitypub-service.php
+          php tests/activitypub-v66f.php
+          php tests/stories-v66o.php
+      - name: Commit privacy repair
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add portal/activitypub-service.php
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Protect follower-only activities from the public outbox'
+          git push origin HEAD:feature/pod-social-post-publisher-v66p-20260731
