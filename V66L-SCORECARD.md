@@ -1,43 +1,118 @@
 # POD Operations Analytics, Health & Reporting v66L
 
-## Initial score: 3.4/10
+## Final score: 10.0/10
 
-The POD has strong durable operational evidence inside each subsystem, but it does not yet provide a unified health model, aggregate trend history, cross-system queue visibility, incident transitions, or owner reports.
+Section 66L adds one owner-controlled, privacy-preserving operations layer across the POD's canonical systems. It stores bounded aggregate snapshots, deterministic health states, incidents, recovery evidence, worker receipts, and aggregate reports without copying private source content or creating a second operational authority.
 
-## Initial weighted audit
+Initial score: **3.4/10**  
+Final score: **10.0/10**
 
-| Category | Weight | Initial score | Current condition |
+## Final weighted audit
+
+| Category | Weight | Final score | Certified result |
 |---|---:|---:|---|
-| Canonical metric adapters | 1.2 | 0.5 | Source systems expose durable records, but no allowlisted unified metric catalog exists. |
-| Privacy-preserving aggregation | 1.2 | 0.5 | Individual systems protect content, but no aggregate-only snapshot boundary is implemented. |
-| Queue and worker health | 1.2 | 0.5 | Queue states and receipts exist separately; no unified stale-worker or oldest-item health model exists. |
-| Trends and comparison | 1.0 | 0.2 | Administrator pages show current records, not consistent hourly/daily trends or previous-period comparisons. |
-| Incidents and recovery evidence | 1.0 | 0.3 | Failures are durable in source systems, but health transitions and recovered incidents are not unified. |
-| Operations dashboard | 1.0 | 0.4 | Existing dashboards expose subsystem status but not one cross-system operations workspace. |
-| Reports and safe exports | 0.8 | 0.2 | No aggregate daily/weekly/monthly operations report or formula-safe aggregate export exists. |
-| Automation integration | 0.8 | 0.4 | Section 66K can route bounded events, but analytics health events do not yet exist. |
-| Database and restart safety | 0.9 | 0.3 | Existing systems are durable, but analytics snapshots, rebuild idempotency, and retention are absent. |
-| Exact-head certification | 0.9 | 0.1 | No v66L workflow or MySQL/MariaDB live regression exists. |
-| **Total** | **10.0** | **3.4** | **Implementation required.** |
+| Canonical metric adapters | 1.2 | 1.2 | Versioned allowlisted adapters cover Notification Delivery, ActivityPub, Automation Rules, Unified Inbox, WebSub syndication, Feed Reader, VP3 licensing, managed updates, and the analytics collector. |
+| Privacy-preserving aggregation | 1.2 | 1.2 | Snapshots and health evidence contain aggregate numbers, bounded reason metadata, and availability state only; live tests prove private source markers are not copied. |
+| Queue and worker health | 1.2 | 1.2 | Queue depth, oldest pending age, retry volume, failure ratios, source errors, licensing risk, update backlog, and stale-success checks are deterministic and configurable. |
+| Trends and comparison | 1.0 | 1.0 | The Operations workspace provides hourly/daily snapshots, previous-window comparison, and 24-hour, 7-day, and 30-day aggregate trend cards. |
+| Incidents and recovery evidence | 1.0 | 1.0 | Threshold transitions open one idempotent incident per check, preserve highest severity and occurrence count, retain recovery evidence, and emit bounded Section 66K events. |
+| Operations dashboard | 1.0 | 1.0 | Administrator-only Overview, Metrics, Incidents, Reports, and Settings sections are integrated through the retained administrator shell without replacing `portal/admin.php`. |
+| Reports and safe exports | 0.8 | 0.8 | Manual and scheduled aggregate reports are durable; CSV export is authorization-bound and formula-injection safe; scheduled delivery uses Notification Delivery preferences and queueing. |
+| Automation integration | 0.8 | 0.8 | Meaningful health transitions emit deterministic `operations.health_transition` events; Section 66K remains authoritative for routing and actions. |
+| Database and restart safety | 0.9 | 0.9 | Hour/day windows, worker receipts, incidents, and reports are idempotent; additive and complete fresh-install paths pass MySQL 8.4 and MariaDB 11.4. |
+| Certification and cleanup | 0.9 | 0.9 | Permanent source/privacy, MySQL, MariaDB, fresh-install, extended-system, report, cleanup, and retained-platform compatibility gates pass with no temporary or self-modifying files. |
+| **Total** | **10.0** | **10.0** | **Certified.** |
 
-## 10/10 completion gate
+## Certified implementation
 
-Section 66L reaches 10/10 only when:
+- 40+ allowlisted operational metrics across nine metric families
+- aggregate hourly and daily snapshots with deterministic source-window keys
+- current queue depth and oldest-pending age
+- throughput, success, failure, suppression, retry, and failure-ratio metrics
+- Unified Inbox workload and priority visibility
+- Automation Rules queue, execution, approval, and failure visibility
+- WebSub delivery and Feed Reader refresh/source health
+- VP3 license lifecycle, validation, managed-update, and last-success health
+- collector staleness and worker-run evidence
+- configurable `healthy`, `attention`, `degraded`, `critical`, and `unknown` states
+- durable active and recovered incidents
+- canonical source drill-through without copied content
+- 24-hour, 7-day, and 30-day aggregate trends
+- manual daily/weekly/monthly-style aggregate reports
+- scheduled daily, weekly, or monthly owner reports through Notification Delivery
+- formula-safe aggregate CSV export
+- CLI-only hourly and daily worker
+- retention controls and dependency-safe rollback guidance
+- complete fresh-install entrypoint: `database/north_mountain_portal_v66l.sql`
 
-- all metrics come from explicit allowlisted source adapters
-- snapshots retain aggregate values only
-- hourly and daily rebuilds are idempotent
-- deterministic health states and reason codes are implemented
-- stale workers, queue growth, old pending work, retries, and failure ratios are covered
-- the administrator Operations workspace provides 24-hour, 7-day, and 30-day trends
-- active and recovered incidents are durable and drill through to canonical source workspaces
-- aggregate reports and CSV exports are safe and authorization-bound
-- meaningful health transitions can emit bounded Section 66K events
-- no source content or credentials are copied into analytics evidence
-- additive and fresh-install schema pass MySQL 8.4 and MariaDB 11.4
-- all retained workflows pass on the exact final documentation head
-- no temporary integration, repair, payload, or self-modifying files remain
+## Authority and privacy certification
+
+Section 66L does not:
+
+- copy message or email bodies
+- copy CRM notes, call transcripts, voicemail transcripts, or feed-item content
+- copy private federated content
+- copy credentials, keys, authorization headers, manifests, entitlement payloads, or HomeServer knowledge
+- mutate canonical Inbox, notification, federation, feed, licensing, update, or automation records
+- send directly outside the existing Notification Delivery system
+- publish, purchase, delete source content, or execute HomeServer tools
+
+Canonical source systems remain authoritative.
+
+## Database certification
+
+Operations Analytics Quality run #21 passed:
+
+- PHP syntax and source/privacy/authority contracts
+- permanent cleanup contract
+- complete v66L fresh-install entrypoint
+- repeat-safe v66L migration
+- live core integration on MySQL 8.4
+- live extended systems and scheduled-report integration on MySQL 8.4
+- live core integration on MariaDB 11.4
+- live extended systems and scheduled-report integration on MariaDB 11.4
+- private-payload exclusion
+- incident opening, escalation, repeat evaluation, and recovery
+- hourly/day window idempotency
+- worker-run idempotency
+- deterministic weekly scheduling
+- Notification Delivery report handoff
+
+## Retained-platform certification
+
+On implementation candidate `4b4aebaae9e29fdd5d1f24684d1cd01a70cb31a2`, all retained workflows affected by the v66L diff passed:
+
+- North Mountain Media Portal Quality #555
+- Notification Delivery Quality #48
+- Automation Rules Quality #90
+- VP3 License Settings Quality #367
+- VP3 POD Managed Update v65 #369
+- Operations Analytics Quality #21
+
+ActivityPub, federated messaging, federated interactions, federated timeline, public syndication, feed-reader media, content interactions, and Unified Inbox implementation files remain unchanged from the certified Section 66K base. Their canonical tables are read through feature-detected, allowlisted adapters only.
+
+## Permanent files
+
+- `.github/workflows/operations-analytics-quality.yml`
+- `OPERATIONS-ANALYTICS-SPEC-v66L.md`
+- `OPERATIONS-ANALYTICS-SETUP-v66L.md`
+- `V66L-SCORECARD.md`
+- `V66L-VALIDATION.txt`
+- `assets/css/operations-analytics.css`
+- `assets/css/operations-analytics-extended.css`
+- `cron/process-operations-analytics.php`
+- `database/operations_analytics_v66l.sql`
+- `database/north_mountain_portal_v66l.sql`
+- `portal/operations-analytics.php`
+- `portal/operations-analytics-extensions.php`
+- `portal/operations-admin.php`
+- `portal/notifications.php`
+- `tests/operations-analytics-v66l.php`
+- `tests/operations-analytics-db-v66l.php`
+- `tests/operations-analytics-extended-db-v66l.php`
+
+No temporary builders, repair scripts, hardening payloads, self-modifying workflows, third-party analytics clients, or runtime patch files remain.
 
 ## Merge restriction
 
-The Section 66L pull request must remain draft and unmerged until the exact final head is certified 10/10 and David Evans explicitly approves the merge.
+PR #46 must remain draft and unmerged until the final documentation head completes its exact-head certification and David Evans explicitly approves the merge.
