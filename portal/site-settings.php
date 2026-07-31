@@ -13,10 +13,15 @@ function nmm_module_definitions(): array
 {
     return [
         'landing_page' => ['label' => 'Landing Page', 'description' => 'Use the selected landing-page template as the public home page.', 'default' => false],
+        'clients' => ['label' => 'Clients', 'description' => 'Enable client accounts, client projects, protected files, and client navigation.', 'default' => true],
+        'leads' => ['label' => 'Leads', 'description' => 'Enable lead records, inquiry archives, and lead navigation.', 'default' => true],
         'portfolio' => ['label' => 'Portfolio', 'description' => 'Show portfolio projects, case studies, and portfolio navigation.', 'default' => true],
         'resume' => ['label' => 'Resume', 'description' => 'Show the public resume and resume posts.', 'default' => true],
         'music_library' => ['label' => 'Music Library', 'description' => 'Show the public music catalog, albums, playlists, and tracks.', 'default' => true],
         'blog' => ['label' => 'Blog', 'description' => 'Show the public blog archive and published posts.', 'default' => true],
+        'rss' => ['label' => 'RSS & Syndication', 'description' => 'Enable RSS, Atom, JSON Feed, podcast feeds, WebSub, and feed-discovery navigation.', 'default' => true],
+        'social_feed' => ['label' => 'Social Feed', 'description' => 'Enable permanent social posts, the public POD feed, and administrator Social Feed navigation.', 'default' => true],
+        'stories' => ['label' => 'Stories', 'description' => 'Enable temporary follower Stories and Story publishing options.', 'default' => true],
         'feed_reader' => ['label' => 'Feed Reader', 'description' => 'Allow authenticated users to subscribe to and read external RSS and Atom feeds.', 'default' => true],
         'events' => ['label' => 'Events', 'description' => 'Show the public events calendar and event pages.', 'default' => true],
         'bookings' => ['label' => 'Bookings', 'description' => 'Show public appointment types and available booking times.', 'default' => true],

@@ -59,6 +59,7 @@ function nmm_render_public_sidebar(array $context): void
         ? nmm_site_logo_alt()
         : 'North Mountain Media';
     $rssEnabled = $moduleEnabled('blog')
+        && $moduleEnabled('rss')
         && (
             !function_exists('nmm_site_setting')
             || nmm_site_setting('blog_rss_enabled', '1') === '1'
@@ -125,6 +126,9 @@ function nmm_render_public_sidebar(array $context): void
 <?php endif;?>
 <?php if($moduleEnabled('blog')):?>
 <a href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('blog.php'))?>"><span>Blog</span></a>
+<?php endif;?>
+<?php if($moduleEnabled('social_feed')):?>
+<a href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('social-feed.php'))?>"><span>Social Feed</span></a>
 <?php endif;?>
 <?php if($moduleEnabled('events')):?>
 <a href="<?=nmm_public_sidebar_escape(nmm_public_sidebar_url('events.php'))?>"><span>Events</span></a>

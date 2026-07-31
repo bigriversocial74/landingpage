@@ -30,9 +30,10 @@ require_once __DIR__ . '/unified-inbox.php';
 require_once __DIR__ . '/syndication-admin.php';
 require_once __DIR__ . '/activitypub-admin.php';
 require_once __DIR__ . '/notification-delivery-admin.php';
+require_once __DIR__ . '/agent-chat-view.php';
 $user=require_role('admin');
-$view=(string)($_GET['view']??'dashboard');
-$allowed=['dashboard','inbox','music','analytics','call-center','clients','administrators','crm','portfolio','blog','syndication','federation','delivery','events','bookings','proposals','resume','projects','leads','communications','notifications','messages','files','knowledge','builder','menus','feeds','site-analytics','settings','account'];
+$view=(string)($_GET['view']??'agent');
+$allowed=['agent','dashboard','inbox','music','analytics','call-center','clients','administrators','crm','portfolio','blog','syndication','federation','delivery','events','bookings','proposals','resume','projects','leads','communications','notifications','messages','files','knowledge','builder','menus','feeds','site-analytics','settings','account'];
 if(!in_array($view,$allowed,true))$view='dashboard';
 if($view==='messages')$view='communications';
 
@@ -3084,7 +3085,8 @@ if(is_post()){
 if($view==='builder'){redirect('portal/site-builder.php');}
 
 $title=$view==='site-analytics'?'Site Analytics':($view==='menus'?'Navigation':status_label($view));
-portal_header($title,$view,$user);
+portal_header($view==='agent'?'Agent Chat':($title),$view,$user);
+if($view==='agent'){ agent_chat_render($user); }
 
 if($view==='menus'){
     site_menu_render_admin($user);

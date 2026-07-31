@@ -491,6 +491,7 @@ function setting(string $key, ?string $fallback = null): ?string
 
 require_once __DIR__ . '/site-settings.php';
 require_once __DIR__ . '/site-builder-core.php';
+require_once __DIR__ . '/publishing-center.php';
 
 function rate_limit_exceeded(
     string $action,
@@ -1096,6 +1097,7 @@ function portal_header(string $title, string $active, array $user): void
 
     $adminNavigationGroups = [
         'Operations' => [
+            'agent' => 'Agent Chat',
             'dashboard' => 'Dashboard',
             'inbox' => 'Unified Inbox',
             'music' => 'Music Library',
@@ -1147,6 +1149,25 @@ function portal_header(string $title, string $active, array $user): void
         }
     }
 
+
+    if ($isAdmin) {
+        $moduleNavigationMap = [
+  'clients' => ['Relationships','clients'],
+  'leads' => ['Relationships','leads'],
+  'portfolio' => ['Work','portfolio'],
+  'resume' => ['Work','resume'],
+  'music_library' => ['Operations','music'],
+  'blog' => ['Work','blog'],
+  'rss' => ['Work','syndication'],
+  'social_feed' => ['Work','social-posts'],
+  'events' => ['Work','events'],
+  'bookings' => ['Work','bookings'],
+        ];
+        foreach ($moduleNavigationMap as $moduleKey => [$groupName,$itemKey]) {
+  if (!nmm_module_enabled($moduleKey)) unset($adminNavigationGroups[$groupName][$itemKey]);
+        }
+    }
+
     $script = $isAdmin ? 'admin.php' : 'client.php';
     $flashes = pull_flashes();
     require_once __DIR__ . '/notifications.php';
@@ -1175,6 +1196,7 @@ function portal_header(string $title, string $active, array $user): void
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title) ?> — <?= e(setting('site_name', 'North Mountain Media')) ?></title>
     <link rel="stylesheet" href="<?= e(app_url('assets/css/portal.css?v=20260728-content-controls-v62.1')) ?>">
+    <link rel="stylesheet" href="<?= e(app_url('assets/css/publishing-center-v66q.css?v=20260731-v66Q')) ?>">
     <?php if($active==='feeds'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/feed-reader.css?v=20260728-content-controls-v62.1')) ?>"><?php endif;?>
     <?php if($active==='inbox'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/unified-inbox.css?v=20260730-v66D')) ?>"><?php endif;?>
     <?php if($active==='syndication'):?><link rel="stylesheet" href="<?= e(app_url('assets/css/syndication-admin.css?v=20260730-v66E')) ?>"><?php endif;?>
@@ -1186,6 +1208,8 @@ function portal_header(string $title, string $active, array $user): void
     data-notification-api="<?= e($notificationApiUrl) ?>"
     data-call-center-api="<?= e($callCenterApiUrl) ?>"
     data-admin-assistant-api="<?= e($adminAssistantApiUrl) ?>"
+    data-portal-active="<?= e($active) ?>"
+    data-portal-modal="<?= isset($_GET['modal']) && $_GET['modal']==='1' ? '1' : '0' ?>"
 >
 <div class="portal-shell">
     <aside class="portal-sidebar <?= $isAdmin ? 'portal-sidebar-admin' : '' ?>" id="portalSidebar">
@@ -1246,7 +1270,7 @@ function portal_header(string $title, string $active, array $user): void
                                         ? app_url('portal/social-posts.php')
                                         : app_url(
                                             'portal/' . $script .
-                                            ($key === 'dashboard' ? '' : '?view=' . $key)
+                                            ($key === 'agent' ? '' : '?view=' . $key)
                                         )) ?>"
                                 ><?= e($label) ?></a>
                             <?php endforeach; ?>
@@ -1299,6 +1323,7 @@ function portal_header(string $title, string $active, array $user): void
             </div>
 
             <div class="portal-header-user">
+                <?php if($isAdmin):?><button class="portal-top-action publishing-center-trigger" type="button" data-publishing-open>Publishing +</button><?php endif;?>
                 <a class="portal-top-action" href="<?= e($callCenterUrl) ?>">
                     <?= $isAdmin ? 'Call Center' : 'Call Us' ?>
                 </a>
@@ -1582,6 +1607,8 @@ function portal_footer(): void
     </main>
 </div>
 
+<?php publishing_center_render_modal(); ?>
+
 <section
     class="portal-confirm-modal"
     data-confirm-modal
@@ -1615,6 +1642,7 @@ function portal_footer(): void
 </section>
 
 <script src="<?= e(app_url('assets/js/portal.js?v=20260728-content-controls-v62.1')) ?>"></script>
+<script src="<?= e(app_url('assets/js/publishing-center-v66q.js?v=20260731-v66Q')) ?>"></script>
 <?php if($active==='feeds'):?><script src="<?= e(app_url('assets/js/feed-reader.js?v=20260728-content-controls-v62.1')) ?>"></script><?php endif;?>
 </body>
 </html>
