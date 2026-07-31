@@ -57,8 +57,8 @@ jobs:
             portal/federated-feed.php api/story-view.php activitypub-story.php \
             cron/process-stories.php assets/css/stories-v66o.css \
             assets/js/stories-v66o.js tests/stories-v66o.php \
-            tests/stories-db-v66o.php .github/workflows/stories-quality.yml \
-            STORIES-SETUP-v66O.md V66O-SCORECARD.md V66O-VALIDATION.txt
+            tests/stories-db-v66o.php STORIES-SETUP-v66O.md \
+            V66O-SCORECARD.md V66O-VALIDATION.txt
           if git diff --cached --quiet; then
             exit 0
           fi
