@@ -61,6 +61,8 @@ function homeserver_connector_capability_available(string $capability): bool
     return $capability === 'message_summary';
 }
 
+$GLOBALS['v66k_homeserver_fail_once'] = false;
+
 function homeserver_connector_request(string $capability, array $payload): array
 {
     if ($capability !== 'message_summary') throw new RuntimeException('Unexpected HomeServer capability.');
@@ -69,6 +71,10 @@ function homeserver_connector_request(string $capability, array $payload): array
     if (($payload['proposal_only'] ?? null) !== true) throw new RuntimeException('The request must be proposal-only.');
     if (($payload['send_allowed'] ?? null) !== false) throw new RuntimeException('The request must deny send authority.');
     if (($payload['tool_execution_allowed'] ?? null) !== false) throw new RuntimeException('The request must deny tool execution.');
+    if (!empty($GLOBALS['v66k_homeserver_fail_once'])) {
+        $GLOBALS['v66k_homeserver_fail_once'] = false;
+        throw new RuntimeException('Synthetic HomeServer transport failure.');
+    }
     return ['ok' => true, 'available' => true, 'summary' => 'Owner-reviewed test proposal.', 'receipt_id' => 'v66k-receipt'];
 }
 
@@ -186,6 +192,27 @@ try {
     }
     v66k_db_assert($activationBlocked, 'Activation must require a current simulation.');
 
+    $nonMatchingRuleId = automation_save_rule(0, [
+        'name' => 'Nonmatching simulation gate',
+        'event_key' => 'system',
+        'source_type' => 'notification',
+        'conditions' => [['field' => 'title', 'operator' => 'contains', 'value' => 'required phrase']],
+        'actions' => [['type' => 'set_priority', 'parameters' => ['value' => 'high']]],
+        'max_executions_per_hour' => 10,
+        'max_executions_per_day' => 100,
+    ], $ownerId);
+    $ruleIds[] = $nonMatchingRuleId;
+    $nonMatchingSimulation = automation_simulate_rule($nonMatchingRuleId, [
+        'event_key' => 'system',
+        'source_type' => 'notification',
+        'priority' => 'normal',
+        'payload' => ['title' => 'Different sample'],
+    ], $ownerId);
+    v66k_db_assert($nonMatchingSimulation['matched'] === false, 'The nonmatching simulation fixture must not match.');
+    $nonMatchingActivationBlocked = false;
+    try { automation_set_rule_status($nonMatchingRuleId, 'active', $ownerId); } catch (RuntimeException) { $nonMatchingActivationBlocked = true; }
+    v66k_db_assert($nonMatchingActivationBlocked, 'A nonmatching simulation must not authorize rule activation.');
+
     $simulation = automation_simulate_rule($ruleId, [
         'event_key' => 'system',
         'source_type' => 'lead',
@@ -278,6 +305,11 @@ try {
     $approvalResult = json_decode((string)$approval['result_json'], true);
     v66k_db_assert((string)$approval['status'] === 'completed', 'The approval status was not finalized.');
     v66k_db_assert(($approvalResult['proposal'] ?? '') === 'Owner-reviewed test proposal.', 'The bounded HomeServer proposal was not retained.');
+    $executionStatement->execute(['event_id' => $eventId, 'rule_id' => $ruleId]);
+    v66k_db_assert((string)$executionStatement->fetch()['status'] === 'executed', 'A completed approval must finalize the parent execution.');
+    $approvalNotice = $pdo->prepare('SELECT COUNT(*) FROM portal_notifications WHERE entity_type="automation_approval" AND recipient_user_id=:recipient_user_id');
+    $approvalNotice->execute(['recipient_user_id' => $ownerId]);
+    v66k_db_assert((int)$approvalNotice->fetchColumn() >= 1, 'Approval requests must create an owner-visible notification.');
 
     automation_process_event(array_merge(
         $pdo->query('SELECT * FROM automation_events WHERE id=' . (int)$eventId)->fetch(),
@@ -287,19 +319,47 @@ try {
     v66k_db_assert((int)$activityStatement->fetchColumn() === 1, 'Event/rule idempotency must prevent duplicate actions.');
 
 
+    $retryEventId = automation_capture_event([
+        'event_key' => 'system',
+        'source_type' => 'lead',
+        'source_id' => 7003,
+        'recipient_user_id' => $ownerId,
+        'category' => 'system',
+        'priority' => 'high',
+        'payload' => [
+            'title' => 'Second lead needs review',
+            'body' => 'Synthetic proposal retry event.',
+            'inbox_source_type' => 'lead',
+            'inbox_source_id' => 7003,
+            'crm_contact_id' => $contactId,
+        ],
+        'dedupe_key' => 'v66k-retry-event-' . $suffix,
+    ]);
+    automation_run(25);
+    $retryExecutionStatement = $pdo->prepare('SELECT * FROM automation_executions WHERE event_id=:event_id AND rule_id=:rule_id');
+    $retryExecutionStatement->execute(['event_id' => $retryEventId, 'rule_id' => $ruleId]);
+    $retryExecution = $retryExecutionStatement->fetch();
+    $retryApprovalStatement = $pdo->prepare('SELECT * FROM automation_approvals WHERE execution_id=:execution_id');
+    $retryApprovalStatement->execute(['execution_id' => (int)$retryExecution['id']]);
+    $retryApproval = $retryApprovalStatement->fetch();
+    $GLOBALS['v66k_homeserver_fail_once'] = true;
+    $failedProposal = automation_resolve_approval((int)$retryApproval['id'], 'approve', $ownerId);
+    v66k_db_assert((string)$failedProposal['status'] === 'failed', 'A HomeServer transport failure must become durable approval failure evidence.');
+    $retryExecutionStatement->execute(['event_id' => $retryEventId, 'rule_id' => $ruleId]);
+    v66k_db_assert((string)$retryExecutionStatement->fetch()['status'] === 'partially_executed', 'A failed proposal must refresh the parent execution status.');
+    automation_retry_approval((int)$retryApproval['id'], $ownerId);
+    $retriedProposal = automation_resolve_approval((int)$retryApproval['id'], 'approve', $ownerId);
+    v66k_db_assert((string)$retriedProposal['status'] === 'completed', 'The retried HomeServer proposal did not complete.');
+
     $pdo->prepare(
         'UPDATE automation_approvals
          SET status="approved",resolved_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 20 MINUTE),result_json=NULL
          WHERE id=:id'
     )->execute(['id' => (int)$retryApproval['id']]);
     $pdo->prepare(
-        'UPDATE automation_action_receipts
-         SET status="approved",error_code=NULL,error_message=NULL
-         WHERE id=:id'
+        'UPDATE automation_action_receipts SET status="approved",error_code=NULL,error_message=NULL WHERE id=:id'
     )->execute(['id' => (int)$retryApproval['action_receipt_id']]);
     v66k_db_assert(automation_recover_interrupted_approvals() === 1, 'Interrupted approved requests must be recovered exactly once.');
-    $retryApprovalStatement->execute(['execution_id' => (int)$retryExecution['id']]);
-    v66k_db_assert((string)$retryApprovalStatement->fetch()['status'] === 'failed', 'Interrupted approval recovery must create retryable failure evidence.');
     automation_retry_approval((int)$retryApproval['id'], $ownerId);
     $restartRetry = automation_resolve_approval((int)$retryApproval['id'], 'approve', $ownerId);
     v66k_db_assert((string)$restartRetry['status'] === 'completed', 'A recovered approval must complete after explicit retry.');
@@ -333,6 +393,10 @@ try {
     $suppressedStatement->execute(['rule_id' => $limitedRuleId]);
     v66k_db_assert((int)$suppressedStatement->fetchColumn() === 1, 'The rule execution limit did not suppress the second trigger.');
 
+    $counterBeforeDryRun = $pdo->prepare('SELECT COALESCE(SUM(execution_count),0) FROM automation_rule_counters WHERE rule_id=:rule_id');
+    $counterBeforeDryRun->execute(['rule_id' => $ruleId]);
+    $liveCountBeforeDryRun = (int)$counterBeforeDryRun->fetchColumn();
+
     automation_update_settings([
         'enabled' => true,
         'dry_run' => true,
@@ -356,6 +420,8 @@ try {
     v66k_db_assert((string)$dryExecution->fetchColumn() === 'simulated', 'Global dry-run must record simulation instead of applying actions.');
     $dryWorkflow = $pdo->query('SELECT COUNT(*) FROM unified_inbox_workflow WHERE source_type="lead" AND source_id=7002')->fetchColumn();
     v66k_db_assert((int)$dryWorkflow === 0, 'Global dry-run must not create workflow state.');
+    $counterBeforeDryRun->execute(['rule_id' => $ruleId]);
+    v66k_db_assert((int)$counterBeforeDryRun->fetchColumn() === $liveCountBeforeDryRun, 'Global dry-run must not consume live rule limits.');
 
     $pdo->prepare(
         'INSERT INTO automation_events
@@ -374,14 +440,60 @@ try {
     $stale = $staleStatement->fetch();
     v66k_db_assert((string)$stale['status'] === 'failed' && (string)$stale['last_error_code'] === 'lease_expired', 'Expired leases at the attempt limit must become durable failures.');
 
+
+    automation_update_settings([
+        'enabled' => true,
+        'dry_run' => false,
+        'worker_batch_size' => 25,
+        'approval_expiry_hours' => 72,
+        'event_retention_days' => 7,
+        'execution_retention_days' => 30,
+    ], $ownerId);
+    $pdo->prepare(
+        'INSERT INTO automation_events
+            (event_uuid,dedupe_key,event_key,source_type,source_id,recipient_user_id,priority,payload_json,occurred_at,status,completed_at,created_at)
+         VALUES (:event_uuid,:dedupe_key,"system","notification",9901,:recipient_user_id,"normal","{}",DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY),"completed",DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY))'
+    )->execute([
+        'event_uuid' => automation_uuid(),
+        'dedupe_key' => hash('sha256', 'v66k-retention-event-' . $suffix),
+        'recipient_user_id' => $ownerId,
+    ]);
+    $retentionEventId = (int)$pdo->lastInsertId();
+    $pdo->prepare(
+        'INSERT INTO automation_executions
+            (execution_uuid,event_id,rule_id,idempotency_key,status,matched_json,proposed_actions_json,applied_actions_json,completed_at,created_at)
+         VALUES (:execution_uuid,:event_id,:rule_id,:idempotency_key,"executed","{}","[]","[]",DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY))'
+    )->execute([
+        'execution_uuid' => automation_uuid(),
+        'event_id' => $retentionEventId,
+        'rule_id' => $ruleId,
+        'idempotency_key' => hash('sha256', 'v66k-retention-execution-' . $suffix),
+    ]);
+    $retentionExecutionId = (int)$pdo->lastInsertId();
+    $pdo->prepare(
+        'INSERT INTO automation_action_receipts (execution_id,action_index,action_type,status,before_json,after_json,created_at)
+         VALUES (:execution_id,0,"set_priority","applied","{}","{}",DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY))'
+    )->execute(['execution_id' => $retentionExecutionId]);
+    $retentionReceiptId = (int)$pdo->lastInsertId();
+    automation_cleanup();
+    $retentionEventStatement = $pdo->prepare('SELECT COUNT(*) FROM automation_events WHERE id=:id');
+    $retentionEventStatement->execute(['id' => $retentionEventId]);
+    v66k_db_assert((int)$retentionEventStatement->fetchColumn() === 0, 'Expired event evidence should follow the event retention policy.');
+    $retentionExecutionStatement = $pdo->prepare('SELECT event_id FROM automation_executions WHERE id=:id');
+    $retentionExecutionStatement->execute(['id' => $retentionExecutionId]);
+    v66k_db_assert($retentionExecutionStatement->fetchColumn() === null, 'Execution evidence must survive event cleanup with a null event link.');
+    $retentionReceiptStatement = $pdo->prepare('SELECT COUNT(*) FROM automation_action_receipts WHERE id=:id');
+    $retentionReceiptStatement->execute(['id' => $retentionReceiptId]);
+    v66k_db_assert((int)$retentionReceiptStatement->fetchColumn() === 1, 'Action receipts must survive the shorter event-retention window.');
+
     fwrite(STDOUT, "Automation Rules v66K database integration passed.\n");
 } finally {
     $pdo->prepare('DELETE FROM portal_notifications WHERE recipient_user_id IN (:owner_id,:assignee_id)')->execute(['owner_id' => $ownerId, 'assignee_id' => $assigneeId]);
     $pdo->prepare('DELETE FROM automation_events WHERE recipient_user_id IN (:owner_id,:assignee_id)')->execute(['owner_id' => $ownerId, 'assignee_id' => $assigneeId]);
     foreach (array_reverse($ruleIds) as $ruleId) $pdo->prepare('DELETE FROM automation_rules WHERE id=:id')->execute(['id' => $ruleId]);
-    $pdo->prepare('DELETE FROM unified_inbox_workflow WHERE source_type IN ("lead","notification") AND source_id IN (7001,7002,8101,8102)')->execute();
+    $pdo->prepare('DELETE FROM unified_inbox_workflow WHERE source_type IN ("lead","notification") AND source_id IN (7001,7002,7003,8101,8102)')->execute();
     $pdo->prepare('DELETE FROM crm_activities WHERE contact_id=:contact_id')->execute(['contact_id' => $contactId]);
     $pdo->prepare('DELETE FROM crm_contacts WHERE id=:id')->execute(['id' => $contactId]);
     $pdo->prepare('DELETE FROM users WHERE id IN (:owner_id,:assignee_id)')->execute(['owner_id' => $ownerId, 'assignee_id' => $assigneeId]);
-    $pdo->exec('UPDATE automation_settings SET enabled=0,dry_run=1,updated_by_user_id=NULL WHERE id=1');
+    $pdo->exec('UPDATE automation_settings SET enabled=0,dry_run=1,event_retention_days=90,execution_retention_days=365,updated_by_user_id=NULL WHERE id=1');
 }

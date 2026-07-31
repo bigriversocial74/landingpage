@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS automation_executions (
     UNIQUE KEY uq_automation_executions_event_rule (event_id,rule_id),
     KEY idx_automation_executions_status (status,created_at),
     CONSTRAINT fk_automation_executions_event
-        FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL,
     CONSTRAINT fk_automation_executions_rule
         FOREIGN KEY (rule_id) REFERENCES automation_rules(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -113,13 +113,43 @@ v66k_assert(str_contains($core, 'automation_rule_has_current_simulation'), 'Acti
 v66k_assert(str_contains($core, 'uq_automation_executions_event_rule') || str_contains($migration, 'uq_automation_executions_event_rule'), 'Event/rule execution idempotency must be permanent.');
 v66k_assert(str_contains($core, "str_starts_with(\$entityType, 'automation_')"), 'Automation-created notifications must not recursively create automation events.');
 v66k_assert(str_contains($admin, 'automation_emergency_disable'), 'The Action Center must expose an emergency disable.');
-v66k_assert(str_contains($admin, 'Run a current simulation before activating this rule.'), 'The Action Center must enforce simulation before activation.');
+v66k_assert(str_contains($core, '($evidence[\'matched\'] ?? null) === true'), 'Only a matching current simulation may authorize activation.');
+v66k_assert(str_contains($admin, "array_replace($settings, ['enabled' => false])"), 'Emergency disable must replace the enabled setting.');
+v66k_assert(!str_contains($admin, 'DELETE FROM automation_rules'), 'Rule and audit history must not be hard-deleted.');
+v66k_assert(strpos($core, 'if ($dryRun)') < strpos($core, 'if (!automation_rule_limit_reserve($rule))'), 'Dry-run must not consume live execution limits.');
+v66k_assert(str_contains($core, 'automation_refresh_execution_status'), 'Approval outcomes must refresh parent execution state.');
+v66k_assert(str_contains($core, 'automation_retry_approval'), 'Failed proposal requests must have a bounded retry path.');
+v66k_assert(str_contains($core, 'automation_notify_owner'), 'Approvals and failures must be visible to the owner.');
+v66k_assert(str_contains($core, 'automation_expire_rules'), 'Expired active rules must be closed automatically.');
+v66k_assert(str_contains($migration, 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL'), 'Event cleanup must preserve longer-lived execution evidence.');
 v66k_assert(str_contains($worker, "PHP_SAPI !== 'cli'"), 'The automation worker must be CLI-only.');
 v66k_assert(!preg_match("#https?://[^\\s\"']+\\.js#i", $javascript), 'Automation JavaScript must not load third-party scripts.');
 v66k_assert(str_contains($css, '.automation-mode.off'), 'The Action Center must visibly distinguish disabled mode.');
 
-v66k_assert(!is_file($root . '/tools/apply-automation-rules-v66k.py'), 'The temporary v66K integration script must be removed.');
-v66k_assert(!is_file($root . '/.github/workflows/apply-automation-rules-v66k.yml'), 'The temporary v66K integration workflow must be removed.');
+$temporaryPaths = [
+    'tools/apply-automation-rules-v66k.py',
+    'tools/audit-retention-finalize-automation-rules-v66k.py',
+    'tools/finalize-automation-rules-v66k.py',
+    'tools/policy-finalize-automation-rules-v66k.py',
+    'tools/restart-safety-finalize-automation-rules-v66k.py',
+    'tools/restart-safety-finalize-automation-rules-v66k-v2.py',
+    'tools/restart-safety-finalize-automation-rules-v66k-v3.py',
+    'tools/harden-automation-rules-v66k-production.py',
+    'tools/harden-automation-rules-v66k-production-v2.py',
+    'tools/harden-automation-rules-v66k-production-v3.py',
+    '.github/workflows/apply-automation-rules-v66k.yml',
+    '.github/workflows/apply-complete-automation-rules-v66k-final.yml',
+    '.github/workflows/apply-complete-automation-rules-v66k-final-macos.yml',
+    '.github/workflows/audit-retention-finalize-automation-rules-v66k.yml',
+    '.github/workflows/finalize-automation-rules-v66k.yml',
+    '.github/workflows/policy-finalize-automation-rules-v66k.yml',
+    '.github/workflows/restart-safety-finalize-automation-rules-v66k.yml',
+    '.github/workflows/restart-safety-finalize-automation-rules-v66k-macos.yml',
+    '.github/workflows/harden-automation-rules-v66k-production.yml',
+];
+foreach ($temporaryPaths as $temporaryPath) {
+    v66k_assert(!is_file($root . '/' . $temporaryPath), 'Temporary v66K controller remains: ' . $temporaryPath);
+}
 
 v66k_assert(str_contains($core, 'automation_recover_interrupted_approvals'), 'Interrupted approved requests must become retryable failure evidence.');
 v66k_assert(str_contains($core, 'WHERE id=:id AND status="approved"'), 'HomeServer results must use compare-and-set finalization.');

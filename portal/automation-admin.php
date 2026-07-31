@@ -125,7 +125,7 @@ function automation_handle_admin_action(string $action, array $user): bool
 
     if ($action === 'automation_emergency_disable') {
         $settings = automation_settings();
-        automation_update_settings($settings + ['enabled' => false], $userId);
+        automation_update_settings(array_replace($settings, ['enabled' => false]), $userId);
         db()->exec('UPDATE automation_rules SET status="paused" WHERE status="active"');
         if (function_exists('log_activity')) log_activity('automation_emergency_disabled', 'automation_settings', 1);
         flash('success', 'Automation was disabled and every active rule was paused.');
@@ -188,17 +188,6 @@ function automation_handle_admin_action(string $action, array $user): bool
         automation_admin_redirect('rules', ['edit' => $ruleId]);
     }
 
-    if ($action === 'automation_delete_rule') {
-        $ruleId = int_input('rule_id');
-        $rule = automation_rule($ruleId);
-        if (!$rule) throw new RuntimeException('Automation rule not found.');
-        if (!in_array((string)$rule['status'], ['draft', 'disabled'], true)) throw new RuntimeException('Only draft or disabled rules can be deleted.');
-        db()->prepare('DELETE FROM automation_rules WHERE id=:id')->execute(['id' => $ruleId]);
-        if (function_exists('log_activity')) log_activity('automation_rule_deleted', 'automation_rule', $ruleId);
-        flash('success', 'Automation rule deleted.');
-        automation_admin_redirect('rules');
-    }
-
     if ($action === 'automation_process_queue') {
         $result = automation_run(int_input('limit', 25));
         flash('success', sprintf('Automation processed %d event(s): %d completed, %d failed.', $result['processed'] ?? 0, $result['completed'] ?? 0, $result['failed'] ?? 0));
@@ -214,6 +203,12 @@ function automation_handle_admin_action(string $action, array $user): bool
     if ($action === 'automation_resolve_approval') {
         $result = automation_resolve_approval(int_input('approval_id'), input('decision'), $userId);
         flash($result['status'] === 'completed' ? 'success' : ($result['status'] === 'rejected' ? 'success' : 'warning'), 'Approval status: ' . status_label((string)$result['status']) . '.');
+        automation_admin_redirect('approvals');
+    }
+
+    if ($action === 'automation_retry_approval') {
+        automation_retry_approval(int_input('approval_id'), $userId);
+        flash('success', 'The failed HomeServer proposal returned to the approval queue.');
         automation_admin_redirect('approvals');
     }
 
@@ -354,7 +349,7 @@ function automation_admin_render_rule_form(array $rule, array $rules, array $adm
             if ((string)$rule['status'] === $status) continue;
             echo '<form class="automation-inline-form" method="post">' . csrf_field() . '<input type="hidden" name="action" value="automation_set_rule_status"><input type="hidden" name="rule_id" value="' . (int)$rule['id'] . '"><input type="hidden" name="status" value="' . e($status) . '"><button class="automation-button' . ($status === 'active' ? ' primary' : '') . '" type="submit">' . e($label) . '</button></form>';
         }
-        if (in_array((string)$rule['status'], ['draft', 'disabled'], true)) echo '<form class="automation-inline-form" method="post" data-confirm-message="Permanently delete this rule and its audit history?">' . csrf_field() . '<input type="hidden" name="action" value="automation_delete_rule"><input type="hidden" name="rule_id" value="' . (int)$rule['id'] . '"><button class="automation-button danger" type="submit">Delete</button></form>';
+        echo '<span class="automation-rights">Rule versions and execution history are retained. Disable a rule instead of deleting it.</span>';
         echo '</div>';
     }
     echo '</div></section>';
@@ -386,10 +381,17 @@ function automation_admin_render_approvals(): void
 {
     $approvals = automation_pending_approvals();
     echo '<section class="automation-card"><header class="automation-card-header"><h2>Approval queue</h2><span class="automation-rights">HomeServer proposals only; no send or tool authority</span></header><div class="automation-list">';
-    if (!$approvals) echo '<div class="automation-empty">No approval requests are waiting.</div>';
+    if (!$approvals) echo '<div class="automation-empty">No approval requests require review or retry.</div>';
     foreach ($approvals as $approval) {
         $request = automation_json_decode((string)$approval['request_json'], []);
-        echo '<article class="automation-row"><div><h3>' . e($approval['rule_name']) . '</h3><p>' . e(status_label((string)$approval['capability'])) . ' · ' . e(status_label((string)($approval['event_key'] ?? 'event'))) . '</p><div class="automation-row-meta">' . automation_admin_status_chip((string)$approval['status']) . '<span class="automation-chip">Expires ' . e(format_datetime((string)$approval['expires_at'])) . '</span></div><details style="margin-top:10px"><summary>Review bounded request</summary><code class="automation-code">' . e(json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</code></details></div><div class="automation-actions"><form method="post">' . csrf_field() . '<input type="hidden" name="action" value="automation_resolve_approval"><input type="hidden" name="approval_id" value="' . (int)$approval['id'] . '"><input type="hidden" name="decision" value="approve"><button class="automation-button primary small" type="submit">Approve proposal</button></form><form method="post">' . csrf_field() . '<input type="hidden" name="action" value="automation_resolve_approval"><input type="hidden" name="approval_id" value="' . (int)$approval['id'] . '"><input type="hidden" name="decision" value="reject"><button class="automation-button danger small" type="submit">Reject</button></form></div></article>';
+        $approvalActions = '<div class="automation-actions">';
+        if ((string)$approval['status'] === 'pending') {
+            $approvalActions .= '<form method="post">' . csrf_field() . '<input type="hidden" name="action" value="automation_resolve_approval"><input type="hidden" name="approval_id" value="' . (int)$approval['id'] . '"><input type="hidden" name="decision" value="approve"><button class="automation-button primary small" type="submit">Approve proposal</button></form><form method="post">' . csrf_field() . '<input type="hidden" name="action" value="automation_resolve_approval"><input type="hidden" name="approval_id" value="' . (int)$approval['id'] . '"><input type="hidden" name="decision" value="reject"><button class="automation-button danger small" type="submit">Reject</button></form>';
+        } else {
+            $approvalActions .= '<form method="post">' . csrf_field() . '<input type="hidden" name="action" value="automation_retry_approval"><input type="hidden" name="approval_id" value="' . (int)$approval['id'] . '"><button class="automation-button small" type="submit">Return to approval queue</button></form>';
+        }
+        $approvalActions .= '</div>';
+        echo '<article class="automation-row"><div><h3>' . e($approval['rule_name']) . '</h3><p>' . e(status_label((string)$approval['capability'])) . ' · ' . e(status_label((string)($approval['event_key'] ?? 'event'))) . '</p><div class="automation-row-meta">' . automation_admin_status_chip((string)$approval['status']) . '<span class="automation-chip">Expires ' . e(format_datetime((string)$approval['expires_at'])) . '</span></div><details style="margin-top:10px"><summary>Review bounded request</summary><code class="automation-code">' . e(json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</code></details></div>' . $approvalActions . '</article>';
     }
     echo '</div></section>';
 }

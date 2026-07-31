@@ -674,11 +674,14 @@ function automation_simulation_key(array $rule): string
 function automation_rule_has_current_simulation(array $rule): bool
 {
     $statement = db()->prepare(
-        'SELECT id FROM automation_executions
+        'SELECT matched_json FROM automation_executions
          WHERE rule_id=:rule_id AND idempotency_key=:idempotency_key AND status="simulated" LIMIT 1'
     );
     $statement->execute(['rule_id' => (int)$rule['id'], 'idempotency_key' => automation_simulation_key($rule)]);
-    return (bool)$statement->fetchColumn();
+    $matched = $statement->fetchColumn();
+    if ($matched === false) return false;
+    $evidence = automation_json_decode((string)$matched, []);
+    return is_array($evidence) && ($evidence['matched'] ?? null) === true;
 }
 
 function automation_simulate_rule(int $ruleId, array $sample, int $userId): array
@@ -720,8 +723,11 @@ function automation_set_rule_status(int $ruleId, string $status, int $userId): v
     if (!in_array($status, ['draft','active','paused','disabled'], true)) throw new RuntimeException('Invalid rule status.');
     $rule = automation_rule($ruleId);
     if (!$rule) throw new RuntimeException('Automation rule not found.');
+    if ($status === 'active' && !empty($rule['expires_at']) && strtotime((string)$rule['expires_at']) <= time()) {
+        throw new RuntimeException('An expired rule cannot be activated.');
+    }
     if ($status === 'active' && !automation_rule_has_current_simulation($rule)) {
-        throw new RuntimeException('Run a current simulation before activating this rule.');
+        throw new RuntimeException('Run a matching current simulation before activating this rule.');
     }
     db()->prepare('UPDATE automation_rules SET status=:status,updated_by_user_id=:user_id WHERE id=:id')
         ->execute(['status' => $status, 'user_id' => $userId, 'id' => $ruleId]);
@@ -801,6 +807,71 @@ function automation_ensure_workflow(array $event): array
     $row = $statement->fetch();
     if (!$row) throw new RuntimeException('Unable to initialize the Unified Inbox workflow target.');
     return $row;
+}
+
+function automation_owner_recipient(array $event): int
+{
+    $candidate = automation_active_admin_or_null((int)($event['recipient_user_id'] ?? 0));
+    if ($candidate !== null) return $candidate;
+    try {
+        $id = db()->query('SELECT id FROM users WHERE role="admin" AND status="active" ORDER BY id LIMIT 1')->fetchColumn();
+        return $id ? (int)$id : 0;
+    } catch (Throwable) {
+        return 0;
+    }
+}
+
+function automation_notify_owner(
+    array $event,
+    string $title,
+    string $body,
+    string $entityType,
+    int $entityId,
+    string $priority = 'high'
+): int {
+    $recipientId = automation_owner_recipient($event);
+    if ($recipientId <= 0) return 0;
+    try {
+        if (!function_exists('notification_create')) require_once __DIR__ . '/notifications.php';
+        return notification_create(
+            $recipientId,
+            'system',
+            automation_clean_text($title, 190),
+            automation_clean_text($body, 1000),
+            'portal/admin.php?view=automation',
+            $entityType,
+            $entityId,
+            $priority
+        );
+    } catch (Throwable $exception) {
+        error_log('North Mountain Media automation owner notification failed: ' . $exception->getMessage());
+        return 0;
+    }
+}
+
+function automation_refresh_execution_status(int $executionId): string
+{
+    $statement = db()->prepare('SELECT status FROM automation_action_receipts WHERE execution_id=:execution_id ORDER BY action_index');
+    $statement->execute(['execution_id' => $executionId]);
+    $statuses = array_map('strval', array_column($statement->fetchAll(), 'status'));
+    if (!$statuses) return 'failed';
+    $pending = count(array_filter($statuses, static fn(string $status): bool => in_array($status, ['awaiting_approval', 'approved'], true)));
+    $failed = count(array_filter($statuses, static fn(string $status): bool => $status === 'failed'));
+    $applied = count(array_filter($statuses, static fn(string $status): bool => $status === 'applied'));
+    if ($pending > 0) $status = 'awaiting_approval';
+    elseif ($failed > 0) $status = $applied > 0 ? 'partially_executed' : 'failed';
+    else $status = 'executed';
+    db()->prepare(
+        'UPDATE automation_executions
+         SET status=:status,error_code=:error_code,error_message=:error_message,completed_at=UTC_TIMESTAMP()
+         WHERE id=:id'
+    )->execute([
+        'status' => $status,
+        'error_code' => $failed > 0 ? 'action_failure' : null,
+        'error_message' => $failed > 0 ? $failed . ' automation action(s) failed.' : null,
+        'id' => $executionId,
+    ]);
+    return $status;
 }
 
 function automation_apply_action(array $event, array $action, int $executionId, int $actionIndex): array
@@ -940,6 +1011,15 @@ function automation_apply_action(array $event, array $action, int $executionId, 
             'request_json' => automation_json_encode($after['approval_request']),
             'expires_at' => (string)$after['expires_at'],
         ]);
+        $approvalId = (int)db()->lastInsertId();
+        automation_notify_owner(
+            $event,
+            'Automation approval required',
+            'A HomeServer proposal is waiting for explicit owner approval.',
+            'automation_approval',
+            $approvalId,
+            'high'
+        );
     }
     return ['status' => $status, 'type' => $type, 'before' => $before, 'after' => $after];
 }
@@ -948,13 +1028,13 @@ function automation_execution_insert(array $event, array $rule, string $status, 
 {
     $eventId = (int)($event['id'] ?? 0);
     $key = hash('sha256', 'event|' . $eventId . '|rule|' . (int)$rule['id']);
-    db()->prepare(
-        'INSERT INTO automation_executions
+    $statement = db()->prepare(
+        'INSERT IGNORE INTO automation_executions
             (execution_uuid,event_id,rule_id,idempotency_key,status,matched_json,proposed_actions_json,applied_actions_json)
          VALUES
-            (:execution_uuid,:event_id,:rule_id,:idempotency_key,:status,:matched_json,:proposed_actions_json,"[]")
-         ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)'
-    )->execute([
+            (:execution_uuid,:event_id,:rule_id,:idempotency_key,:status,:matched_json,:proposed_actions_json,"[]")'
+    );
+    $statement->execute([
         'execution_uuid' => automation_uuid(),
         'event_id' => $eventId > 0 ? $eventId : null,
         'rule_id' => (int)$rule['id'],
@@ -963,6 +1043,7 @@ function automation_execution_insert(array $event, array $rule, string $status, 
         'matched_json' => automation_json_encode($matched),
         'proposed_actions_json' => automation_json_encode($actions),
     ]);
+    if ($statement->rowCount() !== 1) return 0;
     return (int)db()->lastInsertId();
 }
 
@@ -973,21 +1054,25 @@ function automation_process_rule(array $event, array $rule, bool $dryRun): array
     $actions = automation_json_decode((string)$rule['actions_json'], []);
     if (!$matched) {
         $executionId = automation_execution_insert($event, $rule, 'no_match', ['matched' => false, 'conditions' => $conditionResults], $actions);
+        if ($executionId <= 0) return ['matched' => false, 'stop' => false, 'status' => 'idempotent'];
         db()->prepare('UPDATE automation_executions SET completed_at=UTC_TIMESTAMP() WHERE id=:id')->execute(['id' => $executionId]);
         return ['matched' => false, 'stop' => false, 'status' => 'no_match'];
     }
-    if (!automation_rule_limit_reserve($rule)) {
-        $executionId = automation_execution_insert($event, $rule, 'suppressed', ['matched' => true, 'conditions' => $conditionResults, 'reason' => 'execution_limit'], $actions);
-        db()->prepare('UPDATE automation_executions SET error_code="execution_limit",error_message="The rule execution limit was reached.",completed_at=UTC_TIMESTAMP() WHERE id=:id')->execute(['id' => $executionId]);
-        return ['matched' => true, 'stop' => !empty($rule['stop_processing']), 'status' => 'suppressed'];
-    }
     if ($dryRun) {
         $executionId = automation_execution_insert($event, $rule, 'simulated', ['matched' => true, 'conditions' => $conditionResults, 'global_dry_run' => true], $actions);
+        if ($executionId <= 0) return ['matched' => true, 'stop' => false, 'status' => 'idempotent'];
         db()->prepare('UPDATE automation_executions SET completed_at=UTC_TIMESTAMP() WHERE id=:id')->execute(['id' => $executionId]);
         return ['matched' => true, 'stop' => !empty($rule['stop_processing']), 'status' => 'simulated'];
     }
+    if (!automation_rule_limit_reserve($rule)) {
+        $executionId = automation_execution_insert($event, $rule, 'suppressed', ['matched' => true, 'conditions' => $conditionResults, 'reason' => 'execution_limit'], $actions);
+        if ($executionId <= 0) return ['matched' => true, 'stop' => false, 'status' => 'idempotent'];
+        db()->prepare('UPDATE automation_executions SET error_code="execution_limit",error_message="The rule execution limit was reached.",completed_at=UTC_TIMESTAMP() WHERE id=:id')->execute(['id' => $executionId]);
+        return ['matched' => true, 'stop' => !empty($rule['stop_processing']), 'status' => 'suppressed'];
+    }
 
     $executionId = automation_execution_insert($event, $rule, 'matched', ['matched' => true, 'conditions' => $conditionResults], $actions);
+    if ($executionId <= 0) return ['matched' => true, 'stop' => false, 'status' => 'idempotent'];
     $applied = [];
     $failures = 0;
     $approvals = 0;
@@ -1027,6 +1112,16 @@ function automation_process_rule(array $event, array $rule, bool $dryRun): array
         'error_message' => $failures > 0 ? $failures . ' automation action(s) failed.' : null,
         'id' => $executionId,
     ]);
+    if ($failures > 0) {
+        automation_notify_owner(
+            $event,
+            'Automation action failed',
+            $failures . ' action(s) failed. Review the immutable execution receipts.',
+            'automation_execution_failure',
+            $executionId,
+            'high'
+        );
+    }
     db()->prepare(
         'UPDATE automation_rules SET last_triggered_at=UTC_TIMESTAMP(),execution_count=execution_count+1 WHERE id=:id'
     )->execute(['id' => (int)$rule['id']]);
@@ -1144,6 +1239,7 @@ function automation_process_event(array $event): array
 function automation_run(int $limit = 0): array
 {
     if (!automation_schema_available()) return ['processed' => 0, 'completed' => 0, 'failed' => 0];
+    automation_expire_rules();
     $settings = automation_settings();
     if (!$settings['enabled']) return ['processed' => 0, 'completed' => 0, 'failed' => 0, 'disabled' => true];
     $events = automation_claim_events($limit > 0 ? $limit : $settings['worker_batch_size']);
@@ -1157,6 +1253,18 @@ function automation_run(int $limit = 0): array
     automation_expire_approvals();
     automation_cleanup();
     return $summary;
+}
+
+function automation_expire_rules(): int
+{
+    if (!automation_schema_available()) return 0;
+    $statement = db()->prepare(
+        'UPDATE automation_rules
+         SET status="expired"
+         WHERE status="active" AND expires_at IS NOT NULL AND expires_at<=UTC_TIMESTAMP()'
+    );
+    $statement->execute();
+    return $statement->rowCount();
 }
 
 function automation_recover_interrupted_approvals(): int
@@ -1200,6 +1308,10 @@ function automation_expire_approvals(): int
 {
     if (!automation_schema_available()) return 0;
     automation_recover_interrupted_approvals();
+    $executionIds = db()->query(
+        'SELECT DISTINCT execution_id FROM automation_approvals
+         WHERE status="pending" AND expires_at<=UTC_TIMESTAMP()'
+    )->fetchAll(PDO::FETCH_COLUMN);
     $statement = db()->prepare(
         'UPDATE automation_approvals approval
          JOIN automation_action_receipts receipt ON receipt.id=approval.action_receipt_id
@@ -1208,6 +1320,7 @@ function automation_expire_approvals(): int
          WHERE approval.status="pending" AND approval.expires_at<=UTC_TIMESTAMP()'
     );
     $statement->execute();
+    foreach ($executionIds as $executionId) automation_refresh_execution_status((int)$executionId);
     return $statement->rowCount();
 }
 
@@ -1218,22 +1331,27 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
     $pdo->beginTransaction();
     try {
         $statement = $pdo->prepare(
-            'SELECT approval.*,receipt.action_type
+            'SELECT approval.*,receipt.action_type,execution.event_id,
+                    event.event_key,event.source_type,event.source_id,event.recipient_user_id,
+                    event.priority,event.payload_json,event.occurred_at
              FROM automation_approvals approval
              JOIN automation_action_receipts receipt ON receipt.id=approval.action_receipt_id
+             JOIN automation_executions execution ON execution.id=approval.execution_id
+             LEFT JOIN automation_events event ON event.id=execution.event_id
              WHERE approval.id=:id FOR UPDATE'
         );
         $statement->execute(['id' => $approvalId]);
         $approval = $statement->fetch();
         if (!$approval) throw new RuntimeException('Approval request not found.');
-        if ((string)$approval['status'] !== 'pending') throw new RuntimeException('This approval request has already been resolved.');
+        if ((string)$approval['status'] !== 'pending') throw new RuntimeException('This approval request is not pending.');
         if (strtotime((string)$approval['expires_at']) <= time()) throw new RuntimeException('This approval request has expired.');
         if ($decision === 'reject') {
             $pdo->prepare('UPDATE automation_approvals SET status="rejected",resolved_by_user_id=:user_id,resolved_at=UTC_TIMESTAMP() WHERE id=:id')
                 ->execute(['user_id' => $userId, 'id' => $approvalId]);
-            $pdo->prepare('UPDATE automation_action_receipts SET status="rejected",approved_by_user_id=:user_id,approved_at=UTC_TIMESTAMP() WHERE id=:id')
+            $pdo->prepare('UPDATE automation_action_receipts SET status="rejected",approved_by_user_id=:user_id,approved_at=UTC_TIMESTAMP(),error_code=NULL,error_message=NULL WHERE id=:id')
                 ->execute(['user_id' => $userId, 'id' => (int)$approval['action_receipt_id']]);
             $pdo->commit();
+            automation_refresh_execution_status((int)$approval['execution_id']);
             return ['status' => 'rejected'];
         }
         $request = automation_json_decode((string)$approval['request_json'], []);
@@ -1245,13 +1363,16 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
         if (($request['proposal_only'] ?? null) !== true || ($request['send_allowed'] ?? null) !== false || ($request['tool_execution_allowed'] ?? null) !== false) {
             throw new RuntimeException('The HomeServer approval boundary is invalid.');
         }
-        $pdo->prepare('UPDATE automation_approvals SET status="approved",resolved_by_user_id=:user_id,resolved_at=UTC_TIMESTAMP() WHERE id=:id')
+        $pdo->prepare('UPDATE automation_approvals SET status="approved",resolved_by_user_id=:user_id,resolved_at=UTC_TIMESTAMP(),result_json=NULL WHERE id=:id')
             ->execute(['user_id' => $userId, 'id' => $approvalId]);
-        $pdo->prepare('UPDATE automation_action_receipts SET status="approved",approved_by_user_id=:user_id,approved_at=UTC_TIMESTAMP() WHERE id=:id')
+        $pdo->prepare('UPDATE automation_action_receipts SET status="approved",approved_by_user_id=:user_id,approved_at=UTC_TIMESTAMP(),error_code=NULL,error_message=NULL WHERE id=:id')
             ->execute(['user_id' => $userId, 'id' => (int)$approval['action_receipt_id']]);
         $pdo->commit();
-
-        $result = homeserver_request($capability, $request);
+        try {
+            $result = homeserver_request($capability, $request);
+        } catch (Throwable $exception) {
+            $result = ['ok' => false, 'available' => false, 'message' => $exception->getMessage()];
+        }
         $safeResult = [
             'ok' => !empty($result['ok']),
             'available' => !empty($result['available']),
@@ -1262,8 +1383,7 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
         ];
         $finalStatus = $safeResult['ok'] ? 'completed' : 'failed';
         $approvalFinalize = db()->prepare(
-            'UPDATE automation_approvals
-             SET status=:status,result_json=:result_json
+            'UPDATE automation_approvals SET status=:status,result_json=:result_json
              WHERE id=:id AND status="approved"'
         );
         $approvalFinalize->execute([
@@ -1271,9 +1391,7 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
             'result_json' => automation_json_encode($safeResult),
             'id' => $approvalId,
         ]);
-        if ($approvalFinalize->rowCount() !== 1) {
-            return ['status' => 'superseded', 'result' => $safeResult];
-        }
+        if ($approvalFinalize->rowCount() !== 1) return ['status' => 'superseded', 'result' => $safeResult];
         db()->prepare('UPDATE automation_action_receipts SET status=:status,after_json=:after_json,error_code=:error_code,error_message=:error_message WHERE id=:id')
             ->execute([
                 'status' => $safeResult['ok'] ? 'applied' : 'failed',
@@ -1282,7 +1400,61 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
                 'error_message' => $safeResult['ok'] ? null : ($safeResult['message'] ?: 'The HomeServer proposal failed.'),
                 'id' => (int)$approval['action_receipt_id'],
             ]);
-        return ['status' => $finalStatus, 'result' => $safeResult];
+        $executionStatus = automation_refresh_execution_status((int)$approval['execution_id']);
+        if (!$safeResult['ok']) {
+            $event = [
+                'event_key' => (string)($approval['event_key'] ?? 'system'),
+                'source_type' => (string)($approval['source_type'] ?? 'automation'),
+                'source_id' => (int)($approval['source_id'] ?? 0),
+                'recipient_user_id' => (int)($approval['recipient_user_id'] ?? 0),
+                'priority' => (string)($approval['priority'] ?? 'high'),
+                'payload_json' => (string)($approval['payload_json'] ?? '{}'),
+                'occurred_at' => (string)($approval['occurred_at'] ?? gmdate('Y-m-d H:i:s')),
+            ];
+            automation_notify_owner(
+                $event,
+                'HomeServer automation proposal failed',
+                $safeResult['message'] ?: 'The approved proposal could not be completed.',
+                'automation_approval_failure',
+                $approvalId,
+                'high'
+            );
+        }
+        return ['status' => $finalStatus, 'execution_status' => $executionStatus, 'result' => $safeResult];
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $exception;
+    }
+}
+
+function automation_retry_approval(int $approvalId, int $userId): void
+{
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $statement = $pdo->prepare('SELECT * FROM automation_approvals WHERE id=:id FOR UPDATE');
+        $statement->execute(['id' => $approvalId]);
+        $approval = $statement->fetch();
+        if (!$approval) throw new RuntimeException('Approval request not found.');
+        if ((string)$approval['status'] !== 'failed') throw new RuntimeException('Only failed proposal requests can be retried.');
+        if (strtotime((string)$approval['expires_at']) <= time()) throw new RuntimeException('This approval request has expired.');
+        $request = automation_json_decode((string)$approval['request_json'], []);
+        if (!is_array($request) || hash('sha256', automation_json_encode($request)) !== (string)$approval['request_hash']) {
+            throw new RuntimeException('The approval request integrity check failed.');
+        }
+        if (($request['proposal_only'] ?? null) !== true || ($request['send_allowed'] ?? null) !== false || ($request['tool_execution_allowed'] ?? null) !== false) {
+            throw new RuntimeException('The HomeServer approval boundary is invalid.');
+        }
+        $pdo->prepare(
+            'UPDATE automation_approvals SET status="pending",result_json=NULL,resolved_by_user_id=NULL,resolved_at=NULL WHERE id=:id'
+        )->execute(['id' => $approvalId]);
+        $pdo->prepare(
+            'UPDATE automation_action_receipts
+             SET status="awaiting_approval",after_json=NULL,error_code=NULL,error_message=NULL,
+                 approved_by_user_id=NULL,approved_at=NULL WHERE id=:id'
+        )->execute(['id' => (int)$approval['action_receipt_id']]);
+        $pdo->commit();
+        automation_refresh_execution_status((int)$approval['execution_id']);
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $exception;
@@ -1291,11 +1463,22 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
 
 function automation_retry_event(int $eventId): void
 {
+    $statement = db()->prepare(
+        'SELECT event.*,(SELECT COUNT(*) FROM automation_executions execution WHERE execution.event_id=event.id) AS execution_total
+         FROM automation_events event WHERE event.id=:id LIMIT 1'
+    );
+    $statement->execute(['id' => $eventId]);
+    $event = $statement->fetch();
+    if (!$event) throw new RuntimeException('Automation event not found.');
+    if (!in_array((string)$event['status'], ['failed','suppressed'], true)) throw new RuntimeException('Only failed or suppressed events can be retried.');
+    if ((int)$event['attempt_count'] >= (int)$event['max_attempts']) throw new RuntimeException('This event has reached its attempt limit.');
+    if ((int)$event['execution_total'] > 0) {
+        throw new RuntimeException('This event already has immutable execution receipts and cannot be replayed. Retry its failed approval or review the execution instead.');
+    }
     db()->prepare(
         'UPDATE automation_events
          SET status="pending",available_at=UTC_TIMESTAMP(),lease_token=NULL,leased_until=NULL,
-             last_error_code=NULL,last_error_message=NULL,completed_at=NULL
-         WHERE id=:id AND status IN ("failed","suppressed") AND attempt_count<max_attempts'
+             last_error_code=NULL,last_error_message=NULL,completed_at=NULL WHERE id=:id'
     )->execute(['id' => $eventId]);
 }
 
@@ -1365,7 +1548,7 @@ function automation_pending_approvals(int $limit = 100): array
          JOIN automation_executions execution ON execution.id=approval.execution_id
          JOIN automation_rules rule ON rule.id=execution.rule_id
          LEFT JOIN automation_events event ON event.id=execution.event_id
-         WHERE approval.status="pending"
-         ORDER BY approval.created_at,approval.id LIMIT ' . $limit
+         WHERE approval.status IN ("pending","failed")
+         ORDER BY FIELD(approval.status,"pending","failed"),approval.created_at,approval.id LIMIT ' . $limit
     )->fetchAll();
 }
