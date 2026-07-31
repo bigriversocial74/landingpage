@@ -121,7 +121,7 @@ portal_header('Federated Timeline', 'communications', $user);
 <div class="ft-shell">
 <section class="ft-panel ft-hero">
 <div><span class="ft-kicker">Private open-social workspace · v66H</span><h2>Your followed network, on your POD.</h2><p>Read verified posts, review direct mentions, save useful entries, and send signed replies, likes, boosts, and Undo activities. Remote media stays link-only.</p></div>
-<div class="ft-hero-actions"><a class="ft-button secondary" href="<?=e(app_url('portal/admin.php?view=federation'))?>">Federation controls</a><a class="ft-button secondary" href="<?=e(app_url('portal/admin.php?view=inbox'))?>">Unified Inbox</a></div>
+<div class="ft-hero-actions"><a class="ft-button secondary" href="<?=e(app_url('portal/admin.php?view=federation'))?>">Federation controls</a><a class="ft-button secondary" href="<?=e(app_url('portal/admin.php?view=delivery'))?>Notification Delivery</a><a class="ft-button secondary" href="<?=e(app_url('portal/admin.php?view=inbox'))?>">Unified Inbox</a></div>
 </section>
 
 <?php if(!$schemaAvailable):?>

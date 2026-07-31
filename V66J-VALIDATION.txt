@@ -1,0 +1,54 @@
+Notification Delivery, Preferences & Escalation v66J
+Validation record
+
+Initial score: 4.0/10
+Implementation score: 10.0/10
+Certified implementation head: 0df9a09ad1e8991cc8cfb00f13a250d14143c40a
+
+Exact-head workflows passed:
+- Notification Delivery Quality — run 30597953565
+- ActivityPub Federation Quality — run 30597953610
+- Federated Interactions Quality — run 30597953547
+- Federated Timeline Quality — run 30597953539
+- Federated Messaging Quality — run 30597953560
+- Public Syndication Quality — run 30597953559
+- Content Interactions Quality — run 30597953512
+- Unified Social Inbox Quality — run 30597953504
+- Feed Reader Media Quality — run 30597953533
+- North Mountain Media Portal Quality — run 30597953553
+- VP3 POD Managed Update v65 — run 30597953515
+- VP3 License Settings Quality — run 30597953584
+
+Dedicated certification included:
+- PHP syntax for product, administrator, API, worker, and test files
+- JavaScript syntax for browser controls and the service worker
+- source, privacy, encryption, authorization, cleanup, and same-origin regressions
+- complete fresh-schema import
+- repeat-safe additive migration import twice
+- live MySQL 8.4 integration
+- live MariaDB 11.4 integration
+- canonical in-app notification continuity
+- external enqueue deduplication and nonblocking failure behavior
+- explicit preference activation
+- metadata-only default payloads
+- per-channel content authorization
+- quiet-hour scheduling and urgent bypass
+- digest scheduling and lease isolation
+- encrypted subscription and VAPID private-key storage
+- stable VAPID identity initialization
+- runtime preference revocation
+- queue claims, leases, retries, and permanent failure evidence
+- failure-notice deduplication
+- inactive-recipient suppression
+- temporary integration and hardening file removal
+
+Operational acceptance not performed by repository CI:
+- production deployment
+- live PHP mail delivery through the target hosting provider
+- real browser Web Push enrollment and endpoint delivery
+- real push endpoint expiration handling
+- real HomeServer notification_alert capability delivery
+- production cron execution
+- authenticated browser review of the administrator workspace
+
+The final documentation head must pass the same twelve-workflow matrix before merge.

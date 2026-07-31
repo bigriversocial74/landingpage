@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/notification-delivery.php';
+
 function notification_create(
     int $recipientUserId,
     string $category,
@@ -46,7 +48,13 @@ function notification_create(
             'priority' => $priority,
         ]);
 
-        return (int)db()->lastInsertId();
+        $notificationId = (int)db()->lastInsertId();
+        try {
+            notification_delivery_enqueue_notification($notificationId);
+        } catch (Throwable $deliveryException) {
+            error_log('North Mountain Media external notification enqueue failed: ' . $deliveryException->getMessage());
+        }
+        return $notificationId;
     } catch (Throwable $exception) {
         error_log('North Mountain Media notification create failed: ' . $exception->getMessage());
         return 0;

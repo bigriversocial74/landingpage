@@ -40,6 +40,9 @@ return [
         'vp3_license_local_secret' => 'replace-with-a-long-random-vp3-license-local-secret',
         // Encrypts the local ActivityPub RSA private key. Keep this private and stable.
         'activitypub_secret' => 'replace-with-a-long-random-activitypub-private-key-secret',
+        // Encrypts Web Push subscriptions and the stable VAPID private key.
+        // Keep it private and stable; rotation requires browser re-enrollment.
+        'notification_delivery_secret' => 'replace-with-a-long-random-notification-delivery-secret',
 
         'session_idle_seconds' => 30 * 60,
         'session_absolute_seconds' => 12 * 60 * 60,

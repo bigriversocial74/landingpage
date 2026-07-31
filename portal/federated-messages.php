@@ -135,7 +135,7 @@ portal_header('Federated Messages', 'communications', $user);
 <div class="fm-shell">
 <section class="fm-panel fm-hero">
     <div><span class="fm-kicker">ActivityPub social messaging · v66I</span><h2>Federated Messages</h2><p class="fm-muted">Signed social messages remain separate from trusted POD Messages. Unknown senders enter requests. Remote media stays link-only.</p></div>
-    <div class="fm-actions"><a class="fm-button secondary" href="<?=e(app_url('portal/pod-messages.php'))?>">Private POD Messages</a><a class="fm-button secondary" href="<?=e(app_url('portal/federated-feed.php'))?>">Federated Timeline</a><a class="fm-button secondary" href="<?=e(app_url('portal/admin.php?view=federation'))?>">Federation controls</a></div>
+    <div class="fm-actions"><a class="fm-button secondary" href="<?=e(app_url('portal/pod-messages.php'))?>">Private POD Messages</a><a class="fm-button secondary" href="<?=e(app_url('portal/federated-feed.php'))?>">Federated Timeline</a><a class="fm-button secondary" href="<?=e(app_url('portal/admin.php?view=federation'))?>">Federation controls</a><a class="fm-button secondary" href="<?=e(app_url('portal/admin.php?view=delivery'))?>Notification Delivery</a></div>
 </section>
 
 <?php if(!$schemaAvailable):?>
