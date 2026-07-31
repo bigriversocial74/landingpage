@@ -1,0 +1,25 @@
+Section 66P — POD Social Post Publisher
+Initial score: 4.0/10
+Target score: 10.0/10
+Status: implementation assembled; exact-head PR certification pending.
+
+Implemented scope:
+- permanent local ActivityPub Note publisher
+- drafts, public publishing, followers-only publishing, edits, deletion, and Tombstones
+- approved-follower delivery through the existing ActivityPub outbox
+- protected same-origin media and HTTPS external-link policy
+- public social feed, public post pages, and ActivityPub Note object pages
+- remote Follow this POD handoff without collecting remote credentials
+- default landing-page blogs/social/tabbed modes
+- visual-builder home-page blogs/social/tabbed modes
+- local published-post section in the federated timeline
+- direct administrator Social Posts navigation
+- existing Blog and RSS behavior retained
+- additive migration and cumulative v66P schema entrypoint
+
+Pending exact-head evidence:
+- POD Social Posts Quality source-quality job
+- POD Social Posts Quality MySQL 8.4 integration job
+- POD Social Posts Quality MariaDB 11.4 integration job
+- retained applicable repository workflows
+- final permanent-diff cleanup confirmation
