@@ -1,0 +1,62 @@
+name: Music Library Mobile Quality
+
+on:
+  pull_request:
+    paths:
+      - 'music-library.php'
+      - 'music-library-preview.php'
+      - 'music-collection.php'
+      - 'music-collection-preview.php'
+      - 'assets/css/music-mobile-upgrade-v66n.css'
+      - 'tests/music-library-mobile-v66n.php'
+      - '.github/workflows/music-library-mobile-quality.yml'
+  push:
+    branches:
+      - fix/music-library-mobile-player-v66n-20260731
+    paths:
+      - 'music-library.php'
+      - 'music-library-preview.php'
+      - 'music-collection.php'
+      - 'music-collection-preview.php'
+      - 'assets/css/music-mobile-upgrade-v66n.css'
+      - 'tests/music-library-mobile-v66n.php'
+      - '.github/workflows/music-library-mobile-quality.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l music-library.php
+          php -l music-library-preview.php
+          php -l music-collection.php
+          php -l music-collection-preview.php
+          php -l tests/music-library-mobile-v66n.php
+      - name: Mobile UI and player contract
+        run: php tests/music-library-mobile-v66n.php
+      - name: CSS structure
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          css = Path('assets/css/music-mobile-upgrade-v66n.css').read_text(encoding='utf-8')
+          if css.count('{') != css.count('}'):
+              raise SystemExit('Unbalanced CSS braces.')
+          if '@media(max-width:820px)' not in css or '@media(max-width:560px)' not in css:
+              raise SystemExit('Required mobile breakpoints are missing.')
+          print('Music Library mobile CSS structure passed.')
+          PY
+      - name: Permanent cleanup contract
+        run: |
+          set -euo pipefail
+          if find . -type f \( -iname '*repair*' -o -iname '*patch*' -o -iname '*payload*' \) | grep -q .; then
+            echo 'Temporary repair or payload files remain.' >&2
+            find . -type f \( -iname '*repair*' -o -iname '*patch*' -o -iname '*payload*' \)
+            exit 1
+          fi
