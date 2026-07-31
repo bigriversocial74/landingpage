@@ -20,6 +20,24 @@ function operations_analytics_table_exists(string $table): bool
     }
 }
 
+function operations_analytics_column_exists(string $table, string $column): bool
+{
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (array_key_exists($key, $cache)) return $cache[$key];
+    if (!preg_match('/^[a-z0-9_]+$/', $table) || !preg_match('/^[a-z0-9_]+$/', $column)) return false;
+    try {
+        $statement = db()->prepare(
+            'SELECT COUNT(*) FROM information_schema.columns
+             WHERE table_schema=DATABASE() AND table_name=:table_name AND column_name=:column_name'
+        );
+        $statement->execute(['table_name' => $table, 'column_name' => $column]);
+        return $cache[$key] = (int)$statement->fetchColumn() === 1;
+    } catch (Throwable) {
+        return $cache[$key] = false;
+    }
+}
+
 function operations_analytics_schema_available(): bool
 {
     foreach ([
@@ -81,87 +99,87 @@ function operations_analytics_metric_catalog(): array
     return [
         'notification.queue.depth' => [
             'family' => 'notification_delivery', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'notification_delivery_queue', 'where' => "status IN ('pending','leased')", 'created_column' => 'created_at',
+            'table' => 'notification_delivery_queue', 'where' => "status IN ('pending','leased')", 'columns' => ['status','created_at'], 'created_column' => 'created_at',
         ],
         'notification.queue.oldest_minutes' => [
             'family' => 'notification_delivery', 'unit' => 'minutes', 'kind' => 'oldest_minutes',
-            'table' => 'notification_delivery_queue', 'where' => "status IN ('pending','leased')", 'time_column' => 'created_at',
+            'table' => 'notification_delivery_queue', 'where' => "status IN ('pending','leased')", 'columns' => ['status','created_at'], 'time_column' => 'created_at',
         ],
         'notification.delivery.sent' => [
             'family' => 'notification_delivery', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'notification_delivery_queue', 'where' => "status='sent'", 'time_column' => 'sent_at',
+            'table' => 'notification_delivery_queue', 'where' => "status='sent'", 'columns' => ['status','sent_at'], 'time_column' => 'sent_at',
         ],
         'notification.delivery.failed' => [
             'family' => 'notification_delivery', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'notification_delivery_queue', 'where' => "status='failed'", 'time_column' => 'updated_at',
+            'table' => 'notification_delivery_queue', 'where' => "status='failed'", 'columns' => ['status','updated_at'], 'time_column' => 'updated_at',
         ],
         'notification.delivery.suppressed' => [
             'family' => 'notification_delivery', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'notification_delivery_queue', 'where' => "status='suppressed'", 'time_column' => 'updated_at',
+            'table' => 'notification_delivery_queue', 'where' => "status='suppressed'", 'columns' => ['status','updated_at'], 'time_column' => 'updated_at',
         ],
         'notification.delivery.retry_attempts' => [
             'family' => 'notification_delivery', 'unit' => 'count', 'kind' => 'window_sum',
-            'table' => 'notification_delivery_queue', 'where' => 'attempt_count>0', 'time_column' => 'updated_at', 'value_column' => 'attempt_count',
+            'table' => 'notification_delivery_queue', 'where' => 'attempt_count>0', 'columns' => ['attempt_count','updated_at'], 'time_column' => 'updated_at', 'value_column' => 'attempt_count',
         ],
         'activitypub.delivery.depth' => [
             'family' => 'activitypub', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'activitypub_deliveries', 'where' => "status IN ('pending','delivering')", 'created_column' => 'created_at',
+            'table' => 'activitypub_deliveries', 'where' => "status IN ('pending','delivering')", 'columns' => ['status','created_at'], 'created_column' => 'created_at',
         ],
         'activitypub.delivery.oldest_minutes' => [
             'family' => 'activitypub', 'unit' => 'minutes', 'kind' => 'oldest_minutes',
-            'table' => 'activitypub_deliveries', 'where' => "status IN ('pending','delivering')", 'time_column' => 'created_at',
+            'table' => 'activitypub_deliveries', 'where' => "status IN ('pending','delivering')", 'columns' => ['status','created_at'], 'time_column' => 'created_at',
         ],
         'activitypub.delivery.delivered' => [
             'family' => 'activitypub', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'activitypub_deliveries', 'where' => "status='delivered'", 'time_column' => 'delivered_at',
+            'table' => 'activitypub_deliveries', 'where' => "status='delivered'", 'columns' => ['status','delivered_at'], 'time_column' => 'delivered_at',
         ],
         'activitypub.delivery.failed' => [
             'family' => 'activitypub', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'activitypub_deliveries', 'where' => "status='failed'", 'time_column' => 'updated_at',
+            'table' => 'activitypub_deliveries', 'where' => "status='failed'", 'columns' => ['status','updated_at'], 'time_column' => 'updated_at',
         ],
         'activitypub.delivery.retry_attempts' => [
             'family' => 'activitypub', 'unit' => 'count', 'kind' => 'window_sum',
-            'table' => 'activitypub_deliveries', 'where' => 'attempt_count>0', 'time_column' => 'updated_at', 'value_column' => 'attempt_count',
+            'table' => 'activitypub_deliveries', 'where' => 'attempt_count>0', 'columns' => ['attempt_count','updated_at'], 'time_column' => 'updated_at', 'value_column' => 'attempt_count',
         ],
         'automation.event.depth' => [
             'family' => 'automation', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'automation_events', 'where' => "status IN ('pending','processing')", 'created_column' => 'created_at',
+            'table' => 'automation_events', 'where' => "status IN ('pending','processing')", 'columns' => ['status','created_at'], 'created_column' => 'created_at',
         ],
         'automation.event.oldest_minutes' => [
             'family' => 'automation', 'unit' => 'minutes', 'kind' => 'oldest_minutes',
-            'table' => 'automation_events', 'where' => "status IN ('pending','processing')", 'time_column' => 'created_at',
+            'table' => 'automation_events', 'where' => "status IN ('pending','processing')", 'columns' => ['status','created_at'], 'time_column' => 'created_at',
         ],
         'automation.event.completed' => [
             'family' => 'automation', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'automation_events', 'where' => "status='completed'", 'time_column' => 'completed_at',
+            'table' => 'automation_events', 'where' => "status='completed'", 'columns' => ['status','completed_at'], 'time_column' => 'completed_at',
         ],
         'automation.event.failed' => [
             'family' => 'automation', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'automation_events', 'where' => "status='failed'", 'time_column' => 'updated_at',
+            'table' => 'automation_events', 'where' => "status='failed'", 'columns' => ['status','updated_at'], 'time_column' => 'updated_at',
         ],
         'automation.execution.executed' => [
             'family' => 'automation', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'automation_executions', 'where' => "status IN ('executed','partially_executed')", 'time_column' => 'created_at',
+            'table' => 'automation_executions', 'where' => "status IN ('executed','partially_executed')", 'columns' => ['status','created_at'], 'time_column' => 'created_at',
         ],
         'automation.execution.failed' => [
             'family' => 'automation', 'unit' => 'count', 'kind' => 'window_count',
-            'table' => 'automation_executions', 'where' => "status='failed'", 'time_column' => 'created_at',
+            'table' => 'automation_executions', 'where' => "status='failed'", 'columns' => ['status','created_at'], 'time_column' => 'created_at',
         ],
         'automation.approval.depth' => [
             'family' => 'automation', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'automation_approvals', 'where' => "status IN ('pending','approved')", 'created_column' => 'created_at',
+            'table' => 'automation_approvals', 'where' => "status IN ('pending','approved')", 'columns' => ['status','created_at'], 'created_column' => 'created_at',
         ],
         'unified_inbox.open' => [
             'family' => 'unified_inbox', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'unified_inbox_workflow', 'where' => "workflow_status IN ('open','waiting')", 'created_column' => 'created_at',
+            'table' => 'unified_inbox_workflow', 'where' => "workflow_status IN ('open','waiting')", 'columns' => ['workflow_status','created_at'], 'created_column' => 'created_at',
         ],
         'unified_inbox.needs_response' => [
             'family' => 'unified_inbox', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'unified_inbox_workflow', 'where' => "workflow_status<>'resolved' AND needs_response=1", 'created_column' => 'created_at',
+            'table' => 'unified_inbox_workflow', 'where' => "workflow_status<>'resolved' AND needs_response=1", 'columns' => ['workflow_status','needs_response','created_at'], 'created_column' => 'created_at',
         ],
         'unified_inbox.high_priority' => [
             'family' => 'unified_inbox', 'unit' => 'count', 'kind' => 'gauge_count',
-            'table' => 'unified_inbox_workflow', 'where' => "workflow_status<>'resolved' AND priority IN ('high','urgent')", 'created_column' => 'created_at',
+            'table' => 'unified_inbox_workflow', 'where' => "workflow_status<>'resolved' AND priority IN ('high','urgent')", 'columns' => ['workflow_status','priority','created_at'], 'created_column' => 'created_at',
         ],
     ];
 }
@@ -172,19 +190,32 @@ function operations_analytics_valid_identifier(string $identifier): string
     return $identifier;
 }
 
-function operations_analytics_collect_metric(array $definition, DateTimeImmutable $start, DateTimeImmutable $end): array
+function operations_analytics_source_available(array $definition): bool
 {
     $table = operations_analytics_valid_identifier((string)$definition['table']);
-    if (!operations_analytics_table_exists($table)) return ['available' => false, 'value' => 0.0, 'sample_count' => 0];
+    if (!operations_analytics_table_exists($table)) return false;
+    foreach ((array)($definition['columns'] ?? []) as $column) {
+        $column = operations_analytics_valid_identifier((string)$column);
+        if (!operations_analytics_column_exists($table, $column)) return false;
+    }
+    return true;
+}
 
+function operations_analytics_collect_metric(array $definition, DateTimeImmutable $start, DateTimeImmutable $end): array
+{
+    if (!operations_analytics_source_available($definition)) {
+        return ['available' => false, 'value' => 0.0, 'sample_count' => 0];
+    }
+    $table = operations_analytics_valid_identifier((string)$definition['table']);
     $where = trim((string)($definition['where'] ?? '1=1')) ?: '1=1';
     $kind = (string)$definition['kind'];
-    $parameters = ['window_start' => $start->format('Y-m-d H:i:s'), 'window_end' => $end->format('Y-m-d H:i:s')];
+    $windowStart = $start->format('Y-m-d H:i:s');
+    $windowEnd = $end->format('Y-m-d H:i:s');
 
     if ($kind === 'gauge_count') {
         $createdColumn = operations_analytics_valid_identifier((string)($definition['created_column'] ?? 'created_at'));
-        $statement = db()->prepare("SELECT COUNT(*) FROM {$table} WHERE {$where} AND {$createdColumn}<:window_end");
-        $statement->execute(['window_end' => $parameters['window_end']]);
+        $statement = db()->prepare("SELECT COUNT(*) FROM {$table} WHERE {$where} AND {$createdColumn}<:gauge_end");
+        $statement->execute(['gauge_end' => $windowEnd]);
         $value = (float)$statement->fetchColumn();
         return ['available' => true, 'value' => $value, 'sample_count' => (int)$value];
     }
@@ -193,12 +224,16 @@ function operations_analytics_collect_metric(array $definition, DateTimeImmutabl
     if ($kind === 'oldest_minutes') {
         $statement = db()->prepare(
             "SELECT COUNT(*) AS sample_count,
-                    COALESCE(TIMESTAMPDIFF(MINUTE,MIN({$timeColumn}),:window_end),0) AS metric_value
-             FROM {$table} WHERE {$where} AND {$timeColumn}<:window_end"
+                    COALESCE(TIMESTAMPDIFF(MINUTE,MIN({$timeColumn}),:age_end),0) AS metric_value
+             FROM {$table} WHERE {$where} AND {$timeColumn}<:filter_end"
         );
-        $statement->execute(['window_end' => $parameters['window_end']]);
+        $statement->execute(['age_end' => $windowEnd, 'filter_end' => $windowEnd]);
         $row = $statement->fetch() ?: [];
-        return ['available' => true, 'value' => max(0.0, (float)($row['metric_value'] ?? 0)), 'sample_count' => (int)($row['sample_count'] ?? 0)];
+        return [
+            'available' => true,
+            'value' => max(0.0, (float)($row['metric_value'] ?? 0)),
+            'sample_count' => (int)($row['sample_count'] ?? 0),
+        ];
     }
 
     if ($kind === 'window_count') {
@@ -206,7 +241,7 @@ function operations_analytics_collect_metric(array $definition, DateTimeImmutabl
             "SELECT COUNT(*) FROM {$table}
              WHERE {$where} AND {$timeColumn}>=:window_start AND {$timeColumn}<:window_end"
         );
-        $statement->execute($parameters);
+        $statement->execute(['window_start' => $windowStart, 'window_end' => $windowEnd]);
         $value = (float)$statement->fetchColumn();
         return ['available' => true, 'value' => $value, 'sample_count' => (int)$value];
     }
@@ -218,7 +253,7 @@ function operations_analytics_collect_metric(array $definition, DateTimeImmutabl
              FROM {$table}
              WHERE {$where} AND {$timeColumn}>=:window_start AND {$timeColumn}<:window_end"
         );
-        $statement->execute($parameters);
+        $statement->execute(['window_start' => $windowStart, 'window_end' => $windowEnd]);
         $row = $statement->fetch() ?: [];
         return ['available' => true, 'value' => (float)($row['metric_value'] ?? 0), 'sample_count' => (int)($row['sample_count'] ?? 0)];
     }
@@ -236,7 +271,7 @@ function operations_analytics_upsert_snapshot(
 ): void {
     $aggregate = [
         'available' => !empty($result['available']),
-        'collection_mode' => str_starts_with((string)$definition['kind'], 'gauge') || $definition['kind'] === 'oldest_minutes'
+        'collection_mode' => in_array((string)$definition['kind'], ['gauge_count','oldest_minutes'], true)
             ? 'current_state_at_collection'
             : 'window_aggregate',
     ];
@@ -266,8 +301,14 @@ function operations_analytics_collect_window(string $windowType, DateTimeImmutab
     if (!in_array($windowType, ['hour', 'day'], true)) throw new RuntimeException('Unsupported analytics window.');
     $written = 0;
     foreach (operations_analytics_metric_catalog() as $metricKey => $definition) {
-        $result = operations_analytics_collect_metric($definition, $start, $end);
-        operations_analytics_upsert_snapshot($metricKey, $definition, $windowType, $start, $end, $result);
+        operations_analytics_upsert_snapshot(
+            $metricKey,
+            $definition,
+            $windowType,
+            $start,
+            $end,
+            operations_analytics_collect_metric($definition, $start, $end)
+        );
         $written++;
     }
     return $written;
@@ -281,13 +322,13 @@ function operations_analytics_health_rank(string $status): int
 function operations_analytics_policy_status(float $value, array $policy): array
 {
     $comparison = (string)($policy['comparison'] ?? 'greater_or_equal');
-    $levels = [
-        'critical' => isset($policy['critical_threshold']) ? (float)$policy['critical_threshold'] : null,
-        'degraded' => isset($policy['degraded_threshold']) ? (float)$policy['degraded_threshold'] : null,
-        'attention' => isset($policy['attention_threshold']) ? (float)$policy['attention_threshold'] : null,
-    ];
-    foreach ($levels as $status => $threshold) {
-        if ($threshold === null) continue;
+    foreach ([
+        'critical' => $policy['critical_threshold'] ?? null,
+        'degraded' => $policy['degraded_threshold'] ?? null,
+        'attention' => $policy['attention_threshold'] ?? null,
+    ] as $status => $rawThreshold) {
+        if ($rawThreshold === null) continue;
+        $threshold = (float)$rawThreshold;
         $matched = $comparison === 'less_or_equal' ? $value <= $threshold : $value >= $threshold;
         if ($matched) return [$status, $threshold];
     }
@@ -335,18 +376,18 @@ function operations_analytics_evaluate_health(string $windowType, DateTimeImmuta
         $checkKey = (string)$policy['check_key'];
         $definition = $catalog[$checkKey] ?? null;
         if (!$definition) continue;
-        $snapshot = db()->prepare(
+        $snapshotStatement = db()->prepare(
             'SELECT * FROM operations_metric_snapshots
              WHERE metric_key=:metric_key AND window_type=:window_type AND window_started_at=:window_started_at LIMIT 1'
         );
-        $snapshot->execute([
+        $snapshotStatement->execute([
             'metric_key' => $checkKey,
             'window_type' => $windowType,
             'window_started_at' => $start->format('Y-m-d H:i:s'),
         ]);
-        $row = $snapshot->fetch();
-        $value = $row ? (float)$row['metric_value'] : null;
-        $sampleCount = $row ? (int)$row['sample_count'] : 0;
+        $snapshot = $snapshotStatement->fetch();
+        $value = $snapshot ? (float)$snapshot['metric_value'] : null;
+        $sampleCount = $snapshot ? (int)$snapshot['sample_count'] : 0;
         if ($value === null || $sampleCount < (int)$policy['minimum_sample_count']) {
             $status = 'unknown';
             $threshold = null;
@@ -373,6 +414,8 @@ function operations_analytics_evaluate_health(string $windowType, DateTimeImmuta
             'window_started_at' => $start->format('Y-m-d H:i:s'),
             'sample_count' => $sampleCount,
             'unit' => (string)$definition['unit'],
+            'observed_value' => $value,
+            'threshold_value' => $threshold,
         ]);
 
         db()->prepare(
@@ -383,11 +426,10 @@ function operations_analytics_evaluate_health(string $windowType, DateTimeImmuta
              (:check_key,:metric_key,:metric_family,:health_status,:reason_code,:observed_value,:threshold_value,:evidence_json,
               :evaluated_at,:last_changed_at,:first_unhealthy_at,:recovered_at)
              ON DUPLICATE KEY UPDATE
-               metric_key=VALUES(metric_key),metric_family=VALUES(metric_family),health_status=VALUES(health_status),
-               reason_code=VALUES(reason_code),observed_value=VALUES(observed_value),threshold_value=VALUES(threshold_value),
-               evidence_json=VALUES(evidence_json),evaluated_at=VALUES(evaluated_at),
-               last_changed_at=IF(health_status<>VALUES(health_status),VALUES(last_changed_at),last_changed_at),
-               first_unhealthy_at=VALUES(first_unhealthy_at),recovered_at=VALUES(recovered_at)'
+               metric_key=VALUES(metric_key),metric_family=VALUES(metric_family),reason_code=VALUES(reason_code),
+               observed_value=VALUES(observed_value),threshold_value=VALUES(threshold_value),evidence_json=VALUES(evidence_json),
+               evaluated_at=VALUES(evaluated_at),last_changed_at=VALUES(last_changed_at),
+               first_unhealthy_at=VALUES(first_unhealthy_at),recovered_at=VALUES(recovered_at),health_status=VALUES(health_status)'
         )->execute([
             'check_key' => $checkKey,
             'metric_key' => $checkKey,
@@ -451,11 +493,16 @@ function operations_analytics_evaluate_health(string $windowType, DateTimeImmuta
             $openKey = hash('sha256', $checkKey);
             $statement = db()->prepare(
                 'UPDATE operations_health_incidents
-                 SET open_key=NULL,recovered_at=:recovered_at,last_seen_at=:recovered_at,recovery_evidence_json=:evidence_json
+                 SET open_key=NULL,recovered_at=:recovered_at,last_seen_at=:last_seen_at,recovery_evidence_json=:evidence_json
                  WHERE open_key=:open_key AND recovered_at IS NULL'
             );
-            $statement->execute(['recovered_at' => $evaluatedAt, 'evidence_json' => $evidence, 'open_key' => $openKey]);
-            if ($statement->rowCount() > 0) $recovered += $statement->rowCount();
+            $statement->execute([
+                'recovered_at' => $evaluatedAt,
+                'last_seen_at' => $evaluatedAt,
+                'evidence_json' => $evidence,
+                'open_key' => $openKey,
+            ]);
+            $recovered += $statement->rowCount();
         }
 
         if ($changed) {
@@ -494,23 +541,20 @@ function operations_analytics_window_bounds(string $windowType, ?DateTimeImmutab
 function operations_analytics_cleanup(): array
 {
     $settings = operations_analytics_settings();
-    $hourly = db()->prepare("DELETE FROM operations_metric_snapshots WHERE window_type='hour' AND window_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL :days DAY)");
-    $hourly->bindValue(':days', $settings['hourly_retention_days'], PDO::PARAM_INT);
-    $hourly->execute();
-    $daily = db()->prepare("DELETE FROM operations_metric_snapshots WHERE window_type='day' AND window_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL :days DAY)");
-    $daily->bindValue(':days', $settings['daily_retention_days'], PDO::PARAM_INT);
-    $daily->execute();
-    $incidents = db()->prepare('DELETE FROM operations_health_incidents WHERE recovered_at IS NOT NULL AND recovered_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL :days DAY)');
-    $incidents->bindValue(':days', $settings['incident_retention_days'], PDO::PARAM_INT);
-    $incidents->execute();
-    $reports = db()->prepare('DELETE FROM operations_report_runs WHERE created_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL :days DAY)');
-    $reports->bindValue(':days', $settings['report_retention_days'], PDO::PARAM_INT);
-    $reports->execute();
+    $hourlyDays = (int)$settings['hourly_retention_days'];
+    $dailyDays = (int)$settings['daily_retention_days'];
+    $incidentDays = (int)$settings['incident_retention_days'];
+    $reportDays = (int)$settings['report_retention_days'];
+
+    $hourly = db()->exec("DELETE FROM operations_metric_snapshots WHERE window_type='hour' AND window_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$hourlyDays} DAY)");
+    $daily = db()->exec("DELETE FROM operations_metric_snapshots WHERE window_type='day' AND window_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$dailyDays} DAY)");
+    $incidents = db()->exec("DELETE FROM operations_health_incidents WHERE recovered_at IS NOT NULL AND recovered_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$incidentDays} DAY)");
+    $reports = db()->exec("DELETE FROM operations_report_runs WHERE created_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$reportDays} DAY)");
     return [
-        'hourly_snapshots_deleted' => $hourly->rowCount(),
-        'daily_snapshots_deleted' => $daily->rowCount(),
-        'incidents_deleted' => $incidents->rowCount(),
-        'reports_deleted' => $reports->rowCount(),
+        'hourly_snapshots_deleted' => max(0, (int)$hourly),
+        'daily_snapshots_deleted' => max(0, (int)$daily),
+        'incidents_deleted' => max(0, (int)$incidents),
+        'reports_deleted' => max(0, (int)$reports),
     ];
 }
 
@@ -534,7 +578,9 @@ function operations_analytics_run(string $windowType = 'hour', bool $force = fal
         'window_started_at' => $start->format('Y-m-d H:i:s'),
         'window_ended_at' => $end->format('Y-m-d H:i:s'),
     ]);
-    $runStatement = db()->prepare('SELECT id FROM operations_worker_runs WHERE window_type=:window_type AND window_started_at=:window_started_at LIMIT 1');
+    $runStatement = db()->prepare(
+        'SELECT id FROM operations_worker_runs WHERE window_type=:window_type AND window_started_at=:window_started_at LIMIT 1'
+    );
     $runStatement->execute(['window_type' => $windowType, 'window_started_at' => $start->format('Y-m-d H:i:s')]);
     $runId = (int)$runStatement->fetchColumn();
 
@@ -566,7 +612,9 @@ function operations_analytics_run(string $windowType = 'hour', bool $force = fal
     } catch (Throwable $exception) {
         if (db()->inTransaction()) db()->rollBack();
         db()->prepare(
-            'UPDATE operations_worker_runs SET status="failed",error_code=:error_code,error_message=:error_message,completed_at=UTC_TIMESTAMP() WHERE id=:id'
+            'UPDATE operations_worker_runs
+             SET status="failed",error_code=:error_code,error_message=:error_message,completed_at=UTC_TIMESTAMP()
+             WHERE id=:id'
         )->execute([
             'error_code' => 'analytics_run_failed',
             'error_message' => mb_substr(trim(preg_replace('/\s+/u', ' ', $exception->getMessage()) ?? ''), 0, 1000),
