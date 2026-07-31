@@ -22,9 +22,150 @@ on:
       - 'AUTOMATION-RULES-SETUP-v66K.md'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  # BEGIN V66K ONE-TIME REPAIR
+  repair-integration:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/automation-routing-action-center-v66k-certified-20260730'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/automation-routing-action-center-v66k-certified-20260730
+          fetch-depth: 0
+
+      - name: Repair portal integration and restart recovery
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          core_path = Path('portal/automation-rules.php')
+          core = core_path.read_text(encoding='utf-8')
+
+          old_bindings = """            $statement->execute($clean + [
+      'rule_uuid' => automation_uuid(),
+      'created_by_user_id' => $userId,
+      'updated_by_user_id' => $userId,
+  ]);"""
+          new_bindings = """            $statement->execute($clean + [
+                'rule_uuid' => automation_uuid(),
+                'created_by_user_id' => $userId,
+                'updated_by_user_id' => $userId,
+            ]);"""
+          if core.count(old_bindings) != 1:
+              raise SystemExit(f'Expected one misindented rule binding block, found {core.count(old_bindings)}')
+          core = core.replace(old_bindings, new_bindings, 1)
+
+          old_rowcount = '        if ($statement->rowCount() !== 1) continue;'
+          new_rowcount = '        if ($statement->rowCount() < 1) continue;'
+          if core.count(old_rowcount) != 1:
+              raise SystemExit(f'Expected one strict recovery row-count check, found {core.count(old_rowcount)}')
+          core = core.replace(old_rowcount, new_rowcount, 1)
+          core_path.write_text(core, encoding='utf-8')
+
+          admin_path = Path('portal/admin.php')
+          admin = admin_path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  "require_once __DIR__ . '/notification-delivery-admin.php';\n$user=require_role('admin');",
+                  "require_once __DIR__ . '/notification-delivery-admin.php';\nrequire_once __DIR__ . '/automation-admin.php';\n$user=require_role('admin');",
+                  'admin require integration',
+              ),
+              (
+                  "'feeds','site-analytics','settings','account'];",
+                  "'feeds','site-analytics','automation','settings','account'];",
+                  'admin allowed view',
+              ),
+              (
+                  """        if(notification_delivery_handle_admin_action($action,$user)){
+            exit;
+        }
+        if(activitypub_handle_admin_action($action,$user)){""",
+                  """        if(notification_delivery_handle_admin_action($action,$user)){
+            exit;
+        }
+        if(automation_handle_admin_action($action,$user)){
+            exit;
+        }
+        if(activitypub_handle_admin_action($action,$user)){""",
+                  'admin action handler',
+              ),
+              (
+                  """if($view==='delivery'){
+    notification_delivery_render_admin($user);
+    portal_footer();
+    exit;
+}
+
+if($view==='feeds'){""",
+                  """if($view==='delivery'){
+    notification_delivery_render_admin($user);
+    portal_footer();
+    exit;
+}
+
+if($view==='automation'){
+    automation_render_admin($user);
+    portal_footer();
+    exit;
+}
+
+if($view==='feeds'){""",
+                  'admin render route',
+              ),
+          ]
+          for old, new, label in replacements:
+              if admin.count(old) != 1:
+                  raise SystemExit(f'Expected one {label} anchor, found {admin.count(old)}')
+              admin = admin.replace(old, new, 1)
+          admin_path.write_text(admin, encoding='utf-8')
+
+          workflow_path = Path('.github/workflows/automation-rules-quality.yml')
+          workflow = workflow_path.read_text(encoding='utf-8')
+          workflow = workflow.replace('permissions:\n  contents: write', 'permissions:\n  contents: read', 1)
+          workflow, removed = re.subn(
+              r"\n  # BEGIN V66K ONE-TIME REPAIR\n.*?\n  # END V66K ONE-TIME REPAIR\n",
+              '\n',
+              workflow,
+              count=1,
+              flags=re.S,
+          )
+          if removed != 1:
+              raise SystemExit(f'Expected one one-time repair block, removed {removed}')
+          workflow_path.write_text(workflow, encoding='utf-8')
+
+          Path('.github/workflows/repair-v66k-integration.yml').unlink(missing_ok=True)
+          PY
+
+      - name: Validate permanent repair
+        run: |
+          set -euo pipefail
+          php -l portal/automation-rules.php
+          php -l portal/admin.php
+          php tests/automation-rules-v66k.php
+          grep -F "require_once __DIR__ . '/automation-admin.php';" portal/admin.php >/dev/null
+          grep -F "'automation'" portal/admin.php >/dev/null
+          grep -F 'automation_handle_admin_action($action,$user)' portal/admin.php >/dev/null
+          grep -F 'automation_render_admin($user)' portal/admin.php >/dev/null
+          grep -F 'if ($statement->rowCount() < 1) continue;' portal/automation-rules.php >/dev/null
+          test ! -e .github/workflows/repair-v66k-integration.yml
+          ! grep -F 'BEGIN V66K ONE-TIME REPAIR' .github/workflows/automation-rules-quality.yml
+          grep -F 'contents: read' .github/workflows/automation-rules-quality.yml >/dev/null
+
+      - name: Commit clean permanent repair
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Repair v66K portal integration and restart recovery"
+          git push origin HEAD:feature/automation-routing-action-center-v66k-certified-20260730
+  # END V66K ONE-TIME REPAIR
+
   source-quality:
     runs-on: ubuntu-latest
     steps:
