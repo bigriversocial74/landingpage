@@ -352,8 +352,8 @@ portal_footer();
 $html = (string)ob_get_clean();
 $stylesheet = '<link rel="stylesheet" href="' . e(app_url('assets/css/recovery-center.css?v=20260731-v66M')) . '">';
 $html = str_replace('</head>', $stylesheet . '</head>', $html);
-if (!str_contains($html, 'portal/recovery-center.php')) {
-    $link = '<a class="active" href="' . e(app_url('portal/recovery-center.php')) . '">Recovery Center</a>';
+if (!str_contains($html, 'data-recovery-center-nav')) {
+    $link = '<a class="active" data-recovery-center-nav href="' . e(app_url('portal/recovery-center.php')) . '">Recovery Center</a>';
     $decorated = preg_replace('/(<div\s+class="portal-nav-group-links"\s+id="admin-nav-system"[^>]*>)/s', '$1' . $link, $html, 1);
     if (is_string($decorated)) $html = $decorated;
 }

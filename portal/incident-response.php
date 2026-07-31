@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /* North Mountain Media build: 20260731-incident-response-runbooks-v66M */
 
-require_once __DIR__ . '/operations-analytics.php';
+require_once __DIR__ . '/operations-analytics-extensions.php';
 
 function recovery_table_exists(string $table): bool
 {
@@ -569,11 +569,11 @@ function recovery_simulate(int $incidentId, int $runbookId, int $userId, array $
         'steps' => $steps,
         'verify_check' => $definition['verify_check'] ?? null,
         'authority' => $definition['authority'] ?? [],
-        'generated_at' => gmdate(DATE_ATOM),
     ];
     $inputJson = recovery_json_encode(['window_type' => $overrides['window_type'] ?? null]);
+    $hash = hash('sha256', (string)$runbook['definition_hash'] . '|' . $incidentId . '|' . $inputJson . '|' . recovery_json_encode($plan));
+    $plan['generated_at'] = gmdate(DATE_ATOM);
     $planJson = recovery_json_encode($plan);
-    $hash = hash('sha256', (string)$runbook['definition_hash'] . '|' . $incidentId . '|' . $inputJson . '|' . $planJson);
     $settings = recovery_settings();
     $expiresAt = gmdate('Y-m-d H:i:s', time() + ((int)$settings['simulation_ttl_minutes'] * 60));
     db()->prepare(
@@ -647,8 +647,13 @@ function recovery_request_approval(int $simulationId, int $userId): ?array
         'INSERT INTO recovery_approvals
          (approval_uuid,simulation_id,incident_id,runbook_id,runbook_version_id,status,request_hash,requested_by_user_id,expires_at)
          VALUES (:approval_uuid,:simulation_id,:incident_id,:runbook_id,:runbook_version_id,"pending",:request_hash,:requested_by_user_id,:expires_at)
-         ON DUPLICATE KEY UPDATE status=IF(status IN ("consumed","approved"),status,"pending"),request_hash=VALUES(request_hash),
-          requested_by_user_id=VALUES(requested_by_user_id),expires_at=VALUES(expires_at),resolved_by_user_id=NULL,resolved_at=NULL'
+         ON DUPLICATE KEY UPDATE
+          request_hash=IF(status IN ("consumed","approved"),request_hash,VALUES(request_hash)),
+          requested_by_user_id=IF(status IN ("consumed","approved"),requested_by_user_id,VALUES(requested_by_user_id)),
+          expires_at=IF(status IN ("consumed","approved"),expires_at,VALUES(expires_at)),
+          status=IF(status IN ("consumed","approved"),status,"pending"),
+          resolved_by_user_id=IF(status IN ("consumed","approved"),resolved_by_user_id,NULL),
+          resolved_at=IF(status IN ("consumed","approved"),resolved_at,NULL)'
     )->execute([
         'approval_uuid' => recovery_uuid(),
         'simulation_id' => $simulationId,
@@ -713,7 +718,18 @@ function recovery_queue_execution(int $simulationId, int $userId): array
     if (!$settings['enabled']) throw new RuntimeException('Recovery execution is disabled.');
     if ($settings['emergency_disabled']) throw new RuntimeException('Recovery emergency disable is active.');
     $simulation = recovery_simulation($simulationId);
-    if (!$simulation || (string)$simulation['status'] !== 'valid' || strtotime((string)$simulation['expires_at']) <= time()) {
+    if (!$simulation) throw new RuntimeException('Recovery simulation not found.');
+    $idempotencyKey = hash('sha256', implode('|', [
+        (string)$simulation['incident_id'],
+        (string)$simulation['runbook_id'],
+        (string)$simulation['runbook_version_id'],
+        (string)$simulation['simulation_hash'],
+    ]));
+    $existingStatement = db()->prepare('SELECT * FROM recovery_executions WHERE idempotency_key=:idempotency_key LIMIT 1');
+    $existingStatement->execute(['idempotency_key' => $idempotencyKey]);
+    $existing = $existingStatement->fetch();
+    if ($existing) return $existing;
+    if ((string)$simulation['status'] !== 'valid' || strtotime((string)$simulation['expires_at']) <= time()) {
         throw new RuntimeException('The recovery simulation is stale or expired.');
     }
     if (!empty($simulation['recovered_at'])) throw new RuntimeException('The incident has already recovered.');
@@ -746,17 +762,6 @@ function recovery_queue_execution(int $simulationId, int $userId): array
     );
     $statement->execute(['runbook_id' => (int)$simulation['runbook_id']]);
     if ((int)$statement->fetchColumn() >= $maxConcurrency) throw new RuntimeException('The runbook concurrency limit is active.');
-
-    $idempotencyKey = hash('sha256', implode('|', [
-        (string)$simulation['incident_id'],
-        (string)$simulation['runbook_id'],
-        (string)$simulation['runbook_version_id'],
-        (string)$simulation['simulation_hash'],
-    ]));
-    $existingStatement = db()->prepare('SELECT * FROM recovery_executions WHERE idempotency_key=:idempotency_key LIMIT 1');
-    $existingStatement->execute(['idempotency_key' => $idempotencyKey]);
-    $existing = $existingStatement->fetch();
-    if ($existing) return $existing;
 
     $status = $settings['dry_run'] ? 'simulated' : 'queued';
     db()->prepare(
@@ -884,7 +889,7 @@ function recovery_handler_execute(string $handler, array $input, array $incident
             );
             return ['affected' => max(0, (int)$affected), 'scheduled_only' => true];
         case 'operations.rebuild_window':
-            return ['analytics' => operations_analytics_run((string)$input['window_type'], true)];
+            return ['analytics' => operations_analytics_run_extended((string)$input['window_type'], true)];
         case 'vp3.license_refresh':
             require_once __DIR__ . '/vp3-license-settings-store.php';
             require_once __DIR__ . '/vp3-update-version-override.php';
@@ -986,7 +991,7 @@ function recovery_verify_execution(array $execution, array $definition): array
     $incident = recovery_incident((int)$execution['incident_id']);
     $analyticsResult = null;
     try {
-        $analyticsResult = operations_analytics_run('hour', true);
+        $analyticsResult = operations_analytics_run_extended('hour', true);
     } catch (Throwable $analyticsError) {
         $analyticsResult = ['status' => 'failed', 'error_code' => 'verification_analytics_failed'];
     }
@@ -1120,15 +1125,21 @@ function recovery_run_worker(int $limit = 0): array
             $results[] = recovery_process_execution($execution);
         } catch (Throwable $exception) {
             db()->prepare(
-                'UPDATE recovery_executions SET status="failed",lease_token=NULL,leased_until=NULL,error_code=:error_code,
-                 error_message=:error_message,completed_at=UTC_TIMESTAMP() WHERE id=:id'
+                'UPDATE recovery_executions
+                 SET status=IF(attempt_count<max_attempts,"queued","failed"),lease_token=NULL,leased_until=NULL,
+                     error_code=:error_code,error_message=:error_message,
+                     completed_at=IF(attempt_count<max_attempts,NULL,UTC_TIMESTAMP())
+                 WHERE id=:id'
             )->execute([
                 'error_code' => 'recovery_execution_failed',
                 'error_message' => mb_substr(trim(preg_replace('/\s+/u', ' ', $exception->getMessage()) ?? ''), 0, 1000),
                 'id' => (int)$execution['id'],
             ]);
-            recovery_escalate_failure($execution, $exception->getMessage());
-            $results[] = ['execution_id' => (int)$execution['id'], 'status' => 'failed', 'error_code' => 'recovery_execution_failed'];
+            $statusStatement = db()->prepare('SELECT status FROM recovery_executions WHERE id=:id LIMIT 1');
+            $statusStatement->execute(['id' => (int)$execution['id']]);
+            $retryStatus = (string)$statusStatement->fetchColumn();
+            if ($retryStatus === 'failed') recovery_escalate_failure($execution, $exception->getMessage());
+            $results[] = ['execution_id' => (int)$execution['id'], 'status' => $retryStatus, 'error_code' => 'recovery_execution_failed'];
         }
     }
     $cleanup = recovery_cleanup();
