@@ -10,10 +10,17 @@ function operations_source_assert(bool $condition, string $message): void
 
 $root = dirname(__DIR__);
 $source = file_get_contents($root . '/portal/operations-analytics.php');
+$admin = file_get_contents($root . '/portal/operations-admin.php');
+$notifications = file_get_contents($root . '/portal/notifications.php');
 $worker = file_get_contents($root . '/cron/process-operations-analytics.php');
 $migration = file_get_contents($root . '/database/operations_analytics_v66l.sql');
+$styles = file_get_contents($root . '/assets/css/operations-analytics.css');
 $spec = file_get_contents($root . '/OPERATIONS-ANALYTICS-SPEC-v66L.md');
-operations_source_assert(is_string($source) && is_string($worker) && is_string($migration) && is_string($spec), 'Required v66L source files are unreadable.');
+operations_source_assert(
+    is_string($source) && is_string($admin) && is_string($notifications) && is_string($worker)
+        && is_string($migration) && is_string($styles) && is_string($spec),
+    'Required v66L source files are unreadable.'
+);
 
 $catalog = operations_analytics_metric_catalog();
 operations_source_assert(count($catalog) >= 20, 'The initial metric catalog is incomplete.');
@@ -40,6 +47,22 @@ operations_source_assert(!str_contains($source, 'send_allowed'), 'Analytics intr
 operations_source_assert(!str_contains($source, 'tool_execution_allowed'), 'Analytics introduced HomeServer tool authority.');
 operations_source_assert(!preg_match('/\b(?:UPDATE|DELETE\s+FROM|INSERT\s+INTO)\s+(?:notification_delivery_queue|activitypub_deliveries|automation_events|unified_inbox_workflow)\b/i', $source), 'Analytics mutates a canonical source table.');
 operations_source_assert(!str_contains($source, ':window_end),0) AS metric_value') || str_contains($source, ':age_end'), 'Oldest-age query reuses a native PDO placeholder.');
+
+operations_source_assert(str_contains($admin, "['view' => 'operations'"), 'Operations administrator URL is missing.');
+operations_source_assert(str_contains($admin, 'operations_admin_export_csv'), 'Aggregate CSV export is missing.');
+operations_source_assert(str_contains($admin, "preg_match('/^[=+\\-@]/'"), 'CSV formula-injection protection is missing.');
+operations_source_assert(str_contains($admin, "'aggregate_only' => true"), 'Report evidence is not explicitly aggregate-only.');
+operations_source_assert(str_contains($admin, 'operations_admin_generate_report'), 'Manual aggregate reporting is missing.');
+operations_source_assert(str_contains($admin, 'operations_save_policy'), 'Deterministic policy administration is missing.');
+operations_source_assert(str_contains($admin, 'operations_run_hourly'), 'Owner-controlled hourly collection is missing.');
+operations_source_assert(!preg_match('/SELECT\s+.*(?:payload_json|body|note|transcript|private_key|credential)/is', $admin), 'Administrator analytics queries source private content.');
+operations_source_assert(str_contains($notifications, "require_once __DIR__ . '/operations-analytics.php';"), 'Operations core is not loaded by the retained admin integration point.');
+operations_source_assert(str_contains($notifications, 'operations_admin_portal_bootstrap'), 'Operations administrator bootstrap is missing.');
+operations_source_assert(str_contains($notifications, 'portal/admin.php?view=operations'), 'Operations navigation entry is missing.');
+operations_source_assert(str_contains($notifications, 'operations_admin_export_csv'), 'Administrator export authorization path is missing.');
+operations_source_assert(str_contains($notifications, 'require_role(\'admin\')'), 'Administrator role enforcement is missing.');
+operations_source_assert(str_contains($notifications, 'verify_csrf()'), 'Administrator mutation CSRF enforcement is missing.');
+operations_source_assert(str_contains($styles, '.operations-shell'), 'Operations workspace styles are missing.');
 
 foreach ([
     'operations_analytics_settings',
