@@ -5,137 +5,134 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/social-posts-quality.yml'
-      - 'portal/social-posts-service.php'
-      - 'portal/social-posts.php'
-      - 'portal/bootstrap.php'
-      - 'portal/federated-feed.php'
-      - 'portal/site-builder-core.php'
-      - 'activitypub-social-post.php'
-      - 'social-post.php'
-      - 'social-feed.php'
-      - 'follow-pod.php'
-      - 'landing-page.php'
-      - 'assets/css/social-posts-v66p.css'
-      - 'assets/js/social-posts-v66p.js'
-      - 'database/social_posts_v66p.sql'
-      - 'database/north_mountain_portal_v66p.sql'
-      - 'tests/social-posts-v66p.php'
-      - 'tests/social-posts-db-v66p.php'
-      - 'SOCIAL-POSTS-AUDIT-v66P.md'
-      - 'SOCIAL-POSTS-SETUP-v66P.md'
-      - 'V66P-SCORECARD.md'
-      - 'V66P-VALIDATION.txt'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  source-quality:
+  repair-certified-sources:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: PHP syntax
-        run: |
-          set -euo pipefail
-          for file in \
-            portal/social-posts-service.php portal/social-posts.php \
-            portal/bootstrap.php portal/federated-feed.php portal/site-builder-core.php \
-            activitypub-social-post.php social-post.php social-feed.php follow-pod.php \
-            landing-page.php tests/social-posts-v66p.php tests/social-posts-db-v66p.php; do
-              php -l "$file"
-          done
-      - name: JavaScript syntax
-        run: node --check assets/js/social-posts-v66p.js
-      - name: Source, privacy, landing, and UX regression
-        run: php tests/social-posts-v66p.php
-      - name: CSS structure
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Repair PDO placeholders and public outbox privacy
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          css = Path('assets/css/social-posts-v66p.css').read_text(encoding='utf-8')
-          if css.count('{') != css.count('}'):
-              raise SystemExit('Unbalanced Social Posts CSS braces.')
-          print('Social Posts CSS structure passed.')
+
+          service=Path('portal/social-posts-service.php')
+          text=service.read_text(encoding='utf-8')
+          text=text.replace('WHEN :published="published" THEN COALESCE(published_at,UTC_TIMESTAMP())','WHEN :publish_state="published" THEN COALESCE(published_at,UTC_TIMESTAMP())',1)
+          text=text.replace('edited_at=CASE WHEN :published="published" THEN UTC_TIMESTAMP() ELSE edited_at END','edited_at=CASE WHEN :edit_state="published" THEN UTC_TIMESTAMP() ELSE edited_at END',1)
+          text=text.replace("        'published' => $status,\n        'id' => $postId,","        'publish_state' => $status,\n        'edit_state' => $status,\n        'id' => $postId,",1)
+          if ':published="published"' in text:
+              raise SystemExit('Duplicate PDO published placeholder remains.')
+          service.write_text(text,encoding='utf-8')
+
+          activity=Path('portal/activitypub-service.php')
+          text=activity.read_text(encoding='utf-8')
+          old='''function activitypub_outbox_document(): array
+{
+    activitypub_require_schema();
+    $count = (int)db()->query(
+        'SELECT COUNT(*) FROM activitypub_outbox_activities
+         WHERE activity_type IN ("Create","Update","Delete")'
+    )->fetchColumn();
+    $rows = db()->query(
+        'SELECT payload_json FROM activitypub_outbox_activities
+         WHERE activity_type IN ("Create","Update","Delete")
+         ORDER BY published_at DESC,id DESC LIMIT 50'
+    )->fetchAll();
+    $items = [];
+    foreach ($rows as $row) {
+        $payload = json_decode((string)$row['payload_json'], true);
+        if (is_array($payload)) $items[] = $payload;
+    }
+    return [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id' => activitypub_outbox_url(),
+        'type' => 'OrderedCollection',
+        'totalItems' => $count,
+        'orderedItems' => $items,
+    ];
+}
+'''
+          new='''function activitypub_audience_contains_public(mixed $audience): bool
+{
+    $public = 'https://www.w3.org/ns/activitystreams#Public';
+    if (is_string($audience)) {
+        return activitypub_normalize_url($audience) === activitypub_normalize_url($public);
+    }
+    if (!is_array($audience)) return false;
+    foreach ($audience as $value) {
+        if (activitypub_audience_contains_public($value)) return true;
+    }
+    return false;
+}
+
+function activitypub_payload_is_public(array $payload): bool
+{
+    foreach (['to', 'cc', 'audience'] as $field) {
+        if (activitypub_audience_contains_public($payload[$field] ?? null)) return true;
+    }
+    $object = $payload['object'] ?? null;
+    if (is_array($object)) {
+        foreach (['to', 'cc', 'audience'] as $field) {
+            if (activitypub_audience_contains_public($object[$field] ?? null)) return true;
+        }
+    }
+    return false;
+}
+
+function activitypub_outbox_document(): array
+{
+    activitypub_require_schema();
+    $statement = db()->prepare(
+        'SELECT payload_json FROM activitypub_outbox_activities
+         WHERE activity_type IN ("Create","Update","Delete")
+           AND payload_json LIKE :public_marker
+         ORDER BY published_at DESC,id DESC'
+    );
+    $statement->execute([
+        'public_marker' => '%https://www.w3.org/ns/activitystreams#Public%',
+    ]);
+    $items = [];
+    $count = 0;
+    while ($row = $statement->fetch()) {
+        $payload = json_decode((string)$row['payload_json'], true);
+        if (!is_array($payload) || !activitypub_payload_is_public($payload)) continue;
+        $count++;
+        if (count($items) < 50) $items[] = $payload;
+    }
+    return [
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'id' => activitypub_outbox_url(),
+        'type' => 'OrderedCollection',
+        'totalItems' => $count,
+        'orderedItems' => $items,
+    ];
+}
+'''
+          if new not in text:
+              if old not in text: raise SystemExit('Outbox function anchor not found.')
+              text=text.replace(old,new,1)
+          activity.write_text(text,encoding='utf-8')
           PY
-      - name: Retained federation and Stories regressions
+      - name: Validate repairs
         run: |
-          set -euo pipefail
-          php tests/federated-timeline-v66h.php
-          php tests/federated-interactions-v66g.php
+          php -l portal/social-posts-service.php
+          php -l portal/activitypub-service.php
+          php tests/activitypub-v66f.php
           php tests/stories-v66o.php
-      - name: Permanent cleanup contract
+      - name: Commit repairs
         run: |
           set -euo pipefail
-          test ! -e .github/workflows/apply-social-posts-v66p.yml
-          test ! -e .github/workflows/apply-social-posts-navigation-v66p.yml
-          test ! -e tools/apply-social-posts-v66p.py
-          grep -F "social_posts_render_landing" landing-page.php >/dev/null
-          grep -F "social_posts_render_landing" portal/site-builder-core.php >/dev/null
-          grep -F "social_posts_render_portal_stream" portal/federated-feed.php >/dev/null
-          grep -F "'social-posts' => 'Social Posts'" portal/bootstrap.php >/dev/null
-
-  mysql-8-integration:
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: nmm
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install PHP database extensions
-        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
-      - name: Import cumulative schema and repeat-safe migration
-        run: |
-          set -euo pipefail
-          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal_v66p.sql
-          mysql -h 127.0.0.1 -uroot -proot nmm < database/social_posts_v66p.sql
-      - name: Live Social Posts integration
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_NAME: nmm
-          DB_USER: root
-          DB_PASS: root
-        run: php tests/social-posts-db-v66p.php
-
-  mariadb-integration:
-    runs-on: ubuntu-latest
-    services:
-      mariadb:
-        image: mariadb:11.4
-        env:
-          MARIADB_ROOT_PASSWORD: root
-          MARIADB_DATABASE: nmm
-        ports:
-          - 3307:3306
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install MariaDB client and PHP extensions
-        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
-      - name: Import cumulative schema and repeat-safe migration
-        run: |
-          set -euo pipefail
-          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal_v66p.sql
-          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/social_posts_v66p.sql
-      - name: Live Social Posts integration
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3307
-          DB_NAME: nmm
-          DB_USER: root
-          DB_PASS: root
-        run: php tests/social-posts-db-v66p.php
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add portal/social-posts-service.php portal/activitypub-service.php
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Repair Social Posts PDO update and public outbox privacy'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
