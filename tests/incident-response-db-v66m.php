@@ -40,7 +40,7 @@ function recovery_test_incident(string $uuid, string $checkKey, string $family, 
          (incident_uuid,open_key,check_key,metric_key,metric_family,highest_status,reason_code,opened_at,last_seen_at,
           opening_evidence_json,latest_evidence_json)
          VALUES (:incident_uuid,:open_key,:check_key,:metric_key,:metric_family,:highest_status,"threshold_critical",UTC_TIMESTAMP(),UTC_TIMESTAMP(),
-          :evidence_json,:evidence_json)'
+          :evidence_json,:latest_evidence_json)'
     )->execute([
         'incident_uuid' => $uuid,
         'open_key' => $openKey,
@@ -49,6 +49,7 @@ function recovery_test_incident(string $uuid, string $checkKey, string $family, 
         'metric_family' => $family,
         'highest_status' => $status,
         'evidence_json' => json_encode(['aggregate_only' => true, 'test' => 'v66m'], JSON_THROW_ON_ERROR),
+        'latest_evidence_json' => json_encode(['aggregate_only' => true, 'test' => 'v66m'], JSON_THROW_ON_ERROR),
     ]);
     return (int)db()->lastInsertId();
 }
