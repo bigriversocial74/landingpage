@@ -142,7 +142,7 @@ header(
         : "script-src 'self'; style-src 'self' 'unsafe-inline'; ") .
     "img-src 'self' data: https: blob:; font-src 'self' data:; " .
     "media-src 'self' https: blob:; connect-src 'self'; worker-src 'self' blob:; " .
-    "frame-src https://www.youtube-nocookie.com https://player.vimeo.com; " .
+    "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; " .
     "form-action 'self'; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
 );
 
@@ -1100,6 +1100,7 @@ function portal_header(string $title, string $active, array $user): void
             'agent' => 'Agent Chat',
             'dashboard' => 'Dashboard',
             'inbox' => 'Unified Inbox',
+            'social-posts' => 'My Feed',
             'music' => 'Music Library',
             'analytics' => 'Visitor Intelligence',
             'site-analytics' => 'Site Analytics',
@@ -1116,7 +1117,6 @@ function portal_header(string $title, string $active, array $user): void
         'Work' => [
             'portfolio' => 'Portfolio',
             'blog' => 'Blog',
-            'social-posts' => 'Social Posts',
             'syndication' => 'Syndication',
             'federation' => 'Federation',
             'feeds' => 'Feed Reader',
@@ -1163,7 +1163,7 @@ function portal_header(string $title, string $active, array $user): void
             'music_library' => [['Operations','music']],
             'blog' => [['Work','blog']],
             'rss' => [['Work','syndication']],
-            'social_feed' => [['Work','social-posts']],
+            'social_feed' => [['Operations','social-posts']],
             'events' => [['Work','events']],
             'bookings' => [['Work','bookings']],
             'project_intake' => [['Work','proposals']],

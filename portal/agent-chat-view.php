@@ -13,10 +13,6 @@ function agent_chat_render(array $user): void
     ];
     ?>
 <div class="agent-home" data-agent-home>
-<section class="agent-home-intro">
-<div><span>Private POD operating assistant</span><h2>Agent Chat</h2><p>Ask about calls, communications, CRM, clients, projects, publishing, notifications, and current work. Configure private capabilities before granting the agent broader context or tools.</p></div>
-<button class="agent-publish-button" type="button" data-publishing-open>Publishing +</button>
-</section>
 <section class="agent-quick-prompts" aria-label="Suggested agent prompts">
 <button type="button" data-admin-quick-prompt="What needs my attention today?"><strong>Attention</strong><span>Show urgent calls, messages, follow-ups, and failures.</span></button>
 <button type="button" data-admin-quick-prompt="Summarize current projects"><strong>Projects</strong><span>Review active work, progress, and next milestones.</span></button>

@@ -45,7 +45,7 @@ $drafts = array_values(array_filter($allPosts, static fn(array $post): bool => (
 $storiesAvailable = nmm_module_enabled('stories') && stories_schema_available();
 $activitySettings = activitypub_settings();
 
-portal_header('Social Feed','social-posts',$user);
+portal_header('My Feed','social-posts',$user);
 ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/stories-v66o.css?v=20260731-v66O'))?>">
