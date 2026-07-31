@@ -23,10 +23,15 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/restart-safety-finalize-automation-rules-v66k-v2.py
+      - name: Install PHP when absent
+        run: |
+          set -euo pipefail
+          if ! command -v php >/dev/null; then
+            brew install php
+          fi
       - name: Validate complete source
         run: |
           set -euo pipefail
-          command -v php >/dev/null
           for file in \
             portal/automation-rules.php \
             portal/automation-admin.php \
