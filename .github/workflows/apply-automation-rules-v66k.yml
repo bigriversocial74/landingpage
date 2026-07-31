@@ -1,0 +1,65 @@
+name: Apply Automation Rules v66K
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-automation-rules-v66k.yml'
+      - 'tools/apply-automation-rules-v66k.py'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.head_ref == 'feature/automation-routing-action-center-v66k-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply deterministic integration
+        run: |
+          set -euo pipefail
+          python3 tools/apply-automation-rules-v66k.py
+      - name: Validate integrated application
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y php-mbstring
+          for file in \
+            portal/automation-rules.php \
+            portal/automation-admin.php \
+            portal/notifications.php \
+            portal/admin.php \
+            portal/bootstrap.php \
+            cron/process-automation.php \
+            tests/automation-rules-v66k.php \
+            tests/automation-rules-db-v66k.php; do
+              php -l "$file"
+          done
+          node --check assets/js/automation-center.js
+          php tests/automation-rules-v66k.php
+          grep -F "require_once __DIR__ . '/automation-admin.php';" portal/admin.php >/dev/null
+          grep -F 'automation_handle_admin_action($action,$user)' portal/admin.php >/dev/null
+          grep -F 'automation_render_admin($user)' portal/admin.php >/dev/null
+          grep -F 'automation_capture_notification($notificationId)' portal/notifications.php >/dev/null
+          grep -F "'automation' => 'Automation'" portal/bootstrap.php >/dev/null
+          grep -F 'automation-center.css' portal/bootstrap.php >/dev/null
+          grep -F 'automation-center.js' portal/bootstrap.php >/dev/null
+      - name: Commit integrated application
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            portal/automation-rules.php \
+            portal/automation-admin.php \
+            portal/notifications.php \
+            portal/admin.php \
+            portal/bootstrap.php \
+            database/north_mountain_portal.sql \
+            tests/automation-rules-v66k.php
+          git commit -m 'Integrate Automation Rules and Action Center v66K'
+          git push origin HEAD:${{ github.head_ref }}
