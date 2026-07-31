@@ -1,0 +1,61 @@
+name: Apply Notification Delivery v66J
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-notification-delivery-v66j.yml'
+      - 'tools/apply-notification-delivery-v66j.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/notification-delivery-preferences-v66j-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply deterministic integration
+        run: |
+          set -euo pipefail
+          python3 tools/apply-notification-delivery-v66j.py
+      - name: PHP and JavaScript syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/notification-delivery.php \
+            portal/notification-delivery-admin.php \
+            portal/notification-push-api.php \
+            portal/notifications.php portal/admin.php \
+            cron/process-notifications.php config-example.php; do
+              php -l "$file"
+          done
+          node --check assets/js/notification-delivery.js
+          node --check notification-service-worker.js
+      - name: Source and privacy contract
+        run: |
+          set -euo pipefail
+          grep -F 'notification_delivery_enqueue_notification($notificationId)' portal/notifications.php >/dev/null
+          grep -F "'notification_delivery_secret'" config-example.php >/dev/null
+          grep -F "notification_delivery_render_admin" portal/admin.php >/dev/null
+          grep -F "notification_delivery_handle_admin_action" portal/admin.php >/dev/null
+          grep -F "view=delivery" portal/*.php >/dev/null
+          grep -F 'notification_delivery_preferences' database/north_mountain_portal.sql >/dev/null
+          grep -F "'content_authorized' => $contentAllowed" portal/notification-delivery.php >/dev/null
+          grep -F "'send_allowed' => false" portal/notification-delivery.php >/dev/null
+          grep -F "proposal_only' => true" portal/notification-delivery.php >/dev/null
+          if grep -E 'https?://[^[:space:]"'"']+\.js' notification-service-worker.js assets/js/notification-delivery.js; then exit 1; fi
+      - name: Commit integrated application
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            portal/notifications.php portal/admin.php config-example.php \
+            database/north_mountain_portal.sql portal/*.php
+          git commit -m 'Integrate Notification Delivery and Escalation v66J'
+          git push origin HEAD:${{ github.head_ref }}
