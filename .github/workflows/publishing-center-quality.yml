@@ -14,12 +14,47 @@ on:
       - 'podcast-feed.php'
       - 'tests/publishing-center-v66q.php'
       - 'tests/social-posts-v66p.php'
+      - 'tools/finalize-publishing-center-v66q.py'
+      - '.github/v66q-finalize-trigger'
       - '.github/workflows/publishing-center-quality.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  finalize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply final consistency patch
+        shell: bash
+        run: |
+          if [ ! -f tools/finalize-publishing-center-v66q.py ]; then
+            echo "Finalizer already consumed."
+            exit 0
+          fi
+          python3 tools/finalize-publishing-center-v66q.py
+          php -l portal/social-posts.php
+          php -l portal/bootstrap.php
+          php -l portal/publishing-center.php
+          node --check assets/js/publishing-center-v66q.js
+      - name: Commit permanent source
+        shell: bash
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No finalization changes remain."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Finalize Publishing Center module consistency v66Q"
+          git push origin HEAD:${{ github.head_ref }}
+
   source-quality:
     strategy:
       fail-fast: false
