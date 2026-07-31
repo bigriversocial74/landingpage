@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/notification-delivery.php';
 require_once __DIR__ . '/automation-rules.php';
 require_once __DIR__ . '/operations-analytics.php';
+require_once __DIR__ . '/operations-analytics-extensions.php';
 
 function automation_admin_portal_decorate(string $html): string
 {
@@ -112,6 +113,7 @@ function operations_admin_portal_decorate(string $html): string
             . '">';
         $html = str_replace('</head>', $css . '</head>', $html);
     }
+    if (function_exists('operations_extended_decorate')) $html = operations_extended_decorate($html);
     return $html;
 }
 
@@ -138,7 +140,8 @@ function operations_admin_portal_bootstrap(): void
         enforce_authenticated_action_limit($user);
         try {
             $action = input('action');
-            if (!operations_handle_admin_action($action, $user)) {
+            $handled = operations_extended_handle_admin_action($action, $user);
+            if (!$handled && !operations_handle_admin_action($action, $user)) {
                 throw new RuntimeException('Unsupported Operations request.');
             }
         } catch (Throwable $exception) {
