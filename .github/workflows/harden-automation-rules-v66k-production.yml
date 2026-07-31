@@ -63,7 +63,6 @@ jobs:
             database/automation_rules_v66k.sql \
             database/north_mountain_portal.sql \
             tests/automation-rules-v66k.php \
-            tests/automation-rules-db-v66k.php \
-            .github/workflows/automation-rules-quality.yml
+            tests/automation-rules-db-v66k.php
           git commit -m 'Harden Automation Rules v66K production policy'
           git push origin HEAD:${{ github.head_ref }}
