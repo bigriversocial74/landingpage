@@ -56,6 +56,33 @@ function recovery_test_incident(string $uuid, string $checkKey, string $family, 
 
 recovery_test_assert(recovery_schema_available(), 'Recovery schema is unavailable.');
 
+db()->prepare(
+    'INSERT INTO users (role,email,password_hash,display_name,status)
+     VALUES ("admin",:email,:password_hash,:display_name,"active")
+     ON DUPLICATE KEY UPDATE role="admin",status="active",display_name=VALUES(display_name)'
+)->execute([
+    'email' => 'v66m-admin-one@example.invalid',
+    'password_hash' => password_hash('v66m-test-password-one', PASSWORD_DEFAULT),
+    'display_name' => 'v66M Administrator One',
+]);
+$adminStatement = db()->prepare('SELECT id FROM users WHERE email=:email LIMIT 1');
+$adminStatement->execute(['email' => 'v66m-admin-one@example.invalid']);
+$adminUserId = (int)$adminStatement->fetchColumn();
+
+db()->prepare(
+    'INSERT INTO users (role,email,password_hash,display_name,status)
+     VALUES ("admin",:email,:password_hash,:display_name,"active")
+     ON DUPLICATE KEY UPDATE role="admin",status="active",display_name=VALUES(display_name)'
+)->execute([
+    'email' => 'v66m-admin-two@example.invalid',
+    'password_hash' => password_hash('v66m-test-password-two', PASSWORD_DEFAULT),
+    'display_name' => 'v66M Administrator Two',
+]);
+$secondAdminStatement = db()->prepare('SELECT id FROM users WHERE email=:email LIMIT 1');
+$secondAdminStatement->execute(['email' => 'v66m-admin-two@example.invalid']);
+$secondAdminUserId = (int)$secondAdminStatement->fetchColumn();
+recovery_test_assert($adminUserId > 0 && $secondAdminUserId > 0, 'Administrator fixtures were not created.');
+
 foreach ([
     'recovery_action_receipts',
     'recovery_execution_steps',
@@ -111,29 +138,29 @@ $recommendation = db()->query(
 )->fetch();
 recovery_test_assert($recommendation !== false && $recommendation['runbook_key'] === 'feed_source_recovery', 'Feed incident did not receive the deterministic recovery runbook.');
 
-$simulationOne = recovery_simulate($incidentId, (int)$recommendation['runbook_id'], 1);
-$simulationTwo = recovery_simulate($incidentId, (int)$recommendation['runbook_id'], 1);
+$simulationOne = recovery_simulate($incidentId, (int)$recommendation['runbook_id'], $adminUserId);
+$simulationTwo = recovery_simulate($incidentId, (int)$recommendation['runbook_id'], $adminUserId);
 recovery_test_assert((int)$simulationOne['id'] === (int)$simulationTwo['id'], 'Repeat current-version simulation created duplicate evidence.');
 recovery_test_assert((string)$simulationOne['simulation_hash'] === (string)$simulationTwo['simulation_hash'], 'Simulation hash is not deterministic.');
 $plan = recovery_json_decode((string)$simulationTwo['plan_json'], []);
 recovery_test_assert((int)($plan['steps'][0]['candidate_count'] ?? 0) >= 1, 'Simulation did not identify the bounded feed candidate.');
 recovery_test_assert(!str_contains((string)$simulationTwo['plan_json'], $privateMarker), 'Private source error leaked into the recovery plan.');
 
-$approval = recovery_request_approval((int)$simulationTwo['id'], 1);
+$approval = recovery_request_approval((int)$simulationTwo['id'], $adminUserId);
 recovery_test_assert($approval !== null && (string)$approval['status'] === 'pending', 'Approval request was not created.');
-recovery_test_assert(recovery_resolve_approval((int)$approval['id'], 'approved', 1), 'Approval could not be resolved.');
+recovery_test_assert(recovery_resolve_approval((int)$approval['id'], 'approved', $adminUserId), 'Approval could not be resolved.');
 $approved = db()->query('SELECT * FROM recovery_approvals WHERE id=' . (int)$approval['id'])->fetch();
 $approvedHash = (string)$approved['request_hash'];
 $approvedExpiry = (string)$approved['expires_at'];
-$repeatApproval = recovery_request_approval((int)$simulationTwo['id'], 2);
+$repeatApproval = recovery_request_approval((int)$simulationTwo['id'], $secondAdminUserId);
 recovery_test_assert((string)$repeatApproval['status'] === 'approved', 'Approved request was reset by a repeat request.');
 recovery_test_assert((string)$repeatApproval['request_hash'] === $approvedHash, 'Approved request hash changed.');
 recovery_test_assert((string)$repeatApproval['expires_at'] === $approvedExpiry, 'Approved request expiry was extended.');
 recovery_test_assert((int)$repeatApproval['requested_by_user_id'] === (int)$approved['requested_by_user_id'], 'Approved request actor changed.');
 
-$dryRunExecution = recovery_queue_execution((int)$simulationTwo['id'], 1);
+$dryRunExecution = recovery_queue_execution((int)$simulationTwo['id'], $adminUserId);
 recovery_test_assert((string)$dryRunExecution['status'] === 'simulated', 'Dry-run did not create a simulated execution.');
-$dryRunRepeat = recovery_queue_execution((int)$simulationTwo['id'], 1);
+$dryRunRepeat = recovery_queue_execution((int)$simulationTwo['id'], $adminUserId);
 recovery_test_assert((int)$dryRunRepeat['id'] === (int)$dryRunExecution['id'], 'Consumed simulation did not return its idempotent execution.');
 recovery_test_assert((int)db()->query('SELECT COUNT(*) FROM recovery_execution_steps WHERE execution_id=' . (int)$dryRunExecution['id'] . ' AND status="simulated"')->fetchColumn() === 1, 'Dry-run step evidence is missing.');
 recovery_test_assert((int)db()->query('SELECT COUNT(*) FROM recovery_action_receipts WHERE execution_id=' . (int)$dryRunExecution['id'] . ' AND status="simulated"')->fetchColumn() === 1, 'Dry-run receipt is missing.');
@@ -159,10 +186,10 @@ db()->exec('DELETE FROM recovery_approvals WHERE simulation_id=' . (int)$simulat
 db()->exec('DELETE FROM recovery_simulations WHERE id=' . (int)$simulationTwo['id']);
 db()->exec('UPDATE recovery_settings SET dry_run=0 WHERE id=1');
 
-$liveSimulation = recovery_simulate($incidentId, (int)$recommendation['runbook_id'], 1);
-$liveApproval = recovery_request_approval((int)$liveSimulation['id'], 1);
-recovery_test_assert($liveApproval !== null && recovery_resolve_approval((int)$liveApproval['id'], 'approved', 1), 'Live recovery approval failed.');
-$liveExecution = recovery_queue_execution((int)$liveSimulation['id'], 1);
+$liveSimulation = recovery_simulate($incidentId, (int)$recommendation['runbook_id'], $adminUserId);
+$liveApproval = recovery_request_approval((int)$liveSimulation['id'], $adminUserId);
+recovery_test_assert($liveApproval !== null && recovery_resolve_approval((int)$liveApproval['id'], 'approved', $adminUserId), 'Live recovery approval failed.');
+$liveExecution = recovery_queue_execution((int)$liveSimulation['id'], $adminUserId);
 recovery_test_assert((string)$liveExecution['status'] === 'queued', 'Live recovery was not queued.');
 
 // Prove restart recovery for both the parent execution and its first step.
@@ -192,8 +219,8 @@ recovery_test_assert((string)$completed['verification_status'] === 'healthy', 'R
 // Prove execution failures retry until the bounded ceiling, then fail permanently.
 $retryIncidentId = recovery_test_incident('666d0000-0000-4000-8000-000000000002', 'v66m.worker.retry', 'operations');
 $operationsRunbook = db()->query("SELECT id FROM recovery_runbooks WHERE runbook_key='operations_window_rebuild' LIMIT 1")->fetchColumn();
-$retrySimulation = recovery_simulate($retryIncidentId, (int)$operationsRunbook, 1);
-$retryExecution = recovery_queue_execution((int)$retrySimulation['id'], 1);
+$retrySimulation = recovery_simulate($retryIncidentId, (int)$operationsRunbook, $adminUserId);
+$retryExecution = recovery_queue_execution((int)$retrySimulation['id'], $adminUserId);
 db()->exec("UPDATE recovery_execution_steps SET handler_key='forbidden.test' WHERE execution_id=" . (int)$retryExecution['id']);
 $retryOne = recovery_run_worker(1);
 $retryState = db()->query('SELECT * FROM recovery_executions WHERE id=' . (int)$retryExecution['id'])->fetch();
