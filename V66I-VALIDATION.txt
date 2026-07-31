@@ -1,0 +1,53 @@
+Federated Messaging, Conversation Safety & HomeServer Handoff v66I
+Certification date: 2026-07-30 America/Phoenix
+
+Certified implementation head:
+91dc81c036c1a684efe69936a135e866be47c28c
+
+Dedicated workflow:
+Federated Messaging Quality
+Run: 30594676024
+
+Dedicated jobs passed:
+- source-quality
+- mysql-8-integration
+- mariadb-integration
+
+Retained exact-head workflows passed:
+- ActivityPub Federation Quality — 30594676013
+- Federated Interactions Quality — 30594676025
+- Federated Timeline Quality — 30594675998
+- Public Syndication Quality — 30594675999
+- Content Interactions Quality — 30594676044
+- Unified Social Inbox Quality — 30594676033
+- Feed Reader Media Quality — 30594676021
+- North Mountain Media Portal Quality — 30594676036
+- VP3 POD Managed Update v65 — 30594676041
+- VP3 License Settings Quality — 30594676009
+
+Validation covered:
+- PHP syntax
+- direct-message visibility classification
+- bounded text sanitization
+- link-only attachment normalization
+- actor and domain rate limits
+- risk scoring
+- immutable actor/object ownership
+- unknown-sender message requests
+- trusted conversation opening
+- inbound Create, Update, Delete, and Undo
+- signed outbound Create, Update, Delete, and Tombstone
+- delivery receipts, failure synchronization, and retry reset
+- read, unread, archive, mute, pin, report, block, and local deletion controls
+- Unified Social Inbox integration
+- HomeServer explicit RSS-POD wrapper/resource authority
+- proposal-only summary, draft, and translation handoffs
+- no automatic HomeServer send authority
+- allowlisted HomeServer receipts and request hashing
+- cleanup of temporary build/hardening files
+- complete fresh schema import
+- repeat-safe additive migration import twice
+- live MySQL 8.4 integration
+- live MariaDB 11.4 integration
+
+Production deployment and live cross-server ActivityPub direct-message acceptance remain post-merge operational gates.
