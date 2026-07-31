@@ -1,1 +1,0 @@
-Stories v66O integration is staged. Keep the pull request draft and unmerged until permanent source replaces the temporary assembler, all temporary files are removed, and exact-head certification reaches 10/10.
