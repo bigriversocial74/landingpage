@@ -8,4 +8,14 @@ new = "'''        )->execute([\n            'approval_uuid'"
 if old not in source:
     raise SystemExit('approval execute controller correction anchor not found')
 source = source.replace(old, new, 1)
+source = source.replace(
+    "    'tools/harden-automation-rules-v66k-production.py',\n",
+    "    'tools/harden-automation-rules-v66k-production.py',\n    'tools/harden-automation-rules-v66k-production-v2.py',\n",
+    1,
+)
+source = source.replace(
+    "            tools/harden-automation-rules-v66k-production.py \\\n",
+    "            tools/harden-automation-rules-v66k-production.py \\\n            tools/harden-automation-rules-v66k-production-v2.py \\\n",
+    1,
+)
 exec(compile(source, str(source_path), 'exec'))
