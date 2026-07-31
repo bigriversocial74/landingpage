@@ -37,6 +37,25 @@ jobs:
           )
 
           replace_once(
+              'portal/bootstrap.php',
+              "            'inbox' => 'Unified Inbox',\n            'music' => 'Music Library',",
+              "            'inbox' => 'Unified Inbox',\n            'social-posts' => 'My Feed',\n            'music' => 'Music Library',",
+              'My Feed Operations insertion'
+          )
+          replace_once(
+              'portal/bootstrap.php',
+              "            'blog' => 'Blog',\n            'social-posts' => 'Social Posts',\n            'syndication' => 'Syndication',",
+              "            'blog' => 'Blog',\n            'syndication' => 'Syndication',",
+              'Social Posts Work removal'
+          )
+          replace_once(
+              'portal/bootstrap.php',
+              "            'social_feed' => [['Work','social-posts']],",
+              "            'social_feed' => [['Operations','social-posts']],",
+              'My Feed module navigation mapping'
+          )
+
+          replace_once(
               'portal/admin.php',
               "portal_header($view==='agent'?'Agent Chat':($title),$view,$user);\nif($view==='agent'){ agent_chat_render($user); }",
               "portal_header($view==='agent'?'Agent Chat':($title),$view,$user);\nif($view==='agent'){\n    agent_chat_render($user);\n    portal_footer();\n    exit;\n}",
@@ -50,28 +69,21 @@ jobs:
               'Agent Chat hero removal'
           )
 
-          workflow = Path('.github/workflows/publishing-center-quality.yml')
-          text = workflow.read_text(encoding='utf-8')
-          old = "      - name: Publishing Center contract\n        run: php tests/publishing-center-v66q.php\n"
-          new = old + "      - name: Publishing and Agent Chat repair contract\n        run: php tests/publishing-agent-repair-v66q1.php\n"
-          if 'publishing-agent-repair-v66q1.php' not in text:
-              if old not in text:
-                  raise SystemExit('Missing permanent workflow anchor')
-              text = text.replace(old, new, 1)
-              text = text.replace(
-                  "      - 'tests/publishing-center-v66q.php'\n",
-                  "      - 'tests/publishing-center-v66q.php'\n      - 'tests/publishing-agent-repair-v66q1.php'\n",
-                  1
-              )
-          workflow.write_text(text, encoding='utf-8')
+          replace_once(
+              'portal/social-posts.php',
+              "portal_header('Social Feed','social-posts',$user);",
+              "portal_header('My Feed','social-posts',$user);",
+              'My Feed page title'
+          )
 
-          Path('tests/publishing-agent-repair-v66q1.php').write_text('''<?php\ndeclare(strict_types=1);\n$root=dirname(__DIR__);\n$bootstrap=file_get_contents($root.'/portal/bootstrap.php');\n$admin=file_get_contents($root.'/portal/admin.php');\n$agent=file_get_contents($root.'/portal/agent-chat-view.php');\n$publishing=file_get_contents($root.'/assets/js/publishing-center-v66q.js');\nif(!is_string($bootstrap)||!str_contains($bootstrap,"frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com")) throw new RuntimeException('Same-origin Publishing Center frames are not allowed by CSP.');\n$agentRoute="if(\\$view==='agent'){\\n    agent_chat_render(\\$user);\\n    portal_footer();\\n    exit;\\n}";\nif(!is_string($admin)||!str_contains($admin,$agentRoute)) throw new RuntimeException('Agent route does not terminate through portal_footer.');\nif(!is_string($agent)||str_contains($agent,'agent-home-intro')||str_contains($agent,'Private POD operating assistant')) throw new RuntimeException('Agent Chat hero/header remains.');\nif(!is_string($publishing)||!str_contains($publishing,"frame.src = target.href")) throw new RuntimeException('Publishing Center iframe navigation contract missing.');\necho "Publishing modal and Agent Chat v66Q.1 repair contract passed\\n";\n''', encoding='utf-8')
+          Path('tests/publishing-agent-repair-v66q1.php').write_text('''<?php\ndeclare(strict_types=1);\n$root=dirname(__DIR__);\n$bootstrap=file_get_contents($root.'/portal/bootstrap.php');\n$admin=file_get_contents($root.'/portal/admin.php');\n$agent=file_get_contents($root.'/portal/agent-chat-view.php');\n$social=file_get_contents($root.'/portal/social-posts.php');\n$publishing=file_get_contents($root.'/assets/js/publishing-center-v66q.js');\nif(!is_string($bootstrap)||!str_contains($bootstrap,"frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com")) throw new RuntimeException('Same-origin Publishing Center frames are not allowed by CSP.');\n$agentRoute="if(\\$view==='agent'){\\n    agent_chat_render(\\$user);\\n    portal_footer();\\n    exit;\\n}";\nif(!is_string($admin)||!str_contains($admin,$agentRoute)) throw new RuntimeException('Agent route does not terminate through portal_footer.');\nif(!is_string($agent)||str_contains($agent,'agent-home-intro')||str_contains($agent,'Private POD operating assistant')) throw new RuntimeException('Agent Chat hero/header remains.');\nif(!is_string($publishing)||!str_contains($publishing,"frame.src = target.href")) throw new RuntimeException('Publishing Center iframe navigation contract missing.');\nif(!str_contains($bootstrap,"'social-posts' => 'My Feed'")||!str_contains($bootstrap,"'social_feed' => [['Operations','social-posts']]")||str_contains($bootstrap,"'social-posts' => 'Social Posts'")) throw new RuntimeException('My Feed is not correctly located in Operations.');\nif(!is_string($social)||!str_contains($social,"portal_header('My Feed','social-posts',\\$user);")) throw new RuntimeException('My Feed page title is missing.');\necho "Publishing modal, Agent Chat, and My Feed v66Q.1 repair contract passed\\n";\n''', encoding='utf-8')
           PY
       - name: Validate source
         run: |
           php -l portal/bootstrap.php
           php -l portal/admin.php
           php -l portal/agent-chat-view.php
+          php -l portal/social-posts.php
           php -l tests/publishing-agent-repair-v66q1.php
           node --check assets/js/publishing-center-v66q.js
           php tests/publishing-center-v66q.php
@@ -81,6 +93,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add portal/bootstrap.php portal/admin.php portal/agent-chat-view.php .github/workflows/publishing-center-quality.yml tests/publishing-agent-repair-v66q1.php
-          git commit -m "Repair Publishing modal and Agent Chat v66Q.1"
+          git add portal/bootstrap.php portal/admin.php portal/agent-chat-view.php portal/social-posts.php tests/publishing-agent-repair-v66q1.php
+          git commit -m "Repair Publishing modal, Agent Chat and My Feed v66Q.1"
           git push origin HEAD:${{ github.head_ref }}
