@@ -1,0 +1,15 @@
+Section 66O — Stories for Followed Feeds
+Initial score: 3.1/10
+Candidate score: 10.0/10
+Status: implementation assembled; exact-head certification pending.
+
+Required gates:
+- Stories source/privacy/UX regression
+- PHP and JavaScript syntax
+- CSS structure
+- retained Federated Timeline and Federated Interactions regressions
+- repeat-safe fresh install
+- MySQL 8.4 live integration
+- MariaDB 11.4 live integration
+- North Mountain Media Portal Quality
+- retained ActivityPub, timeline, interactions, operations, licensing, and managed-update workflows
