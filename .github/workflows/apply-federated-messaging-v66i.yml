@@ -1,0 +1,64 @@
+name: Apply Federated Messaging v66I
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-federated-messaging-v66i.yml'
+      - 'tools/apply-federated-messaging-v66i.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/federated-messaging-homeserver-v66i-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply deterministic integration
+        run: |
+          set -euo pipefail
+          python3 tools/apply-federated-messaging-v66i.py
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/federated-messaging.php portal/federated-messages.php \
+            portal/activitypub-service.php portal/unified-inbox.php \
+            portal/activitypub-admin.php activitypub-message.php \
+            cron/process-activitypub.php; do
+              php -l "$file"
+          done
+      - name: Integration and privacy contract
+        run: |
+          set -euo pipefail
+          grep -F "federated_messaging_process_inbound" portal/activitypub-service.php >/dev/null
+          grep -F "federated_messaging_sync_delivery" portal/activitypub-service.php >/dev/null
+          grep -F "federated_messaging_reset_delivery" portal/activitypub-service.php >/dev/null
+          grep -F "federated_message" portal/unified-inbox.php >/dev/null
+          grep -F "Open Federated Messages" portal/activitypub-admin.php >/dev/null
+          grep -F "federated_messaging_cleanup" cron/process-activitypub.php >/dev/null
+          grep -F "activitypub_message_threads" database/north_mountain_portal.sql >/dev/null
+          grep -F "'proposal_only' => true" portal/federated-messaging.php >/dev/null
+          grep -F "'send_allowed' => false" portal/federated-messaging.php >/dev/null
+          grep -F "'wrapper' => 'rss-pod'" portal/federated-messaging.php >/dev/null
+          if grep -F '<img' portal/federated-messages.php; then exit 1; fi
+          if grep -F '<audio' portal/federated-messages.php; then exit 1; fi
+          if grep -F '<video' portal/federated-messages.php; then exit 1; fi
+          if grep -F '<iframe' portal/federated-messages.php; then exit 1; fi
+      - name: Commit integrated application
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            portal/activitypub-service.php portal/federated-messaging.php \
+            portal/federated-messages.php portal/unified-inbox.php \
+            portal/activitypub-admin.php cron/process-activitypub.php \
+            database/north_mountain_portal.sql
+          git commit -m "Integrate Federated Messaging and HomeServer handoff v66I"
+          git push origin HEAD:${{ github.head_ref }}
