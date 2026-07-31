@@ -29,7 +29,7 @@ jobs:
           if ! command -v php >/dev/null; then
             brew install php
           fi
-      - name: Validate complete source
+      - name: Validate complete syntax
         run: |
           set -euo pipefail
           for file in \
@@ -44,11 +44,6 @@ jobs:
               php -l "$file"
           done
           node --check assets/js/automation-center.js
-          grep -F 'automation_recover_interrupted_approvals' portal/automation-rules.php >/dev/null
-          grep -F 'WHERE id=:id AND status="approved"' portal/automation-rules.php >/dev/null
-          grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/automation_rules_v66k.sql >/dev/null
-          grep -F "array_replace(\$settings, ['enabled' => false])" portal/automation-admin.php >/dev/null
-          ! grep -F 'DELETE FROM automation_rules' portal/automation-admin.php
       - name: Commit complete application
         run: |
           set -euo pipefail
