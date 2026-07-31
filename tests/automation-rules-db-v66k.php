@@ -286,6 +286,24 @@ try {
     $activityStatement->execute(['contact_id' => $contactId]);
     v66k_db_assert((int)$activityStatement->fetchColumn() === 1, 'Event/rule idempotency must prevent duplicate actions.');
 
+
+    $pdo->prepare(
+        'UPDATE automation_approvals
+         SET status="approved",resolved_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 20 MINUTE),result_json=NULL
+         WHERE id=:id'
+    )->execute(['id' => (int)$retryApproval['id']]);
+    $pdo->prepare(
+        'UPDATE automation_action_receipts
+         SET status="approved",error_code=NULL,error_message=NULL
+         WHERE id=:id'
+    )->execute(['id' => (int)$retryApproval['action_receipt_id']]);
+    v66k_db_assert(automation_recover_interrupted_approvals() === 1, 'Interrupted approved requests must be recovered exactly once.');
+    $retryApprovalStatement->execute(['execution_id' => (int)$retryExecution['id']]);
+    v66k_db_assert((string)$retryApprovalStatement->fetch()['status'] === 'failed', 'Interrupted approval recovery must create retryable failure evidence.');
+    automation_retry_approval((int)$retryApproval['id'], $ownerId);
+    $restartRetry = automation_resolve_approval((int)$retryApproval['id'], 'approve', $ownerId);
+    v66k_db_assert((string)$restartRetry['status'] === 'completed', 'A recovered approval must complete after explicit retry.');
+
     $limitedRuleId = automation_save_rule(0, [
         'name' => 'Limited test rule',
         'event_key' => 'delivery_failure',

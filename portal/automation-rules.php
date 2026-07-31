@@ -1159,9 +1159,47 @@ function automation_run(int $limit = 0): array
     return $summary;
 }
 
+function automation_recover_interrupted_approvals(): int
+{
+    if (!automation_schema_available()) return 0;
+    $rows = db()->query(
+        'SELECT approval.id,approval.execution_id,approval.action_receipt_id
+         FROM automation_approvals approval
+         WHERE approval.status="approved"
+           AND approval.resolved_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 MINUTE)'
+    )->fetchAll();
+    if (!$rows) return 0;
+    $statement = db()->prepare(
+        'UPDATE automation_approvals approval
+         JOIN automation_action_receipts receipt ON receipt.id=approval.action_receipt_id
+         SET approval.status="failed",
+             approval.result_json=:result_json,
+             receipt.status="failed",
+             receipt.error_code="approval_worker_interrupted",
+             receipt.error_message="The approved HomeServer request was interrupted before a result was stored."
+         WHERE approval.id=:id AND approval.status="approved"'
+    );
+    $recovered = 0;
+    foreach ($rows as $row) {
+        $statement->execute([
+            'id' => (int)$row['id'],
+            'result_json' => automation_json_encode([
+                'ok' => false,
+                'available' => false,
+                'message' => 'The approved HomeServer request was interrupted before a result was stored.',
+            ]),
+        ]);
+        if ($statement->rowCount() !== 1) continue;
+        $recovered++;
+        automation_refresh_execution_status((int)$row['execution_id']);
+    }
+    return $recovered;
+}
+
 function automation_expire_approvals(): int
 {
     if (!automation_schema_available()) return 0;
+    automation_recover_interrupted_approvals();
     $statement = db()->prepare(
         'UPDATE automation_approvals approval
          JOIN automation_action_receipts receipt ON receipt.id=approval.action_receipt_id
@@ -1223,8 +1261,19 @@ function automation_resolve_approval(int $approvalId, string $decision, int $use
             'receipt_id' => automation_clean_text($result['receipt_id'] ?? $result['job_id'] ?? '', 255),
         ];
         $finalStatus = $safeResult['ok'] ? 'completed' : 'failed';
-        db()->prepare('UPDATE automation_approvals SET status=:status,result_json=:result_json WHERE id=:id')
-            ->execute(['status' => $finalStatus, 'result_json' => automation_json_encode($safeResult), 'id' => $approvalId]);
+        $approvalFinalize = db()->prepare(
+            'UPDATE automation_approvals
+             SET status=:status,result_json=:result_json
+             WHERE id=:id AND status="approved"'
+        );
+        $approvalFinalize->execute([
+            'status' => $finalStatus,
+            'result_json' => automation_json_encode($safeResult),
+            'id' => $approvalId,
+        ]);
+        if ($approvalFinalize->rowCount() !== 1) {
+            return ['status' => 'superseded', 'result' => $safeResult];
+        }
         db()->prepare('UPDATE automation_action_receipts SET status=:status,after_json=:after_json,error_code=:error_code,error_message=:error_message WHERE id=:id')
             ->execute([
                 'status' => $safeResult['ok'] ? 'applied' : 'failed',

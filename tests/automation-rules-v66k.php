@@ -121,4 +121,7 @@ v66k_assert(str_contains($css, '.automation-mode.off'), 'The Action Center must 
 v66k_assert(!is_file($root . '/tools/apply-automation-rules-v66k.py'), 'The temporary v66K integration script must be removed.');
 v66k_assert(!is_file($root . '/.github/workflows/apply-automation-rules-v66k.yml'), 'The temporary v66K integration workflow must be removed.');
 
+v66k_assert(str_contains($core, 'automation_recover_interrupted_approvals'), 'Interrupted approved requests must become retryable failure evidence.');
+v66k_assert(str_contains($core, 'WHERE id=:id AND status="approved"'), 'HomeServer results must use compare-and-set finalization.');
+
 fwrite(STDOUT, "Automation Rules v66K source/security regression passed.\n");

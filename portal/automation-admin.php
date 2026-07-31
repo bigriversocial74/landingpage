@@ -20,8 +20,7 @@ function automation_admin_conditions_from_post(): array
     $values = is_array($_POST['condition_value'] ?? null) ? $_POST['condition_value'] : [];
     $conditions = [];
     foreach ($fields as $index => $field) {
-        $field = trim((string)$field;
-        );
+        $field = trim((string)$field);
         $operator = trim((string)($operators[$index] ?? 'equals'));
         $value = trim((string)($values[$index] ?? ''));
         if ($field === '' && $value === '') continue;
