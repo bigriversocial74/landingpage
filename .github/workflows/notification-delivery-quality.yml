@@ -1,0 +1,147 @@
+name: Notification Delivery Quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/notification-delivery-quality.yml'
+      - 'portal/notification-delivery.php'
+      - 'portal/notification-delivery-admin.php'
+      - 'portal/notification-push-api.php'
+      - 'portal/notifications.php'
+      - 'portal/admin.php'
+      - 'portal/homeserver-adapter.php'
+      - 'assets/js/notification-delivery.js'
+      - 'assets/css/notification-delivery.css'
+      - 'notification-service-worker.js'
+      - 'cron/process-notifications.php'
+      - 'config-example.php'
+      - 'database/notification_delivery_v66j.sql'
+      - 'database/north_mountain_portal.sql'
+      - 'tests/notification-delivery-v66j.php'
+      - 'tests/notification-delivery-db-v66j.php'
+      - 'V66J-SCORECARD.md'
+      - 'V66J-VALIDATION.txt'
+      - 'NOTIFICATION-DELIVERY-SETUP-v66J.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mbstring
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/notification-delivery.php \
+            portal/notification-delivery-admin.php \
+            portal/notification-push-api.php \
+            portal/notifications.php portal/admin.php \
+            cron/process-notifications.php \
+            tests/notification-delivery-v66j.php \
+            tests/notification-delivery-db-v66j.php \
+            config-example.php; do
+              php -l "$file"
+          done
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check assets/js/notification-delivery.js
+          node --check notification-service-worker.js
+      - name: Source, privacy, and security regression
+        run: php tests/notification-delivery-v66j.php
+      - name: Schema and cleanup contract
+        run: |
+          set -euo pipefail
+          for table in \
+            notification_delivery_preferences notification_quiet_hours \
+            notification_delivery_keys notification_push_subscriptions \
+            notification_delivery_queue notification_delivery_attempts \
+            notification_digest_batches; do
+              test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/notification_delivery_v66j.sql)" = "1"
+              test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/north_mountain_portal.sql)" = "1"
+          done
+          test ! -e tools/apply-notification-delivery-v66j.py
+          test ! -e .github/workflows/apply-notification-delivery-v66j.yml
+          grep -F 'notification_delivery_enqueue_notification($notificationId)' portal/notifications.php >/dev/null
+          grep -F 'external notification enqueue failed' portal/notifications.php >/dev/null
+          grep -F "'notification_delivery_secret'" config-example.php >/dev/null
+          grep -F "'wrapper' => 'rss-pod'" portal/notification-delivery.php >/dev/null
+          grep -F "'resource_authority' => 'notification_metadata'" portal/notification-delivery.php >/dev/null
+          grep -F "'proposal_only' => true" portal/notification-delivery.php >/dev/null
+          grep -F "'send_allowed' => false" portal/notification-delivery.php >/dev/null
+          grep -F 'url.origin === self.location.origin' notification-service-worker.js >/dev/null
+          if grep -E 'https?://[^[:space:]]+\.js' notification-service-worker.js assets/js/notification-delivery.js; then exit 1; fi
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe additive migration
+        run: |
+          set -euo pipefail
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/notification_delivery_v66j.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/notification_delivery_v66j.sql
+      - name: Live Notification Delivery database integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/notification-delivery-db-v66j.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe additive migration
+        run: |
+          set -euo pipefail
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/notification_delivery_v66j.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/notification_delivery_v66j.sql
+      - name: Live Notification Delivery database integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/notification-delivery-db-v66j.php
