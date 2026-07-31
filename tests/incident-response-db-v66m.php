@@ -18,13 +18,6 @@ function db(): PDO
     return $pdo;
 }
 
-$GLOBALS['recovery_test_events'] = [];
-function automation_capture_event(array $event): int
-{
-    $GLOBALS['recovery_test_events'][] = $event;
-    return count($GLOBALS['recovery_test_events']);
-}
-
 require dirname(__DIR__) . '/portal/incident-response.php';
 
 function recovery_test_assert(bool $condition, string $message): void
