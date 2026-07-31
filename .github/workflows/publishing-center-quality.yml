@@ -6,7 +6,14 @@ on:
       - 'portal/**'
       - 'assets/js/**'
       - 'assets/css/**'
+      - 'social-feed.php'
+      - 'blog-feed.php'
+      - 'blog-atom.php'
+      - 'blog-json-feed.php'
+      - 'blog-feeds.php'
+      - 'podcast-feed.php'
       - 'tests/publishing-center-v66q.php'
+      - 'tests/social-posts-v66p.php'
       - '.github/workflows/publishing-center-quality.yml'
 
 permissions:
@@ -14,14 +21,25 @@ permissions:
 
 jobs:
   source-quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.2', '8.3']
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php-version }}
       - name: PHP syntax
-        run: find portal -name '*.php' -print0 | xargs -0 -n1 php -l
+        run: |
+          find portal -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l social-feed.php
+          php -l blog-feed.php
+          php -l blog-atom.php
+          php -l blog-json-feed.php
+          php -l blog-feeds.php
+          php -l podcast-feed.php
       - name: JavaScript syntax
         run: |
           node --check assets/js/portal.js
@@ -29,3 +47,5 @@ jobs:
           node --check assets/js/publishing-complete-v66q.js
       - name: Publishing Center contract
         run: php tests/publishing-center-v66q.php
+      - name: Retained Social Posts contract
+        run: php tests/social-posts-v66p.php
