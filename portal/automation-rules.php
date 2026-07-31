@@ -542,9 +542,13 @@ function automation_save_rule(int $ruleId, array $values, int $userId): int
                  VALUES
                     (:rule_uuid,:name,:description,"draft",:event_key,:source_type,:priority_order,:stop_processing,
                      :condition_mode,:conditions_json,:actions_json,:max_executions_per_hour,:max_executions_per_day,
-                     :starts_at,:expires_at,:user_id,:user_id)'
+                     :starts_at,:expires_at,:created_by_user_id,:updated_by_user_id)'
             );
-            $statement->execute($clean + ['rule_uuid' => automation_uuid(), 'user_id' => $userId]);
+            $statement->execute($clean + [
+      'rule_uuid' => automation_uuid(),
+      'created_by_user_id' => $userId,
+      'updated_by_user_id' => $userId,
+  ]);
             $ruleId = (int)$pdo->lastInsertId();
         }
         $versionStatement = $pdo->prepare('SELECT COALESCE(MAX(version_number),0)+1 FROM automation_rule_versions WHERE rule_id=:rule_id');

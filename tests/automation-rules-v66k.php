@@ -114,7 +114,7 @@ v66k_assert(str_contains($core, 'uq_automation_executions_event_rule') || str_co
 v66k_assert(str_contains($core, "str_starts_with(\$entityType, 'automation_')"), 'Automation-created notifications must not recursively create automation events.');
 v66k_assert(str_contains($admin, 'automation_emergency_disable'), 'The Action Center must expose an emergency disable.');
 v66k_assert(str_contains($core, '($evidence[\'matched\'] ?? null) === true'), 'Only a matching current simulation may authorize activation.');
-v66k_assert(str_contains($admin, "array_replace($settings, ['enabled' => false])"), 'Emergency disable must replace the enabled setting.');
+v66k_assert(str_contains($admin, "array_replace(\$settings, ['enabled' => false])"), 'Emergency disable must replace the enabled setting.');
 v66k_assert(!str_contains($admin, 'DELETE FROM automation_rules'), 'Rule and audit history must not be hard-deleted.');
 v66k_assert(strpos($core, 'if ($dryRun)') < strpos($core, 'if (!automation_rule_limit_reserve($rule))'), 'Dry-run must not consume live execution limits.');
 v66k_assert(str_contains($core, 'automation_refresh_execution_status'), 'Approval outcomes must refresh parent execution state.');
