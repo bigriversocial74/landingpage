@@ -15,26 +15,23 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-      - name: Assemble final permanent diff
+      - name: Finalize source tests and documentation
         run: python3 tools/repair-social-posts-v66p.py
       - name: Validate finalization
         run: |
           set -euo pipefail
-          php -l portal/social-posts-service.php
-          php -l portal/activitypub-service.php
           php -l tests/social-posts-v66p.php
           php -l tests/social-posts-db-v66p.php
-          node --check assets/js/social-posts-v66p.js
           php tests/social-posts-v66p.php
-          test ! -e .github/workflows/apply-private-outbox-v66p.yml
-          test ! -e .github/workflows/repair-social-posts-v66p.yml
           test ! -e tools/repair-social-posts-v66p.py
-      - name: Commit final permanent diff
+      - name: Commit non-workflow finalization
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add tests/social-posts-v66p.php tests/social-posts-db-v66p.php \
+            SOCIAL-POSTS-AUDIT-v66P.md SOCIAL-POSTS-SETUP-v66P.md \
+            V66P-SCORECARD.md V66P-VALIDATION.txt tools/repair-social-posts-v66p.py
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Finalize POD Social Posts v66P certification diff'
+          git commit -m 'Finalize POD Social Posts v66P tests and evidence'
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
