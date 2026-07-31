@@ -28,8 +28,10 @@ text = text.replace(
     "        'publish_state' => $status,\n        'edit_state' => $status,\n        'id' => $postId,",
     1,
 )
-if ':published="published"' in text:
-    raise SystemExit("Duplicate PDO placeholder remains")
+if 'WHEN :published="published" THEN COALESCE(published_at,UTC_TIMESTAMP())' in text:
+    raise SystemExit("Published-at PDO placeholder repair did not apply")
+if 'edited_at=CASE WHEN :published="published"' in text:
+    raise SystemExit("Edited-at PDO placeholder repair did not apply")
 service.write_text(text, encoding="utf-8")
 
 old_outbox = '''function activitypub_outbox_document(): array
