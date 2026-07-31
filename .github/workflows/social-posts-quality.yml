@@ -77,7 +77,7 @@ jobs:
           grep -F "social_posts_render_landing" landing-page.php >/dev/null
           grep -F "social_posts_render_landing" portal/site-builder-core.php >/dev/null
           grep -F "social_posts_render_portal_stream" portal/federated-feed.php >/dev/null
-          grep -F "'social-posts' => 'Social Posts'" portal/bootstrap.php >/dev/null
+          grep -F "'social-posts' => 'My Feed'" portal/bootstrap.php >/dev/null
           grep -F "activitypub_payload_is_public" portal/activitypub-service.php >/dev/null
 
   mysql-8-integration:
