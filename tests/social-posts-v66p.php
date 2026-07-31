@@ -5,6 +5,7 @@ $root = dirname(__DIR__);
 $failures = [];
 $files = [
     'service' => 'portal/social-posts-service.php',
+    'activitypub' => 'portal/activitypub-service.php',
     'admin' => 'portal/social-posts.php',
     'object' => 'activitypub-social-post.php',
     'single' => 'social-post.php',
@@ -44,6 +45,8 @@ $expect('service', "['Create', 'Update', 'Delete']", 'Create, Update, and Delete
 $expect('service', "'type' => 'Note'", 'Permanent social posts must use ActivityPub Notes.');
 $expect('service', "'type' => 'Tombstone'", 'Deleted posts must produce Tombstones.');
 $expect('service', 'activitypub_queue_approved_followers', 'Delivery must reuse approved ActivityPub followers.');
+$expect('activitypub', 'activitypub_payload_is_public', 'Public outbox audience filtering is required.');
+$expect('activitypub', 'AND payload_json LIKE :public_marker', 'Public outbox must prefilter public payload candidates.');
 $expect('service', "'https://www.w3.org/ns/activitystreams#Public'", 'Public ActivityStreams audience is missing.');
 $expect('service', "'to' => [activitypub_followers_url()]", 'Follower-only audience is missing.');
 $expect('service', 'social_posts_same_origin_url', 'Protected same-origin media validation is required.');
@@ -82,6 +85,9 @@ $expect('fresh', 'SOURCE database/social_posts_v66p.sql;', 'Fresh schema must in
 foreach ([
     '.github/workflows/apply-social-posts-v66p.yml',
     '.github/workflows/apply-social-posts-navigation-v66p.yml',
+    '.github/workflows/apply-private-outbox-v66p.yml',
+    '.github/workflows/repair-social-posts-v66p.yml',
+    'tools/repair-social-posts-v66p.py',
     'tools/apply-social-posts-v66p.py',
 ] as $temporary) {
     if (is_file($root . '/' . $temporary)) {

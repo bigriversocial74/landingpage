@@ -18,6 +18,7 @@ The POD already had a complete ActivityPub actor, approved followers, accepted F
 - no local-publishing section in the federated timeline workspace
 - no direct administrator navigation to social publishing
 - no Social Posts migration, retained evidence, or MySQL/MariaDB certification
+- the inherited public outbox could expose follower-only payloads without audience filtering
 
 ## 10/10 target
 
@@ -35,3 +36,4 @@ The completed feature must reuse the canonical ActivityPub identity and approved
 - followers-only Notes are audience-restricted but are not end-to-end encrypted
 - recipients can retain content delivered to them
 - protected media remains same-origin; external links require HTTPS
+- the public outbox contains only verified Public-audience activities

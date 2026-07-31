@@ -233,6 +233,21 @@ try {
         $fail('Followers-only post leaked into the public feed.');
     }
 
+
+    $publicOutbox = activitypub_outbox_document();
+    if ((int)($publicOutbox['totalItems'] ?? 0) !== 3) {
+        $fail('Public outbox count includes a follower-only activity or omits a public activity.');
+    }
+    foreach (($publicOutbox['orderedItems'] ?? []) as $activity) {
+        if (!is_array($activity) || !activitypub_payload_is_public($activity)) {
+            $fail('Public outbox exposed a non-public activity.');
+        }
+        $objectUri = (string)($activity['object']['id'] ?? $activity['object'] ?? '');
+        if ($objectUri === social_posts_object_url($followers)) {
+            $fail('Followers-only social post leaked into the public ActivityPub outbox.');
+        }
+    }
+
     $rejectedMedia = false;
     try {
         social_posts_create([

@@ -7,6 +7,7 @@ Implemented scope:
 - permanent local ActivityPub Note publisher
 - drafts, public publishing, followers-only publishing, edits, deletion, and Tombstones
 - approved-follower delivery through the existing ActivityPub outbox
+- public ActivityPub outbox audience filtering that excludes follower-only payloads
 - protected same-origin media and HTTPS external-link policy
 - public social feed, public post pages, and ActivityPub Note object pages
 - remote Follow this POD handoff without collecting remote credentials

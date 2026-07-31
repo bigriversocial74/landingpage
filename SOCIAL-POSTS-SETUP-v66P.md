@@ -43,6 +43,7 @@ No additional worker is required beyond the existing ActivityPub delivery worker
 - Confirm local published posts appear above the remote federated timeline.
 - Test “Follow this POD” with a Mastodon-compatible account and confirm the external server handles approval.
 - Confirm the existing blog archive and `blog-feed.php` continue working unchanged.
+- Confirm the public ActivityPub outbox excludes follower-only social posts and Stories.
 - Test the selected landing mode on both the default landing template and a published visual-builder home page.
 
 ## Follow behavior

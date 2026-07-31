@@ -16,6 +16,7 @@
 | Default and visual-builder compatibility | 3.0 | 10.0 |
 | Blog and RSS preservation | 9.0 | 10.0 |
 | Media/link privacy and safety | 6.0 | 10.0 |
+| Public outbox audience privacy | 3.0 | 10.0 |
 | Mobile and accessible interface | 4.0 | 10.0 |
 | Database compatibility and repeat safety | 3.0 | 10.0 |
 | Regression and deployment readiness | 2.0 | 10.0 |
