@@ -1,0 +1,31 @@
+name: Temporary v66M administrator fixture repair
+
+on:
+  push:
+    branches:
+      - feature/incident-response-runbooks-recovery-center-v66m-20260731
+    paths:
+      - 'tools/repair-incident-response-v66m.py'
+      - '.github/workflows/repair-incident-response-v66m.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/incident-response-runbooks-recovery-center-v66m-20260731
+      - run: python3 tools/repair-incident-response-v66m.py
+      - run: php -l tests/incident-response-db-v66m.php
+      - name: Commit fixture repair
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tests/incident-response-db-v66m.php; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/incident-response-db-v66m.php
+          git commit -m 'Create real administrator fixtures for v66M integration'
+          git push origin HEAD:feature/incident-response-runbooks-recovery-center-v66m-20260731
