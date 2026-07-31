@@ -1,0 +1,86 @@
+name: Repair Publishing Modal and Agent Chat v66Q.1
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'Missing anchor: {label}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+              'portal/bootstrap.php',
+              '"frame-src https://www.youtube-nocookie.com https://player.vimeo.com; " .',
+              '"frame-src \'self\' https://www.youtube-nocookie.com https://player.vimeo.com; " .',
+              'same-origin frame CSP'
+          )
+
+          replace_once(
+              'portal/admin.php',
+              "portal_header($view==='agent'?'Agent Chat':($title),$view,$user);\nif($view==='agent'){ agent_chat_render($user); }",
+              "portal_header($view==='agent'?'Agent Chat':($title),$view,$user);\nif($view==='agent'){\n    agent_chat_render($user);\n    portal_footer();\n    exit;\n}",
+              'agent route termination'
+          )
+
+          replace_once(
+              'portal/agent-chat-view.php',
+              '''<section class="agent-home-intro">\n<div><span>Private POD operating assistant</span><h2>Agent Chat</h2><p>Ask about calls, communications, CRM, clients, projects, publishing, notifications, and current work. Configure private capabilities before granting the agent broader context or tools.</p></div>\n<button class="agent-publish-button" type="button" data-publishing-open>Publishing +</button>\n</section>\n''',
+              '',
+              'Agent Chat hero removal'
+          )
+
+          workflow = Path('.github/workflows/publishing-center-quality.yml')
+          text = workflow.read_text(encoding='utf-8')
+          old = "      - name: Publishing Center contract\n        run: php tests/publishing-center-v66q.php\n"
+          new = old + "      - name: Publishing and Agent Chat repair contract\n        run: php tests/publishing-agent-repair-v66q1.php\n"
+          if 'publishing-agent-repair-v66q1.php' not in text:
+              if old not in text:
+                  raise SystemExit('Missing permanent workflow anchor')
+              text = text.replace(old, new, 1)
+              text = text.replace(
+                  "      - 'tests/publishing-center-v66q.php'\n",
+                  "      - 'tests/publishing-center-v66q.php'\n      - 'tests/publishing-agent-repair-v66q1.php'\n",
+                  1
+              )
+          workflow.write_text(text, encoding='utf-8')
+
+          Path('tests/publishing-agent-repair-v66q1.php').write_text('''<?php\ndeclare(strict_types=1);\n$root=dirname(__DIR__);\n$bootstrap=file_get_contents($root.'/portal/bootstrap.php');\n$admin=file_get_contents($root.'/portal/admin.php');\n$agent=file_get_contents($root.'/portal/agent-chat-view.php');\n$publishing=file_get_contents($root.'/assets/js/publishing-center-v66q.js');\nif(!is_string($bootstrap)||!str_contains($bootstrap,"frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com")) throw new RuntimeException('Same-origin Publishing Center frames are not allowed by CSP.');\nif(!is_string($admin)||!preg_match("/if\\(\\$view==='agent'\\)\\{\\s*agent_chat_render\\(\\$user\\);\\s*portal_footer\\(\\);\\s*exit;/",$admin)) throw new RuntimeException('Agent route does not terminate through portal_footer.');\nif(!is_string($agent)||str_contains($agent,'agent-home-intro')||str_contains($agent,'Private POD operating assistant')) throw new RuntimeException('Agent Chat hero/header remains.');\nif(!is_string($publishing)||!str_contains($publishing,"frame.src = target.href")) throw new RuntimeException('Publishing Center iframe navigation contract missing.');\necho "Publishing modal and Agent Chat v66Q.1 repair contract passed\\n";\n''', encoding='utf-8')
+          PY
+      - name: Validate source
+        run: |
+          php -l portal/bootstrap.php
+          php -l portal/admin.php
+          php -l portal/agent-chat-view.php
+          php -l tests/publishing-agent-repair-v66q1.php
+          node --check assets/js/publishing-center-v66q.js
+          php tests/publishing-center-v66q.php
+          php tests/publishing-agent-repair-v66q1.php
+          php tests/social-posts-v66p.php
+      - name: Commit permanent repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add portal/bootstrap.php portal/admin.php portal/agent-chat-view.php .github/workflows/publishing-center-quality.yml tests/publishing-agent-repair-v66q1.php
+          git commit -m "Repair Publishing modal and Agent Chat v66Q.1"
+          git push origin HEAD:${{ github.head_ref }}
