@@ -8,6 +8,7 @@ require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/content-interactions.php';
 require_once __DIR__ . '/federated-interactions.php';
 require_once __DIR__ . '/federated-timeline.php';
+require_once __DIR__ . '/stories-service.php';
 require_once __DIR__ . '/federated-messaging.php';
 
 function activitypub_valid_uuid(string $value): bool
@@ -421,6 +422,8 @@ function activitypub_receive_inbox(
             activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif (federated_interactions_process_inbound($inboxId, $payload, $remote)) {
             activitypub_update_inbox_status($inboxId, 'accepted');
+        } elseif (stories_process_inbound($inboxId, $payload, $remote)) {
+            activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif (federated_timeline_process_inbound($inboxId, $payload, $remote)) {
             activitypub_update_inbox_status($inboxId, 'accepted');
         } elseif ($activityType === 'Undo') {
@@ -475,6 +478,10 @@ function activitypub_receive_inbox(
                 db()->prepare('UPDATE activitypub_remote_posts SET status="deleted",deleted_at=UTC_TIMESTAMP() WHERE remote_actor_id=:actor_id')
                     ->execute(['actor_id' => (int)$remote['id']]);
                 db()->prepare('UPDATE activitypub_remote_post_actions action JOIN activitypub_remote_posts post ON post.id=action.remote_post_id SET action.status="failed",action.last_error="Remote actor deleted" WHERE post.remote_actor_id=:actor_id AND action.status="active"')
+                    ->execute(['actor_id' => (int)$remote['id']]);
+            }
+            if (stories_schema_available()) {
+                db()->prepare('UPDATE pod_stories SET status="deleted",deleted_at=UTC_TIMESTAMP(),updated_at=UTC_TIMESTAMP() WHERE remote_actor_id=:actor_id AND direction="remote"')
                     ->execute(['actor_id' => (int)$remote['id']]);
             }
             if (federated_messaging_schema_available()) {
