@@ -1,0 +1,38 @@
+name: Temporary v66M hardening
+
+on:
+  push:
+    branches:
+      - feature/incident-response-runbooks-recovery-center-v66m-20260731
+    paths:
+      - 'tools/harden-incident-response-v66m.py'
+      - '.github/workflows/harden-incident-response-v66m.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/incident-response-runbooks-recovery-center-v66m-20260731
+      - name: Apply deterministic hardening
+        run: python3 tools/harden-incident-response-v66m.py
+      - name: Validate PHP syntax
+        run: |
+          php -l portal/incident-response.php
+          php -l portal/recovery-center.php
+      - name: Commit hardened sources
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- portal/incident-response.php portal/recovery-center.php; then
+            echo 'No hardening changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add portal/incident-response.php portal/recovery-center.php
+          git commit -m 'Harden Section 66M simulation, approval, retry, and verification'
+          git push origin HEAD:feature/incident-response-runbooks-recovery-center-v66m-20260731
