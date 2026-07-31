@@ -33,6 +33,10 @@ jobs:
               "text = replace_once(text, old_href, new_href, 'agent/dashboard nav urls')",
               "if old_href in text:\n    text = text.replace(old_href, new_href, 1)\nelse:\n    needle = \"($key === 'dashboard' ? '' : '?view=' . $key)\"\n    if needle not in text: raise SystemExit('Missing direct sidebar URL expression')\n    text = text.replace(needle, \"($key === 'agent' ? '' : '?view=' . $key)\", 1)"
           )
+          payload=payload.replace(
+              "text = replace_once(text, old, new, 'publishing header button')",
+              "if old in text:\n    text = text.replace(old, new, 1)\nelse:\n    marker = '            <div class=\"portal-header-user\">'\n    if marker not in text: raise SystemExit('Missing portal header user container')\n    insertion = marker + '\\n                <?php if($isAdmin):?><button class=\"portal-top-action publishing-center-trigger\" type=\"button\" data-publishing-open>Publishing +</button><?php endif;?>'\n    text = text.replace(marker, insertion, 1)"
+          )
           Path('/tmp/build-v66q.py').write_text(payload,encoding='utf-8')
           PY
           python3 /tmp/build-v66q.py
