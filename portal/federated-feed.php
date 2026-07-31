@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/activitypub-service.php';
+require_once __DIR__ . '/social-posts-service.php';
 require_once __DIR__ . '/federated-timeline.php';
 
 $user = require_role('admin');
@@ -119,6 +120,7 @@ portal_header('Federated Timeline', 'communications', $user);
 ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/federated-timeline.css?v=20260730-v66H'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/stories-v66o.css?v=20260731-v66O'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
 <div class="ft-shell" data-stories-app data-story-view-endpoint="<?=e(app_url('api/story-view.php'))?>" data-csrf="<?=e(csrf_token())?>">
 <section class="ft-panel ft-hero">
 <div><span class="ft-kicker">Private open-social workspace · v66H</span><h2>Your followed network, on your POD.</h2><p>Read verified posts, review direct mentions, save useful entries, and send signed replies, likes, boosts, and Undo activities. Remote media stays link-only.</p></div>
@@ -126,6 +128,7 @@ portal_header('Federated Timeline', 'communications', $user);
 </section>
 
 <?php stories_render_rail($userId,24);?>
+<?php social_posts_render_portal_stream($userId,8);?>
 
 <?php if(!$schemaAvailable):?>
 <section class="ft-warning"><strong>Federated timeline migration required.</strong> Import <code>database/federated_timeline_v66h.sql</code>.</section>
