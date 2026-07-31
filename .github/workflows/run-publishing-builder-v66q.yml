@@ -31,7 +31,7 @@ jobs:
           )
           payload=payload.replace(
               "text = replace_once(text, old_href, new_href, 'agent/dashboard nav urls')",
-              "if old_href in text:\n    text = text.replace(old_href, new_href, 1)\nelse:\n    updated,count = re.subn(r\"\\(\\$key === 'dashboard' \\? '' : '\\\\?view=' \\. \\$key\\)\", \"($key === 'agent' ? '' : '?view=' . $key)\", text, count=1)\n    if count != 1: raise SystemExit('Missing structural sidebar URL expression')\n    text = updated"
+              "if old_href in text:\n    text = text.replace(old_href, new_href, 1)\nelse:\n    needle = \"($key === 'dashboard' ? '' : '?view=' . $key)\"\n    if needle not in text: raise SystemExit('Missing direct sidebar URL expression')\n    text = text.replace(needle, \"($key === 'agent' ? '' : '?view=' . $key)\", 1)"
           )
           Path('/tmp/build-v66q.py').write_text(payload,encoding='utf-8')
           PY
