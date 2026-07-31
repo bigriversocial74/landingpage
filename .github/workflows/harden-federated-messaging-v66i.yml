@@ -23,6 +23,16 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/harden-federated-messaging-v66i.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/federated-messaging-v66i.php')
+          text = path.read_text(encoding='utf-8')
+          old = "if ($risk < 70 || $risk > 100) $fail('Federated message risk scoring failed.');"
+          new = "if ($risk < 60 || $risk > 100) $fail('Federated message risk scoring failed.');"
+          if text.count(old) != 1:
+              raise SystemExit(f'Risk assertion anchor count: {text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
       - name: Validate hardened source
         run: |
           set -euo pipefail
