@@ -500,6 +500,9 @@ function operations_extended_decorate(string $html): string
     $html = str_replace('</head>', $css . '</head>', $html);
     $section = (string)($_GET['section'] ?? 'overview');
     $addition = '';
+    if ($section === 'overview' && is_file(__DIR__ . '/recovery-center.php')) {
+        $addition .= '<section class="operations-card operations-recovery-entry"><header class="operations-card-header"><div><h2>Incident Recovery Center</h2><p>Simulate, approve, execute, and verify allowlisted recovery runbooks for active operational incidents.</p></div><a class="operations-button primary" data-recovery-center-entry href="' . e(app_url('portal/recovery-center.php')) . '">Open Recovery Center</a></header></section>';
+    }
     if ($section === 'overview') {
         $range = (string)($_GET['range'] ?? '24h');
         if (!in_array($range, ['24h','7d','30d'], true)) $range = '24h';
