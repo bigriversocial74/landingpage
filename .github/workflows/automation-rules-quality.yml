@@ -57,12 +57,40 @@ jobs:
               test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/automation_rules_v66k.sql)" = "1"
               test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/north_mountain_portal.sql)" = "1"
           done
-          test ! -e tools/apply-automation-rules-v66k.py
-          test ! -e .github/workflows/apply-automation-rules-v66k.yml
+          for path in \
+            tools/apply-automation-rules-v66k.py \
+            tools/audit-retention-finalize-automation-rules-v66k.py \
+            tools/finalize-automation-rules-v66k.py \
+            tools/policy-finalize-automation-rules-v66k.py \
+            tools/restart-safety-finalize-automation-rules-v66k.py \
+            tools/restart-safety-finalize-automation-rules-v66k-v2.py \
+            tools/restart-safety-finalize-automation-rules-v66k-v3.py \
+            tools/harden-automation-rules-v66k-production.py \
+            tools/harden-automation-rules-v66k-production-v2.py \
+            tools/harden-automation-rules-v66k-production-v3.py \
+            tools/harden-automation-rules-v66k-production-v4.py \
+            tools/harden-automation-rules-v66k-production-v5.py \
+            .github/workflows/apply-automation-rules-v66k.yml \
+            .github/workflows/apply-complete-automation-rules-v66k-final.yml \
+            .github/workflows/apply-complete-automation-rules-v66k-final-macos.yml \
+            .github/workflows/audit-retention-finalize-automation-rules-v66k.yml \
+            .github/workflows/finalize-automation-rules-v66k.yml \
+            .github/workflows/policy-finalize-automation-rules-v66k.yml \
+            .github/workflows/restart-safety-finalize-automation-rules-v66k.yml \
+            .github/workflows/restart-safety-finalize-automation-rules-v66k-macos.yml \
+            .github/workflows/harden-automation-rules-v66k-production.yml; do
+              test ! -e "$path"
+          done
           grep -F "'proposal_only' => true" portal/automation-rules.php >/dev/null
           grep -F "'send_allowed' => false" portal/automation-rules.php >/dev/null
           grep -F "'tool_execution_allowed' => false" portal/automation-rules.php >/dev/null
           grep -F 'automation_capture_notification($notificationId)' portal/notifications.php >/dev/null
+          grep -F 'automation_refresh_execution_status' portal/automation-rules.php >/dev/null
+          grep -F 'automation_retry_approval' portal/automation-rules.php >/dev/null
+          grep -F 'automation_recover_interrupted_approvals' portal/automation-rules.php >/dev/null
+          grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/automation_rules_v66k.sql >/dev/null
+          grep -F "array_replace(\$settings, ['enabled' => false])" portal/automation-admin.php >/dev/null
+          if grep -F 'DELETE FROM automation_rules' portal/automation-admin.php; then exit 1; fi
           grep -F "'automation'" portal/admin.php >/dev/null
 
   mysql-8-integration:
