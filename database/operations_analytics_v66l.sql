@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS operations_analytics_settings (
     daily_retention_days SMALLINT UNSIGNED NOT NULL DEFAULT 730,
     incident_retention_days SMALLINT UNSIGNED NOT NULL DEFAULT 730,
     report_retention_days SMALLINT UNSIGNED NOT NULL DEFAULT 730,
+    report_frequency ENUM('off','daily','weekly','monthly') NOT NULL DEFAULT 'off',
+    report_hour_utc TINYINT UNSIGNED NOT NULL DEFAULT 15,
+    report_weekday_utc TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    last_scheduled_report_end_at DATETIME NULL,
     updated_by_user_id BIGINT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -149,15 +153,31 @@ CREATE TABLE IF NOT EXISTS operations_worker_runs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO operations_health_policies
-(check_key,comparison,attention_threshold,degraded_threshold,critical_threshold)
+(check_key,comparison,attention_threshold,degraded_threshold,critical_threshold,minimum_sample_count)
 VALUES
-('notification.queue.depth','greater_or_equal',25,100,500),
-('notification.queue.oldest_minutes','greater_or_equal',15,60,240),
-('activitypub.delivery.depth','greater_or_equal',25,100,500),
-('activitypub.delivery.oldest_minutes','greater_or_equal',15,60,240),
-('automation.event.depth','greater_or_equal',25,100,500),
-('automation.event.oldest_minutes','greater_or_equal',15,60,240),
-('automation.approval.depth','greater_or_equal',5,20,100),
-('unified_inbox.needs_response','greater_or_equal',10,50,200);
+('notification.queue.depth','greater_or_equal',25,100,500,0),
+('notification.queue.oldest_minutes','greater_or_equal',15,60,240,0),
+('notification.delivery.failure_percent','greater_or_equal',10,25,50,5),
+('activitypub.delivery.depth','greater_or_equal',25,100,500,0),
+('activitypub.delivery.oldest_minutes','greater_or_equal',15,60,240,0),
+('activitypub.delivery.failure_percent','greater_or_equal',10,25,50,5),
+('automation.event.depth','greater_or_equal',25,100,500,0),
+('automation.event.oldest_minutes','greater_or_equal',15,60,240,0),
+('automation.execution.failure_percent','greater_or_equal',10,25,50,5),
+('automation.approval.depth','greater_or_equal',5,20,100,0),
+('unified_inbox.needs_response','greater_or_equal',10,50,200,0),
+('syndication.websub.depth','greater_or_equal',25,100,500,0),
+('syndication.websub.oldest_minutes','greater_or_equal',15,60,240,0),
+('syndication.websub.failure_percent','greater_or_equal',10,25,50,5),
+('feed.source.error_depth','greater_or_equal',1,5,20,0),
+('feed.source.oldest_success_minutes','greater_or_equal',120,720,2880,1),
+('feed.refresh.failure_percent','greater_or_equal',10,25,50,5),
+('vp3.license.status_risk','greater_or_equal',1,2,3,1),
+('vp3.license.last_success_minutes','greater_or_equal',1440,4320,10080,1),
+('vp3.license.validation_errors','greater_or_equal',1,5,20,0),
+('vp3.update.job_depth','greater_or_equal',1,3,10,0),
+('vp3.update.failed','greater_or_equal',1,3,10,0),
+('vp3.update.last_success_minutes','greater_or_equal',10080,43200,129600,1),
+('operations.collector.last_success_minutes','greater_or_equal',90,180,360,1);
 
 SELECT 'North Mountain Media Operations Analytics v66L migration complete' AS migration_status;
