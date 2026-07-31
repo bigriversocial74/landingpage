@@ -29,6 +29,10 @@ jobs:
               "text = replace_once(text, anchor, addition, 'module nav filtering')",
               "if anchor in text:\n    text = text.replace(anchor, addition, 1)\nelse:\n    marker = \"    $script = $isAdmin ? 'admin.php' : 'client.php';\"\n    if marker not in text: raise SystemExit('Missing fallback navigation insertion marker')\n    text = text.replace(marker, addition[len(anchor):] + '\\n' + marker, 1)"
           )
+          payload=payload.replace(
+              "text = replace_once(text, old_href, new_href, 'agent/dashboard nav urls')",
+              "if old_href in text:\n    text = text.replace(old_href, new_href, 1)\nelse:\n    updated,count = re.subn(r\"\\(\\$key === 'dashboard' \\? '' : '\\\\?view=' \\. \\$key\\)\", \"($key === 'agent' ? '' : '?view=' . $key)\", text, count=1)\n    if count != 1: raise SystemExit('Missing structural sidebar URL expression')\n    text = updated"
+          )
           Path('/tmp/build-v66q.py').write_text(payload,encoding='utf-8')
           PY
           python3 /tmp/build-v66q.py
