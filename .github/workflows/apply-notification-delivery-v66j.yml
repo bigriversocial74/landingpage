@@ -41,13 +41,16 @@ jobs:
           set -euo pipefail
           grep -F 'notification_delivery_enqueue_notification($notificationId)' portal/notifications.php >/dev/null
           grep -F "'notification_delivery_secret'" config-example.php >/dev/null
-          grep -F "notification_delivery_render_admin" portal/admin.php >/dev/null
-          grep -F "notification_delivery_handle_admin_action" portal/admin.php >/dev/null
-          grep -F "view=delivery" portal/*.php >/dev/null
+          grep -F 'notification_delivery_render_admin' portal/admin.php >/dev/null
+          grep -F 'notification_delivery_handle_admin_action' portal/admin.php >/dev/null
+          grep -F 'view=delivery' portal/*.php >/dev/null
           grep -F 'notification_delivery_preferences' database/north_mountain_portal.sql >/dev/null
-          grep -F "'content_authorized' => $contentAllowed" portal/notification-delivery.php >/dev/null
+          grep -F "'content_authorized' => \$contentAllowed" portal/notification-delivery.php >/dev/null
           grep -F "'send_allowed' => false" portal/notification-delivery.php >/dev/null
-          grep -F "proposal_only' => true" portal/notification-delivery.php >/dev/null
+          grep -F "'proposal_only' => true" portal/notification-delivery.php >/dev/null
+          grep -F "openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC" portal/notification-delivery.php >/dev/null
+          grep -F "'retry_at' => gmdate" portal/notification-delivery.php >/dev/null
+          grep -F 'external notification enqueue failed' portal/notifications.php >/dev/null
           if grep -E 'https?://[^[:space:]"'"']+\.js' notification-service-worker.js assets/js/notification-delivery.js; then exit 1; fi
       - name: Commit integrated application
         run: |
