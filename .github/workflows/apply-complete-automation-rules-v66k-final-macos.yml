@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/apply-complete-automation-rules-v66k-final-macos.yml'
-      - 'tools/restart-safety-finalize-automation-rules-v66k-v2.py'
+      - 'tools/restart-safety-finalize-automation-rules-v66k-v3.py'
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
       - name: Apply complete reviewed integration
         run: |
           set -euo pipefail
-          python3 tools/restart-safety-finalize-automation-rules-v66k-v2.py
+          python3 tools/restart-safety-finalize-automation-rules-v66k-v3.py
       - name: Install PHP when absent
         run: |
           set -euo pipefail
