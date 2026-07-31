@@ -107,7 +107,7 @@ function publishing_center_catalog(): array
             'group' => 'Work',
             'label' => 'Proposal',
             'description' => 'Build a proposal or estimate.',
-            'module' => null,
+            'module' => 'project_intake',
             'url' => 'portal/admin.php?view=proposals&edit=new&modal=1',
         ],
         [

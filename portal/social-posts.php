@@ -52,7 +52,7 @@ portal_header('Social Feed','social-posts',$user);
 <div class="social-feed-admin" data-stories-app data-story-view-endpoint="<?=e(app_url('api/story-view.php'))?>" data-csrf="<?=e(csrf_token())?>">
 <div class="social-feed-toolbar">
 <div><span>@<?=e(activitypub_account())?></span><strong>Posts and Stories</strong></div>
-<div><button type="button" data-publishing-open="story">Add story</button><button type="button" data-publishing-open="social-post">Create post</button><button type="button" data-feed-settings-open aria-label="Open Social Feed settings">Settings</button><a href="<?=e(app_url('social-feed.php'))?>" target="_blank" rel="noopener">Public feed</a></div>
+<div><?php if(nmm_module_enabled('stories')):?><button type="button" data-publishing-open="story">Add story</button><?php endif;?><button type="button" data-publishing-open="social-post">Create post</button><button type="button" data-feed-settings-open aria-label="Open Social Feed settings">Settings</button><a href="<?=e(app_url('social-feed.php'))?>" target="_blank" rel="noopener">Public feed</a></div>
 </div>
 <p class="social-feed-guidance">Create a post with Publishing +, publish immediately, or choose <strong>Save draft</strong> for later. Blog and RSS remain independent from the Social Feed.</p>
 

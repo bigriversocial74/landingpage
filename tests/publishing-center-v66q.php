@@ -17,6 +17,8 @@ $checks = [
         'data-portal-active',
         'moduleNavigationMap',
         "['Work','projects']",
+        "'project_intake' =>",
+        "'call_us' =>",
         'publishing_center_render_modal',
     ],
     'portal/admin.php' => [
@@ -27,6 +29,7 @@ $checks = [
         'Posts and Stories',
         'stories_render_rail',
         'data-publishing-open="social-post"',
+        "nmm_module_enabled('stories')",
         'Save draft',
         'Blog and RSS remain independent',
     ],
@@ -80,6 +83,7 @@ foreach ([
     '.github/workflows/build-publishing-center-v66q.yml',
     '.github/workflows/run-publishing-builder-v66q.yml',
     '.github/workflows/repair-publishing-center-v66q.yml',
+    '.github/workflows/finalize-publishing-center-v66q.yml',
     '.github/v66q-build-trigger',
 ] as $temporary) {
     if (is_file($root . '/' . $temporary)) {

@@ -1166,12 +1166,21 @@ function portal_header(string $title, string $active, array $user): void
             'social_feed' => [['Work','social-posts']],
             'events' => [['Work','events']],
             'bookings' => [['Work','bookings']],
+            'project_intake' => [['Work','proposals']],
+            'call_us' => [['Operations','call-center']],
         ];
         foreach ($moduleNavigationMap as $moduleKey => $locations) {
             if (nmm_module_enabled($moduleKey)) continue;
             foreach ($locations as [$groupName,$itemKey]) {
                 unset($adminNavigationGroups[$groupName][$itemKey]);
             }
+        }
+    } else {
+        if (!nmm_module_enabled('clients')) {
+            unset($navigation['projects'], $navigation['files']);
+        }
+        if (!nmm_module_enabled('call_us')) {
+            unset($navigation['call-center']);
         }
     }
 
@@ -1331,9 +1340,11 @@ function portal_header(string $title, string $active, array $user): void
 
             <div class="portal-header-user">
                 <?php if($isAdmin):?><button class="portal-top-action publishing-center-trigger" type="button" data-publishing-open>Publishing +</button><?php endif;?>
+                <?php if(nmm_module_enabled('call_us')):?>
                 <a class="portal-top-action" href="<?= e($callCenterUrl) ?>">
                     <?= $isAdmin ? 'Call Center' : 'Call Us' ?>
                 </a>
+                <?php endif;?>
 
                 <div class="portal-notification-wrap">
                     <button
