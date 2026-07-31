@@ -70,7 +70,7 @@ v66j_assert(str_contains($core, "'wrapper' => 'rss-pod'"), 'HomeServer alerts re
 v66j_assert(str_contains($core, "'resource_authority' => 'notification_metadata'"), 'HomeServer alerts require notification metadata authority.');
 v66j_assert(str_contains($core, "'proposal_only' => true"), 'HomeServer alerts must remain proposal-only.');
 v66j_assert(str_contains($core, "'send_allowed' => false"), 'HomeServer alert requests must deny send authority.');
-v66j_assert(str_contains($core, "'content_authorized' => $contentAllowed"), 'HomeServer content sharing must be explicit.');
+v66j_assert(str_contains($core, '\'content_authorized\' => $contentAllowed'), 'HomeServer content sharing must be explicit.');
 v66j_assert(str_contains($core, "openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC"), 'Push payload encryption must use an ephemeral P-256 key.');
 v66j_assert(str_contains($core, "'retry_at' => gmdate"), 'Retry scheduling must bind a portable UTC timestamp.');
 v66j_assert(!str_contains($core, 'INTERVAL :delay SECOND'), 'Native PDO must not bind an INTERVAL operand.');
@@ -81,7 +81,7 @@ v66j_assert(str_contains($serviceWorker, 'url.origin === self.location.origin'),
 v66j_assert(str_contains($serviceWorker, "self.addEventListener('push'"), 'The service worker must handle push events.');
 v66j_assert(str_contains($browser, 'Notification.requestPermission()'), 'Browser notification permission must follow an explicit user action.');
 v66j_assert(str_contains($browser, 'applicationServerKey'), 'Browser subscriptions must use the configured VAPID public key.');
-v66j_assert(!preg_match('#https?://[^\s"\']+\.js#i', $serviceWorker . "\n" . $browser), 'Notification JavaScript must not load third-party scripts.');
+v66j_assert(!preg_match("#https?://[^\\s\"']+\\.js#i", $serviceWorker . "\n" . $browser), 'Notification JavaScript must not load third-party scripts.');
 v66j_assert(str_contains($config, "'notification_delivery_secret'"), 'The deployment template must expose the private notification delivery secret.');
 v66j_assert(!is_file($root . '/tools/apply-notification-delivery-v66j.py'), 'The temporary v66J integration script must be removed.');
 v66j_assert(!is_file($root . '/.github/workflows/apply-notification-delivery-v66j.yml'), 'The temporary v66J integration workflow must be removed.');
