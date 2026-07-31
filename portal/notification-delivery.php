@@ -183,6 +183,7 @@ function notification_delivery_default_preference(int $userId, string $eventKey)
     return [
         'user_id' => $userId,
         'event_key' => $eventKey,
+        'configured' => 0,
         'in_app_enabled' => 1,
         'email_mode' => $default['email'],
         'push_enabled' => $default['push'] ? 1 : 0,
@@ -205,7 +206,7 @@ function notification_delivery_preference(int $userId, string $eventKey): array
     );
     $statement->execute(['user_id' => $userId, 'event_key' => $eventKey]);
     $row = $statement->fetch();
-    return $row ? array_replace($default, $row) : $default;
+    return $row ? array_replace($default, $row, ['configured' => 1]) : $default;
 }
 
 function notification_delivery_quiet_hours(int $userId): array
@@ -374,6 +375,7 @@ function notification_delivery_enqueue_notification(int $notificationId): int
     if (!$notification || (string)$notification['user_status'] !== 'active') return 0;
     $eventKey = notification_delivery_event_key($notification);
     $preference = notification_delivery_preference((int)$notification['recipient_user_id'], $eventKey);
+    if (empty($preference['configured'])) return 0;
     if (notification_delivery_priority_rank((string)$notification['priority']) < notification_delivery_priority_rank((string)$preference['minimum_priority'])) return 0;
     $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
     $available = notification_delivery_quiet_release_at((int)$notification['recipient_user_id'], (string)$notification['priority'], $now);
@@ -522,31 +524,38 @@ function notification_delivery_revoke_subscription(int $userId, string $uuid = '
 
 function notification_delivery_https_public_url(string $url): bool
 {
-    $parts = parse_url($url);
-    if (!is_array($parts) || strtolower((string)($parts['scheme'] ?? '')) !== 'https') return false;
-    if (isset($parts['user']) || isset($parts['pass'])) return false;
-    if ((int)($parts['port'] ?? 443) !== 443) return false;
-    $host = strtolower((string)($parts['host'] ?? ''));
-    if ($host === '' || $host === 'localhost' || str_ends_with($host, '.local')) return false;
-    $records = @dns_get_record($host, DNS_A | DNS_AAAA);
-    if (!is_array($records) || !$records) return false;
-    foreach ($records as $record) {
-        $ip = (string)($record['ip'] ?? $record['ipv6'] ?? '');
-        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return false;
+    try {
+        notification_delivery_public_resolution($url);
+        return true;
+    } catch (Throwable) {
+        return false;
     }
-    return true;
 }
 
 function notification_delivery_public_resolution(string $url): array
 {
-    if (!notification_delivery_https_public_url($url)) throw new RuntimeException('The push endpoint is not a public HTTPS URL.');
     $parts = parse_url($url);
-    $host = (string)$parts['host'];
-    $records = dns_get_record($host, DNS_A | DNS_AAAA) ?: [];
+    if (!is_array($parts) || strtolower((string)($parts['scheme'] ?? '')) !== 'https') {
+        throw new RuntimeException('The push endpoint must use HTTPS.');
+    }
+    if (isset($parts['user']) || isset($parts['pass']) || (int)($parts['port'] ?? 443) !== 443) {
+        throw new RuntimeException('The push endpoint must use public HTTPS on port 443 without credentials.');
+    }
+    $host = strtolower((string)($parts['host'] ?? ''));
+    if ($host === '' || $host === 'localhost' || str_ends_with($host, '.local')) {
+        throw new RuntimeException('The push endpoint host is not public.');
+    }
+    $records = @dns_get_record($host, DNS_A | DNS_AAAA);
+    if (!is_array($records) || !$records) {
+        throw new RuntimeException('The push endpoint did not resolve.');
+    }
     $addresses = [];
     foreach ($records as $record) {
         $ip = (string)($record['ip'] ?? $record['ipv6'] ?? '');
-        if ($ip !== '') $addresses[] = $ip;
+        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            throw new RuntimeException('The push endpoint resolved to a private or reserved address.');
+        }
+        $addresses[] = $ip;
     }
     return ['host' => $host, 'port' => 443, 'addresses' => array_values(array_unique($addresses))];
 }
@@ -706,6 +715,23 @@ function notification_delivery_claim(int $limit): array
     notification_delivery_require_schema();
     $limit = max(1, min(100, $limit));
     db()->exec(
+        'UPDATE notification_delivery_attempts attempt
+         JOIN notification_delivery_queue queue ON queue.id=attempt.queue_id
+         SET attempt.status="permanent_failure",attempt.error_code="lease_expired",
+             attempt.error_message="The delivery worker lease expired at the attempt limit.",
+             attempt.completed_at=UTC_TIMESTAMP()
+         WHERE queue.status="leased" AND queue.leased_until<UTC_TIMESTAMP()
+           AND queue.attempt_count>=queue.max_attempts AND attempt.status="started"'
+    );
+    db()->exec(
+        'UPDATE notification_delivery_queue
+         SET status="failed",lease_token=NULL,leased_until=NULL,
+             last_error_code="lease_expired",
+             last_error_message="The delivery worker lease expired at the attempt limit."
+         WHERE status="leased" AND leased_until<UTC_TIMESTAMP()
+           AND attempt_count>=max_attempts'
+    );
+    db()->exec(
         'UPDATE notification_delivery_queue
          SET status="pending",lease_token=NULL,leased_until=NULL
          WHERE status="leased" AND leased_until<UTC_TIMESTAMP()
@@ -786,10 +812,14 @@ function notification_delivery_send_digest(array $item, array $payload): array
     $statement = db()->prepare(
         'SELECT * FROM notification_delivery_queue
          WHERE recipient_user_id=:user_id AND channel="digest"
-           AND status IN ("pending","leased") AND available_at<=UTC_TIMESTAMP()
+           AND status="leased" AND lease_token=:lease_token
+           AND available_at<=UTC_TIMESTAMP()
          ORDER BY created_at,id LIMIT 100'
     );
-    $statement->execute(['user_id' => (int)$item['recipient_user_id']]);
+    $statement->execute([
+        'user_id' => (int)$item['recipient_user_id'],
+        'lease_token' => (string)$item['lease_token'],
+    ]);
     $rows = $statement->fetchAll();
     if (!$rows) return ['ok' => true, 'batch_ids' => [(int)$item['id']], 'reference' => 'empty-digest'];
     $items = [];
@@ -910,6 +940,39 @@ function notification_delivery_send_homeserver(array $item, array $payload): arr
         : ['ok' => false, 'permanent' => empty($result['available']), 'code' => (string)($result['error_code'] ?? 'homeserver_failed'), 'message' => (string)($result['message'] ?? 'The HomeServer alert failed.')];
 }
 
+function notification_delivery_runtime_authorization(array $item): array
+{
+    $settings = notification_delivery_settings();
+    $preference = notification_delivery_preference((int)$item['recipient_user_id'], (string)$item['event_key']);
+    if (empty($preference['configured'])) return ['allowed' => false, 'include_content' => false, 'code' => 'preference_not_configured'];
+    if (notification_delivery_priority_rank((string)$item['priority']) < notification_delivery_priority_rank((string)$preference['minimum_priority'])) {
+        return ['allowed' => false, 'include_content' => false, 'code' => 'priority_suppressed'];
+    }
+    return match ((string)$item['channel']) {
+        'email' => [
+            'allowed' => $settings['email_enabled'] && (string)$preference['email_mode'] === 'immediate',
+            'include_content' => !empty($preference['include_content_email']),
+            'code' => 'email_disabled',
+        ],
+        'digest' => [
+            'allowed' => $settings['email_enabled'] && (string)$preference['email_mode'] === 'digest',
+            'include_content' => !empty($preference['include_content_email']),
+            'code' => 'digest_disabled',
+        ],
+        'push' => [
+            'allowed' => $settings['push_enabled'] && !empty($preference['push_enabled']),
+            'include_content' => !empty($preference['include_content_push']),
+            'code' => 'push_disabled',
+        ],
+        'homeserver' => [
+            'allowed' => $settings['homeserver_enabled'] && !empty($preference['homeserver_enabled']),
+            'include_content' => !empty($preference['include_content_homeserver']),
+            'code' => 'homeserver_disabled',
+        ],
+        default => ['allowed' => false, 'include_content' => false, 'code' => 'channel_invalid'],
+    };
+}
+
 function notification_delivery_attempt_started(array $item): int
 {
     $number = (int)$item['attempt_count'] + 1;
@@ -922,11 +985,29 @@ function notification_delivery_attempt_started(array $item): int
 
 function notification_delivery_process_item(array $item): array
 {
+    $stateStatement = db()->prepare('SELECT status,lease_token FROM notification_delivery_queue WHERE id=:id LIMIT 1');
+    $stateStatement->execute(['id' => (int)$item['id']]);
+    $state = $stateStatement->fetch();
+    if (
+        !$state
+        || (string)$state['status'] !== 'leased'
+        || (string)$state['lease_token'] === ''
+        || !hash_equals((string)$state['lease_token'], (string)$item['lease_token'])
+    ) {
+        return ['ok' => true, 'skipped' => true, 'reference' => 'already-processed'];
+    }
+
     $attemptId = notification_delivery_attempt_started($item);
     $payload = json_decode((string)$item['payload_json'], true);
     if (!is_array($payload)) $payload = [];
+    $authorization = notification_delivery_runtime_authorization($item);
+    if (empty($authorization['include_content'])) $payload['body'] = '';
+    $item['include_content'] = !empty($authorization['include_content']) ? 1 : 0;
+
     if ((string)$item['user_status'] !== 'active') {
         $result = ['ok' => false, 'permanent' => true, 'suppressed' => true, 'code' => 'recipient_inactive', 'message' => 'The recipient account is inactive.'];
+    } elseif (empty($authorization['allowed'])) {
+        $result = ['ok' => false, 'permanent' => true, 'suppressed' => true, 'code' => (string)$authorization['code'], 'message' => 'The current notification preference no longer authorizes this delivery.'];
     } else {
         try {
             $result = match ((string)$item['channel']) {
@@ -944,6 +1025,22 @@ function notification_delivery_process_item(array $item): array
     if (!empty($result['ok'])) {
         $ids = !empty($result['batch_ids']) && is_array($result['batch_ids']) ? array_values(array_filter(array_map('intval', $result['batch_ids']))) : [(int)$item['id']];
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        foreach ($ids as $batchId) {
+            if ($batchId === (int)$item['id']) continue;
+            $attemptNumberStatement = db()->prepare('SELECT attempt_count+1 FROM notification_delivery_queue WHERE id=:id');
+            $attemptNumberStatement->execute(['id' => $batchId]);
+            $batchAttemptNumber = (int)($attemptNumberStatement->fetchColumn() ?: 1);
+            db()->prepare(
+                'INSERT INTO notification_delivery_attempts
+                    (queue_id,attempt_number,status,provider_reference,receipt_json,started_at,completed_at)
+                 VALUES (:queue_id,:attempt_number,"sent",:reference,:receipt,UTC_TIMESTAMP(),UTC_TIMESTAMP())'
+            )->execute([
+                'queue_id' => $batchId,
+                'attempt_number' => $batchAttemptNumber,
+                'reference' => mb_substr((string)($result['reference'] ?? ''), 0, 255),
+                'receipt' => json_encode(['channel' => 'digest', 'batch_count' => count($ids)], JSON_THROW_ON_ERROR),
+            ]);
+        }
         db()->prepare('UPDATE notification_delivery_queue SET status="sent",attempt_count=attempt_count+1,lease_token=NULL,leased_until=NULL,provider_reference=?,sent_at=UTC_TIMESTAMP() WHERE id IN (' . $placeholders . ')')
             ->execute(array_merge([mb_substr((string)($result['reference'] ?? ''), 0, 255)], $ids));
         db()->prepare('UPDATE notification_delivery_attempts SET status="sent",response_code=:response_code,provider_reference=:reference,receipt_json=:receipt,completed_at=UTC_TIMESTAMP() WHERE id=:id')

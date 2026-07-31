@@ -73,6 +73,10 @@ v66j_assert(str_contains($core, "'send_allowed' => false"), 'HomeServer alert re
 v66j_assert(str_contains($core, '\'content_authorized\' => $contentAllowed'), 'HomeServer content sharing must be explicit.');
 v66j_assert(str_contains($core, "openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC"), 'Push payload encryption must use an ephemeral P-256 key.');
 v66j_assert(str_contains($core, "'retry_at' => gmdate"), 'Retry scheduling must bind a portable UTC timestamp.');
+v66j_assert(str_contains($core, 'if (empty($preference[\'configured\'])) return 0;'), 'External delivery must require a saved event preference.');
+v66j_assert(str_contains($core, 'notification_delivery_runtime_authorization'), 'Queued delivery must re-check current authorization.');
+v66j_assert(str_contains($core, 'AND status="leased" AND lease_token=:lease_token'), 'Digest batching must be isolated to one worker lease.');
+v66j_assert(str_contains($core, "'reference' => 'already-processed'"), 'Already-consumed queue rows must be skipped safely.');
 v66j_assert(!str_contains($core, 'INTERVAL :delay SECOND'), 'Native PDO must not bind an INTERVAL operand.');
 v66j_assert(str_contains($api, 'same_origin_request()'), 'The push API must enforce same-origin requests.');
 v66j_assert(str_contains($api, 'verify_csrf();'), 'The push API must enforce CSRF protection.');

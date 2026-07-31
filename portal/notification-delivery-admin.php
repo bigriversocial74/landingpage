@@ -48,8 +48,19 @@ function notification_delivery_handle_admin_action(string $action, array $user):
             'notification_digest_retention_days' => (string)max(7, min(730, int_input('notification_digest_retention_days', 90))),
             'notification_delivery_retention_days' => (string)max(30, min(1095, int_input('notification_delivery_retention_days', 180))),
         ];
-        if ($pairs['notification_push_enabled'] === '1' && notification_delivery_secret() === '') {
-            throw new RuntimeException('Configure security.notification_delivery_secret before enabling Web Push.');
+        if ($pairs['notification_email_enabled'] === '1' && !filter_var($emailFrom, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Configure a valid sender email before enabling email delivery.');
+        }
+        if ($pairs['notification_push_enabled'] === '1') {
+            if (notification_delivery_secret() === '') {
+                throw new RuntimeException('Configure security.notification_delivery_secret before enabling Web Push.');
+            }
+            if ($subject === '' || !preg_match('#^(mailto:|https://)#i', $subject)) {
+                throw new RuntimeException('Configure a VAPID contact subject before enabling Web Push.');
+            }
+            if (!notification_delivery_active_vapid_key()) {
+                throw new RuntimeException('Initialize the stable Web Push key before enabling Web Push.');
+            }
         }
         foreach ($pairs as $key => $value) notification_delivery_save_setting($key, $value);
         log_activity('notification_delivery_settings_updated', 'settings', null, [
@@ -268,7 +279,7 @@ function notification_delivery_render_admin(array $user): void
 </section>
 
 <section class="panel" id="preferences">
-<header class="panel-header"><div><span>Per-event routing</span><h2>Your delivery preferences</h2></div><small>In-app evidence is always retained.</small></header>
+<header class="panel-header"><div><span>Per-event routing</span><h2>Your delivery preferences</h2></div><small>Save this section once before external routing begins. In-app evidence is always retained.</small></header>
 <form method="post" class="nd-preferences"><?=csrf_field()?><input type="hidden" name="action" value="save_notification_preferences">
 <div class="nd-pref-head"><span>Event</span><span>Email</span><span>Push</span><span>HomeServer</span><span>Minimum</span><span>Content authorization</span></div>
 <?php foreach($catalog as $eventKey=>$definition):$pref=$preferences[$eventKey];?>

@@ -124,6 +124,20 @@ try {
     );
     foreach ($pairs as $key => $value) $saveSetting->execute(['key' => $key, 'value' => $value]);
 
+    $unconfiguredId = notification_create(
+        $userId,
+        'system',
+        'Unconfigured delivery event',
+        'This event must remain in-app only.',
+        'portal/admin.php?view=delivery',
+        'general_notice',
+        $userId - 1,
+        'urgent'
+    );
+    $unconfiguredQueue = $pdo->prepare('SELECT COUNT(*) FROM notification_delivery_queue WHERE notification_id=:id');
+    $unconfiguredQueue->execute(['id' => $unconfiguredId]);
+    v66j_db_assert((int)$unconfiguredQueue->fetchColumn() === 0, 'External delivery must require a saved event preference.');
+
     $pdo->prepare(
         'INSERT INTO notification_delivery_preferences
             (user_id,event_key,email_mode,push_enabled,homeserver_enabled,
@@ -229,6 +243,15 @@ try {
     v66j_db_assert((int)($homeRow['include_content'] ?? 1) === 0, 'HomeServer alerts must be metadata-only by default.');
     $homePayload = json_decode((string)$homeRow['payload_json'], true);
     v66j_db_assert(($homePayload['body'] ?? 'unexpected') === '', 'Unauthorized HomeServer content must not enter the queue.');
+    $homeQueueStatement = $pdo->prepare('SELECT * FROM notification_delivery_queue WHERE notification_id=:id AND channel="homeserver" LIMIT 1');
+    $homeQueueStatement->execute(['id' => $homeId]);
+    $homeQueue = $homeQueueStatement->fetch();
+    $homeAuthorization = notification_delivery_runtime_authorization($homeQueue);
+    v66j_db_assert(!empty($homeAuthorization['allowed']) && empty($homeAuthorization['include_content']), 'Runtime HomeServer authorization must preserve metadata-only delivery.');
+    $pdo->prepare('UPDATE notification_delivery_preferences SET homeserver_enabled=0 WHERE user_id=:user_id AND event_key="system"')->execute(['user_id' => $userId]);
+    $revokedAuthorization = notification_delivery_runtime_authorization($homeQueue);
+    v66j_db_assert(empty($revokedAuthorization['allowed']), 'Runtime delivery must honor preference revocation.');
+    $pdo->prepare('UPDATE notification_delivery_preferences SET homeserver_enabled=1 WHERE user_id=:user_id AND event_key="system"')->execute(['user_id' => $userId]);
 
     $claimed = notification_delivery_claim(20);
     v66j_db_assert(count($claimed) >= 2, 'Ready notification deliveries were not leased.');
