@@ -73,7 +73,7 @@ $expect('landing', 'social_posts_render_landing', 'Default landing page content 
 $expect('builder', "require_once __DIR__.'/social-posts-service.php';", 'Visual builder service integration is missing.');
 $expect('builder', "(string)(\$page['slug']??'')==='home'", 'Visual builder must limit automatic content to the home page.');
 $expect('timeline', 'social_posts_render_portal_stream', 'Federated timeline local publishing section is missing.');
-$expect('bootstrap', "'social-posts' => 'Social Posts'", 'Administrator navigation entry is missing.');
+$expect('bootstrap', "'social-posts' => 'My Feed'", 'Administrator My Feed navigation entry is missing.');
 $expect('bootstrap', "app_url('portal/social-posts.php')", 'Administrator navigation route is missing.');
 $expect('js', "ArrowLeft", 'Keyboard-accessible tabs are required.');
 $expect('js', "navigator.clipboard.writeText", 'Copyable Fediverse identity is required.');

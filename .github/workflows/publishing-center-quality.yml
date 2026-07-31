@@ -13,6 +13,7 @@ on:
       - 'blog-feeds.php'
       - 'podcast-feed.php'
       - 'tests/publishing-center-v66q.php'
+      - 'tests/publishing-agent-repair-v66q1.php'
       - 'tests/social-posts-v66p.php'
       - '.github/workflows/publishing-center-quality.yml'
 
@@ -47,5 +48,7 @@ jobs:
           node --check assets/js/publishing-complete-v66q.js
       - name: Publishing Center contract
         run: php tests/publishing-center-v66q.php
+      - name: Publishing, Agent Chat, and My Feed repair contract
+        run: php tests/publishing-agent-repair-v66q1.php
       - name: Retained Social Posts contract
         run: php tests/social-posts-v66p.php

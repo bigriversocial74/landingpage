@@ -3086,7 +3086,11 @@ if($view==='builder'){redirect('portal/site-builder.php');}
 
 $title=$view==='site-analytics'?'Site Analytics':($view==='menus'?'Navigation':status_label($view));
 portal_header($view==='agent'?'Agent Chat':($title),$view,$user);
-if($view==='agent'){ agent_chat_render($user); }
+if($view==='agent'){
+    agent_chat_render($user);
+    portal_footer();
+    exit;
+}
 
 if($view==='menus'){
     site_menu_render_admin($user);

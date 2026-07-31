@@ -38,7 +38,7 @@ $checks=[
  ['same-track resume','if (player.paused) player.play().catch',$source['script']],
  ['listening queue','data-feed-player-next',$source['view'].$source['script']],
  ['playback threshold','listenedFromProgress',$source['script']],
- ['YouTube frame CSP','frame-src https://www.youtube-nocookie.com https://player.vimeo.com',$source['bootstrap']],
+ ['same-origin and media frame CSP',"frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com",$source['bootstrap']],
  ['HTTPS media CSP',"media-src 'self' https: blob:",$source['bootstrap']],
  ['media state migration','CREATE TABLE IF NOT EXISTS feed_item_media_states',$source['migration']],
  ['collection migration','CREATE TABLE IF NOT EXISTS feed_collections',$source['migration']],
