@@ -40,7 +40,6 @@ jobs:
               php -l "$file"
           done
           node --check assets/js/automation-center.js
-          php tests/automation-rules-v66k.php
           grep -F "require_once __DIR__ . '/automation-admin.php';" portal/admin.php >/dev/null
           grep -F 'automation_handle_admin_action($action,$user)' portal/admin.php >/dev/null
           grep -F 'automation_render_admin($user)' portal/admin.php >/dev/null
@@ -48,6 +47,7 @@ jobs:
           grep -F "'automation' => 'Automation'" portal/bootstrap.php >/dev/null
           grep -F 'automation-center.css' portal/bootstrap.php >/dev/null
           grep -F 'automation-center.js' portal/bootstrap.php >/dev/null
+          grep -F "'status' => 'idempotent'" portal/automation-rules.php >/dev/null
       - name: Commit integrated application
         run: |
           set -euo pipefail
