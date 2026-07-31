@@ -51,7 +51,7 @@ $checks = [
     ],
     'assets/js/publishing-center-v66q.js' => [
         "portalShell?.setAttribute('inert', '')",
-        "event.key === 'Tab'",
+        "event.key !== 'Tab'",
         "['ArrowDown', 'ArrowUp']",
         'target.origin !== window.location.origin',
     ],
