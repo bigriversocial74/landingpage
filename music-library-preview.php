@@ -30,6 +30,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 <link rel="stylesheet" href="assets/css/public-sidebar.css?v=20260728-content-controls-v62.1">
 <link rel="stylesheet" href="assets/css/music-library.css?v=20260728-content-controls-v62.1">
 <link rel="stylesheet" href="assets/css/music-dashboard.css?v=20260728-content-controls-v62.1">
+<link rel="stylesheet" href="assets/css/music-mobile-upgrade-v66n.css?v=20260731-mobile-player-v66n">
 </head>
 <body class="music-dashboard-body">
 <div class="music-public-shell">

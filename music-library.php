@@ -210,6 +210,13 @@ function music_dashboard_track_attributes(
         . '?v=20260727-site-controls-landing-v60'
     ))?>"
 >
+<link
+    rel="stylesheet"
+    href="<?=e(app_url(
+        'assets/css/music-mobile-upgrade-v66n.css'
+        . '?v=20260731-mobile-player-v66n'
+    ))?>"
+>
 </head>
 <body class="music-dashboard-body">
 <div class="music-public-shell">
