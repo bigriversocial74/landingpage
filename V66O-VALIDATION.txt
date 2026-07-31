@@ -1,15 +1,32 @@
 Section 66O — Stories for Followed Feeds
 Initial score: 3.1/10
-Candidate score: 10.0/10
-Status: implementation assembled; exact-head certification pending.
+Final score: 10.0/10
+Certified implementation head: 0f1782177f5cf8a3868b53532cd01129ec45e3cd
+Status: complete; final documentation-only head certification pending.
 
-Required gates:
-- Stories source/privacy/UX regression
-- PHP and JavaScript syntax
-- CSS structure
-- retained Federated Timeline and Federated Interactions regressions
-- repeat-safe fresh install
-- MySQL 8.4 live integration
-- MariaDB 11.4 live integration
-- North Mountain Media Portal Quality
-- retained ActivityPub, timeline, interactions, operations, licensing, and managed-update workflows
+Passed on the certified implementation head:
+- Stories Followed Feed Quality #9 / run 30649027855
+  - PHP and JavaScript syntax
+  - source, privacy, mobile UX, and cleanup contract
+  - retained Federated Timeline and Federated Interactions regressions
+  - complete fresh schema plus repeat-safe additive migration
+  - MySQL 8.4 live integration
+  - MariaDB 11.4 live integration
+- ActivityPub Federation Quality #139 / run 30649027857
+- Federated Timeline Quality #70 / run 30649027863
+- Federated Interactions Quality #103 / run 30649027900
+- Federated Messaging Quality #56 / run 30649027952
+- North Mountain Media Portal Quality #618 / run 30649027856
+- VP3 License Settings Quality #429 / run 30649027852
+- VP3 POD Managed Update v65 #431 / run 30649027938
+
+Certified behavior:
+- local Stories are addressed only to approved ActivityPub followers
+- remote Stories require verified signatures and an accepted Following relationship
+- local and remote Story duration is bounded, with 24 hours as the default
+- local Create/Delete activities and Tombstone evidence are durable
+- local view receipts are durable and idempotent per viewer record
+- unfollowed, hidden, deleted, and expired Stories do not populate the active feed
+- remote media remains link-only and is never auto-loaded
+- mobile, keyboard, focus, and reduced-motion viewer contracts are present
+- no HomeServer authority, fake local users, arbitrary remote fetch, or social-graph bypass was added
