@@ -1,4 +1,4 @@
-name: Temporary v66M authority assertion repair
+name: Temporary v66M certification repair
 
 on:
   push:
@@ -19,13 +19,15 @@ jobs:
         with:
           ref: feature/incident-response-runbooks-recovery-center-v66m-20260731
       - run: python3 tools/repair-incident-response-v66m.py
-      - run: php -l tests/incident-response-v66m.php
-      - name: Commit assertion repair
+      - run: |
+          php -l tests/incident-response-v66m.php
+          php -l tests/incident-response-db-v66m.php
+      - name: Commit certification repair
         run: |
           set -euo pipefail
-          if git diff --quiet -- tests/incident-response-v66m.php; then exit 0; fi
+          if git diff --quiet -- tests/incident-response-v66m.php tests/incident-response-db-v66m.php; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/incident-response-v66m.php
-          git commit -m 'Narrow v66M VP3 update authority assertions'
+          git add tests/incident-response-v66m.php tests/incident-response-db-v66m.php
+          git commit -m 'Repair v66M source authority and escalation fixture'
           git push origin HEAD:feature/incident-response-runbooks-recovery-center-v66m-20260731
