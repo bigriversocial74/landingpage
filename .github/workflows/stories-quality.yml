@@ -1,0 +1,132 @@
+name: Stories Followed Feed Quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/stories-quality.yml'
+      - 'portal/stories-service.php'
+      - 'portal/stories.php'
+      - 'portal/activitypub-service.php'
+      - 'portal/federated-feed.php'
+      - 'api/story-view.php'
+      - 'activitypub-story.php'
+      - 'cron/process-stories.php'
+      - 'assets/css/stories-v66o.css'
+      - 'assets/js/stories-v66o.js'
+      - 'database/stories_v66o.sql'
+      - 'database/north_mountain_portal_v66o.sql'
+      - 'tests/stories-v66o.php'
+      - 'tests/stories-db-v66o.php'
+      - 'STORIES-SETUP-v66O.md'
+      - 'V66O-SCORECARD.md'
+      - 'V66O-VALIDATION.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/stories-service.php portal/stories.php \
+            portal/activitypub-service.php portal/federated-feed.php \
+            api/story-view.php activitypub-story.php cron/process-stories.php \
+            tests/stories-v66o.php tests/stories-db-v66o.php; do
+              php -l "$file"
+          done
+      - name: JavaScript syntax
+        run: node --check assets/js/stories-v66o.js
+      - name: Source, privacy, and UX regression
+        run: php tests/stories-v66o.php
+      - name: CSS structure
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          css = Path('assets/css/stories-v66o.css').read_text(encoding='utf-8')
+          if css.count('{') != css.count('}'):
+              raise SystemExit('Unbalanced Stories CSS braces.')
+          print('Stories CSS structure passed.')
+          PY
+      - name: Integration and permanent cleanup contract
+        run: |
+          set -euo pipefail
+          grep -F "require_once __DIR__ . '/stories-service.php';" portal/activitypub-service.php >/dev/null
+          grep -F 'stories_process_inbound' portal/activitypub-service.php >/dev/null
+          grep -F 'stories_render_rail' portal/federated-feed.php >/dev/null
+          grep -F 'stories-v66o.js' portal/federated-feed.php >/dev/null
+          test ! -e tools/apply-stories-v66o.py
+          test ! -e .github/workflows/apply-stories-v66o.yml
+          php tests/federated-timeline-v66h.php
+          php tests/federated-interactions-v66g.php
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe migration
+        run: |
+          set -euo pipefail
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal_v66o.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/stories_v66o.sql
+      - name: Live Stories integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/stories-db-v66o.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe migration
+        run: |
+          set -euo pipefail
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal_v66o.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/stories_v66o.sql
+      - name: Live Stories integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/stories-db-v66o.php
