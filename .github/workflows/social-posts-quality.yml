@@ -8,27 +8,33 @@ permissions:
   contents: write
 
 jobs:
-  repair:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-      - name: Apply repairs
+      - name: Assemble final permanent diff
         run: python3 tools/repair-social-posts-v66p.py
-      - name: Validate repairs
+      - name: Validate finalization
         run: |
+          set -euo pipefail
           php -l portal/social-posts-service.php
           php -l portal/activitypub-service.php
-          php tests/activitypub-v66f.php
-          php tests/stories-v66o.php
-      - name: Commit repairs
+          php -l tests/social-posts-v66p.php
+          php -l tests/social-posts-db-v66p.php
+          node --check assets/js/social-posts-v66p.js
+          php tests/social-posts-v66p.php
+          test ! -e .github/workflows/apply-private-outbox-v66p.yml
+          test ! -e .github/workflows/repair-social-posts-v66p.yml
+          test ! -e tools/repair-social-posts-v66p.py
+      - name: Commit final permanent diff
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add portal/social-posts-service.php portal/activitypub-service.php
+          git add -A
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Repair Social Posts PDO update and public outbox privacy'
+          git commit -m 'Finalize POD Social Posts v66P certification diff'
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
