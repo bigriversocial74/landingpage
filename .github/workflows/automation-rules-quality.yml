@@ -1,0 +1,134 @@
+name: Automation Rules Quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/automation-rules-quality.yml'
+      - 'portal/automation-rules.php'
+      - 'portal/automation-admin.php'
+      - 'portal/notifications.php'
+      - 'portal/admin.php'
+      - 'portal/unified-inbox.php'
+      - 'assets/js/automation-center.js'
+      - 'assets/css/automation-center.css'
+      - 'cron/process-automation.php'
+      - 'database/automation_rules_v66k.sql'
+      - 'database/north_mountain_portal.sql'
+      - 'tests/automation-rules-v66k.php'
+      - 'tests/automation-rules-db-v66k.php'
+      - 'V66K-SCORECARD.md'
+      - 'V66K-VALIDATION.txt'
+      - 'AUTOMATION-RULES-SETUP-v66K.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mbstring
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            portal/automation-rules.php \
+            portal/automation-admin.php \
+            portal/notifications.php \
+            portal/admin.php \
+            cron/process-automation.php \
+            tests/automation-rules-v66k.php \
+            tests/automation-rules-db-v66k.php; do
+              php -l "$file"
+          done
+      - name: JavaScript syntax
+        run: node --check assets/js/automation-center.js
+      - name: Source, safety, and authority regression
+        run: php tests/automation-rules-v66k.php
+      - name: Schema and cleanup contract
+        run: |
+          set -euo pipefail
+          for table in \
+            automation_settings automation_rules automation_rule_versions automation_events \
+            automation_executions automation_action_receipts automation_approvals automation_rule_counters; do
+              test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/automation_rules_v66k.sql)" = "1"
+              test "$(grep -c "CREATE TABLE IF NOT EXISTS ${table}" database/north_mountain_portal.sql)" = "1"
+          done
+          test ! -e tools/apply-automation-rules-v66k.py
+          test ! -e .github/workflows/apply-automation-rules-v66k.yml
+          grep -F "'proposal_only' => true" portal/automation-rules.php >/dev/null
+          grep -F "'send_allowed' => false" portal/automation-rules.php >/dev/null
+          grep -F "'tool_execution_allowed' => false" portal/automation-rules.php >/dev/null
+          grep -F 'automation_capture_notification($notificationId)' portal/notifications.php >/dev/null
+          grep -F "'automation'" portal/admin.php >/dev/null
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe additive migration
+        run: |
+          set -euo pipefail
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/automation_rules_v66k.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/automation_rules_v66k.sql
+      - name: Live Automation Rules database integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/automation-rules-db-v66k.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
+      - name: Import fresh schema and repeat-safe additive migration
+        run: |
+          set -euo pipefail
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/automation_rules_v66k.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/automation_rules_v66k.sql
+      - name: Live Automation Rules database integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/automation-rules-db-v66k.php
