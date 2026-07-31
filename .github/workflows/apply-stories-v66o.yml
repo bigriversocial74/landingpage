@@ -8,6 +8,12 @@ on:
       - 'tools/stories-v66o.payload.*'
       - 'tools/apply-stories-v66o.py'
       - '.github/workflows/apply-stories-v66o.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/stories-v66o.payload.*'
+      - 'tools/apply-stories-v66o.py'
+      - '.github/workflows/apply-stories-v66o.yml'
 
 permissions:
   contents: write
