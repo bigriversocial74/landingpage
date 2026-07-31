@@ -109,6 +109,7 @@ function notification_create(
 }
 
 require dirname(__DIR__) . '/portal/automation-rules.php';
+require_once dirname(__DIR__) . '/portal/automation-recovery.php';
 
 function v66k_db_assert(bool $condition, string $message): void
 {
@@ -318,7 +319,6 @@ try {
     $activityStatement->execute(['contact_id' => $contactId]);
     v66k_db_assert((int)$activityStatement->fetchColumn() === 1, 'Event/rule idempotency must prevent duplicate actions.');
 
-
     $retryEventId = automation_capture_event([
         'event_key' => 'system',
         'source_type' => 'lead',
@@ -359,7 +359,9 @@ try {
     $pdo->prepare(
         'UPDATE automation_action_receipts SET status="approved",error_code=NULL,error_message=NULL WHERE id=:id'
     )->execute(['id' => (int)$retryApproval['action_receipt_id']]);
-    v66k_db_assert(automation_recover_interrupted_approvals() === 1, 'Interrupted approved requests must be recovered exactly once.');
+    v66k_db_assert(automation_recover_interrupted_approvals_complete() === 1, 'Interrupted approved requests must be recovered exactly once across driver row-count semantics.');
+    $retryExecutionStatement->execute(['event_id' => $retryEventId, 'rule_id' => $ruleId]);
+    v66k_db_assert((string)$retryExecutionStatement->fetch()['status'] === 'partially_executed', 'Recovered interrupted approval evidence must refresh the parent execution.');
     automation_retry_approval((int)$retryApproval['id'], $ownerId);
     $restartRetry = automation_resolve_approval((int)$retryApproval['id'], 'approve', $ownerId);
     v66k_db_assert((string)$restartRetry['status'] === 'completed', 'A recovered approval must complete after explicit retry.');
@@ -439,7 +441,6 @@ try {
     $staleStatement->execute(['id' => $staleId]);
     $stale = $staleStatement->fetch();
     v66k_db_assert((string)$stale['status'] === 'failed' && (string)$stale['last_error_code'] === 'lease_expired', 'Expired leases at the attempt limit must become durable failures.');
-
 
     automation_update_settings([
         'enabled' => true,

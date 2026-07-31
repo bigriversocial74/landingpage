@@ -7,8 +7,10 @@ on:
       - '.github/workflows/automation-rules-quality.yml'
       - 'portal/automation-rules.php'
       - 'portal/automation-admin.php'
+      - 'portal/automation-recovery.php'
       - 'portal/notifications.php'
       - 'portal/admin.php'
+      - 'portal/admin-controller.php'
       - 'portal/unified-inbox.php'
       - 'assets/js/automation-center.js'
       - 'assets/css/automation-center.css'
@@ -22,137 +24,9 @@ on:
       - 'AUTOMATION-RULES-SETUP-v66K.md'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-integration:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feature/automation-routing-action-center-v66k-certified-20260730
-          fetch-depth: 0
-
-      - name: Apply scoped permanent repair
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-              if old in text:
-                  if text.count(old) != 1:
-                      raise SystemExit(f'Expected one {label} anchor, found {text.count(old)}')
-                  return text.replace(old, new, 1)
-              if new in text:
-                  return text
-              raise SystemExit(f'Missing both old and repaired {label} anchors')
-
-          core_path = Path('portal/automation-rules.php')
-          core = core_path.read_text(encoding='utf-8')
-          core = replace_once(
-              core,
-              """            $statement->execute($clean + [
-      'rule_uuid' => automation_uuid(),
-      'created_by_user_id' => $userId,
-      'updated_by_user_id' => $userId,
-  ]);""",
-              """            $statement->execute($clean + [
-                'rule_uuid' => automation_uuid(),
-                'created_by_user_id' => $userId,
-                'updated_by_user_id' => $userId,
-            ]);""",
-              'rule binding indentation',
-          )
-          core = replace_once(
-              core,
-              '        if ($statement->rowCount() !== 1) continue;',
-              '        if ($statement->rowCount() < 1) continue;',
-              'restart recovery row-count',
-          )
-          core_path.write_text(core, encoding='utf-8')
-
-          admin_path = Path('portal/admin.php')
-          admin = admin_path.read_text(encoding='utf-8')
-          admin = replace_once(
-              admin,
-              "require_once __DIR__ . '/notification-delivery-admin.php';\n$user=require_role('admin');",
-              "require_once __DIR__ . '/notification-delivery-admin.php';\nrequire_once __DIR__ . '/automation-admin.php';\n$user=require_role('admin');",
-              'admin require integration',
-          )
-          admin = replace_once(
-              admin,
-              "'feeds','site-analytics','settings','account'];",
-              "'feeds','site-analytics','automation','settings','account'];",
-              'admin allowed view',
-          )
-          admin = replace_once(
-              admin,
-              """        if(notification_delivery_handle_admin_action($action,$user)){
-            exit;
-        }
-        if(activitypub_handle_admin_action($action,$user)){""",
-              """        if(notification_delivery_handle_admin_action($action,$user)){
-            exit;
-        }
-        if(automation_handle_admin_action($action,$user)){
-            exit;
-        }
-        if(activitypub_handle_admin_action($action,$user)){""",
-              'admin action handler',
-          )
-          admin = replace_once(
-              admin,
-              """if($view==='delivery'){
-    notification_delivery_render_admin($user);
-    portal_footer();
-    exit;
-}
-
-if($view==='feeds'){""",
-              """if($view==='delivery'){
-    notification_delivery_render_admin($user);
-    portal_footer();
-    exit;
-}
-
-if($view==='automation'){
-    automation_render_admin($user);
-    portal_footer();
-    exit;
-}
-
-if($view==='feeds'){""",
-              'admin render route',
-          )
-          admin_path.write_text(admin, encoding='utf-8')
-          PY
-
-      - name: Validate scoped repair
-        run: |
-          set -euo pipefail
-          php -l portal/automation-rules.php
-          php -l portal/admin.php
-          php tests/automation-rules-v66k.php
-          grep -F "require_once __DIR__ . '/automation-admin.php';" portal/admin.php >/dev/null
-          grep -F "'automation'" portal/admin.php >/dev/null
-          grep -F 'automation_handle_admin_action($action,$user)' portal/admin.php >/dev/null
-          grep -F 'automation_render_admin($user)' portal/admin.php >/dev/null
-          grep -F 'if ($statement->rowCount() < 1) continue;' portal/automation-rules.php >/dev/null
-
-      - name: Commit scoped repair
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add portal/automation-rules.php portal/admin.php
-          if git diff --cached --quiet; then
-            echo 'Repair already present.'
-            exit 0
-          fi
-          git commit -m "Repair v66K portal integration and restart recovery"
-          git push origin HEAD:feature/automation-routing-action-center-v66k-certified-20260730
-
   source-quality:
     runs-on: ubuntu-latest
     steps:
@@ -165,8 +39,10 @@ if($view==='feeds'){""",
           for file in \
             portal/automation-rules.php \
             portal/automation-admin.php \
+            portal/automation-recovery.php \
             portal/notifications.php \
             portal/admin.php \
+            portal/admin-controller.php \
             cron/process-automation.php \
             tests/automation-rules-v66k.php \
             tests/automation-rules-db-v66k.php; do
@@ -206,20 +82,23 @@ if($view==='feeds'){""",
             .github/workflows/policy-finalize-automation-rules-v66k.yml \
             .github/workflows/restart-safety-finalize-automation-rules-v66k.yml \
             .github/workflows/restart-safety-finalize-automation-rules-v66k-macos.yml \
-            .github/workflows/harden-automation-rules-v66k-production.yml; do
+            .github/workflows/harden-automation-rules-v66k-production.yml \
+            .github/workflows/repair-v66k-integration.yml; do
               test ! -e "$path"
           done
           grep -F "'proposal_only' => true" portal/automation-rules.php >/dev/null
           grep -F "'send_allowed' => false" portal/automation-rules.php >/dev/null
           grep -F "'tool_execution_allowed' => false" portal/automation-rules.php >/dev/null
           grep -F 'automation_capture_notification($notificationId)' portal/notifications.php >/dev/null
-          grep -F 'automation_refresh_execution_status' portal/automation-rules.php >/dev/null
+          grep -F 'automation_refresh_execution_status' portal/automation-recovery.php >/dev/null
+          grep -F 'automation_recover_interrupted_approvals_complete' cron/process-automation.php >/dev/null
           grep -F 'automation_retry_approval' portal/automation-rules.php >/dev/null
           grep -F 'automation_recover_interrupted_approvals' portal/automation-rules.php >/dev/null
           grep -F 'FOREIGN KEY (event_id) REFERENCES automation_events(id) ON DELETE SET NULL' database/automation_rules_v66k.sql >/dev/null
           grep -F "array_replace(\$settings, ['enabled' => false])" portal/automation-admin.php >/dev/null
           if grep -F 'DELETE FROM automation_rules' portal/automation-admin.php; then exit 1; fi
           grep -F "'automation'" portal/admin.php >/dev/null
+          grep -F "automation-admin.php" portal/admin.php >/dev/null
 
   mysql-8-integration:
     runs-on: ubuntu-latest

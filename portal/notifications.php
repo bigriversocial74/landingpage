@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/notification-delivery.php';
+require_once __DIR__ . '/automation-rules.php';
 
 function notification_create(
     int $recipientUserId,
@@ -53,6 +54,11 @@ function notification_create(
             notification_delivery_enqueue_notification($notificationId);
         } catch (Throwable $deliveryException) {
             error_log('North Mountain Media external notification enqueue failed: ' . $deliveryException->getMessage());
+        }
+        try {
+            automation_capture_notification($notificationId);
+        } catch (Throwable $automationException) {
+            error_log('North Mountain Media automation notification capture failed: ' . $automationException->getMessage());
         }
         return $notificationId;
     } catch (Throwable $exception) {

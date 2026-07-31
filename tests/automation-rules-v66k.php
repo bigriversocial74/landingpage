@@ -33,12 +33,16 @@ function v66k_assert(bool $condition, string $message): void
 $root = dirname(__DIR__);
 $core = file_get_contents($root . '/portal/automation-rules.php');
 $admin = file_get_contents($root . '/portal/automation-admin.php');
+$frontController = file_get_contents($root . '/portal/admin.php');
+$adminController = file_get_contents($root . '/portal/admin-controller.php');
+$notifications = file_get_contents($root . '/portal/notifications.php');
+$recovery = file_get_contents($root . '/portal/automation-recovery.php');
 $worker = file_get_contents($root . '/cron/process-automation.php');
 $javascript = file_get_contents($root . '/assets/js/automation-center.js');
 $css = file_get_contents($root . '/assets/css/automation-center.css');
 $migration = file_get_contents($root . '/database/automation_rules_v66k.sql');
 
-foreach ([$core, $admin, $worker, $javascript, $css, $migration] as $source) {
+foreach ([$core, $admin, $frontController, $adminController, $notifications, $recovery, $worker, $javascript, $css, $migration] as $source) {
     v66k_assert(is_string($source) && $source !== '', 'A required v66K source file is empty.');
 }
 
@@ -128,6 +132,17 @@ v66k_assert(str_contains($worker, "PHP_SAPI !== 'cli'"), 'The automation worker 
 v66k_assert(!preg_match("#https?://[^\\s\"']+\\.js#i", $javascript), 'Automation JavaScript must not load third-party scripts.');
 v66k_assert(str_contains($css, '.automation-mode.off'), 'The Action Center must visibly distinguish disabled mode.');
 
+v66k_assert(str_contains($frontController, "(string)(\$_GET['view'] ?? '') === 'automation'"), 'The administrator front controller must route the Action Center.');
+v66k_assert(str_contains($frontController, "require_once __DIR__ . '/automation-admin.php'"), 'The administrator front controller must load the Action Center module.');
+v66k_assert(str_contains($frontController, "require __DIR__ . '/admin-controller.php'"), 'Non-automation administrator routes must retain the existing controller.');
+v66k_assert(str_contains($frontController, 'automation_handle_admin_action'), 'The Action Center POST handler must be connected.');
+v66k_assert(str_contains($frontController, 'automation_render_admin'), 'The Action Center renderer must be connected.');
+v66k_assert(str_contains($frontController, 'data-admin-navigation'), 'The permanent administrator navigation must expose the Action Center.');
+v66k_assert(str_contains($notifications, 'automation_capture_notification($notificationId)'), 'Created notifications must enter the automation event pipeline.');
+v66k_assert(str_contains($recovery, 'automation_recover_interrupted_approvals_complete'), 'Driver-independent interrupted-approval recovery must be present.');
+v66k_assert(str_contains($recovery, 'automation_refresh_execution_status'), 'Interrupted-approval recovery must refresh parent executions.');
+v66k_assert(str_contains($worker, 'automation_recover_interrupted_approvals_complete'), 'The CLI worker must finalize interrupted approvals before processing.');
+
 $temporaryPaths = [
     'tools/apply-automation-rules-v66k.py',
     'tools/audit-retention-finalize-automation-rules-v66k.py',
@@ -148,6 +163,7 @@ $temporaryPaths = [
     '.github/workflows/restart-safety-finalize-automation-rules-v66k.yml',
     '.github/workflows/restart-safety-finalize-automation-rules-v66k-macos.yml',
     '.github/workflows/harden-automation-rules-v66k-production.yml',
+    '.github/workflows/repair-v66k-integration.yml',
 ];
 foreach ($temporaryPaths as $temporaryPath) {
     v66k_assert(!is_file($root . '/' . $temporaryPath), 'Temporary v66K controller remains: ' . $temporaryPath);

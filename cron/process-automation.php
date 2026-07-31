@@ -8,7 +8,10 @@ if (PHP_SAPI !== 'cli') {
 
 require dirname(__DIR__) . '/portal/bootstrap.php';
 require_once dirname(__DIR__) . '/portal/automation-rules.php';
+require_once dirname(__DIR__) . '/portal/automation-recovery.php';
 
 $limit = isset($argv[1]) ? max(1, min(100, (int)$argv[1])) : 0;
+$recoveredApprovals = automation_recover_interrupted_approvals_complete();
 $result = automation_run($limit);
+$result['recovered_approvals'] = $recoveredApprovals;
 fwrite(STDOUT, automation_json_encode($result) . PHP_EOL);
