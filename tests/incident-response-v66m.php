@@ -46,8 +46,11 @@ foreach ($handlers as $handler) {
 }
 recovery_source_assert(substr_count($core, "default:\n            throw new RuntimeException('Recovery handler is not allowlisted.')") >= 2, 'Handler allowlist does not fail closed.');
 
-foreach (['shell_exec','exec(','passthru(','proc_open','popen(','eval(','assert('] as $forbidden) {
-    recovery_source_assert(!str_contains($core, $forbidden), 'Arbitrary execution primitive entered recovery core: ' . $forbidden);
+foreach (['shell_exec','exec','passthru','proc_open','popen','eval','assert'] as $forbiddenFunction) {
+    recovery_source_assert(
+        !preg_match('/\\b' . preg_quote($forbiddenFunction, '/') . '\\s*\\(/', $core),
+        'Arbitrary execution primitive entered recovery core: ' . $forbiddenFunction
+    );
 }
 recovery_source_assert(!str_contains($core, '->install('), 'Recovery gained software-install authority.');
 recovery_source_assert(!str_contains($core, '->prepare('), 'Recovery gained update-prepare authority.');
@@ -102,6 +105,8 @@ foreach ([
     '.github/workflows/harden-incident-response-v66m.yml',
     'tools/link-recovery-center-v66m.py',
     '.github/workflows/link-recovery-center-v66m.yml',
+    'tools/repair-v66m-certification.py',
+    '.github/workflows/repair-v66m-certification.yml',
     'tools/repair-incident-response-v66m.py',
     '.github/workflows/repair-incident-response-v66m.yml',
 ] as $temporaryPath) {
