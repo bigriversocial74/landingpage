@@ -9,6 +9,9 @@ if (PHP_SAPI !== 'cli') {
 require dirname(__DIR__) . '/portal/bootstrap.php';
 require_once dirname(__DIR__) . '/portal/automation-rules.php';
 require_once dirname(__DIR__) . '/portal/operations-analytics.php';
+require_once dirname(__DIR__) . '/portal/operations-analytics-extensions.php';
+require_once dirname(__DIR__) . '/portal/notifications.php';
+require_once dirname(__DIR__) . '/portal/operations-admin.php';
 
 $windowType = strtolower(trim((string)($argv[1] ?? 'hour')));
 if (!in_array($windowType, ['hour', 'day'], true)) {
@@ -18,7 +21,7 @@ if (!in_array($windowType, ['hour', 'day'], true)) {
 $force = in_array('--force', $argv, true);
 
 try {
-    $result = operations_analytics_run($windowType, $force);
+    $result = operations_analytics_run_extended($windowType, $force);
     fwrite(STDOUT, operations_analytics_json_encode($result) . PHP_EOL);
     exit(($result['status'] ?? '') === 'failed' ? 1 : 0);
 } catch (Throwable $exception) {
