@@ -55,7 +55,7 @@ operations_source_assert(str_contains($admin, "'aggregate_only' => true"), 'Repo
 operations_source_assert(str_contains($admin, 'operations_admin_generate_report'), 'Manual aggregate reporting is missing.');
 operations_source_assert(str_contains($admin, 'operations_save_policy'), 'Deterministic policy administration is missing.');
 operations_source_assert(str_contains($admin, 'operations_run_hourly'), 'Owner-controlled hourly collection is missing.');
-operations_source_assert(!preg_match('/SELECT\s+.*(?:payload_json|body|note|transcript|private_key|credential)/is', $admin), 'Administrator analytics queries source private content.');
+operations_source_assert(!preg_match('/\b(?:notification_delivery_queue|activitypub_deliveries|automation_events|unified_inbox_workflow)\b/i', $admin), 'Administrator workspace queries canonical source tables instead of aggregate evidence.');
 operations_source_assert(str_contains($notifications, "require_once __DIR__ . '/operations-analytics.php';"), 'Operations core is not loaded by the retained admin integration point.');
 operations_source_assert(str_contains($notifications, 'operations_admin_portal_bootstrap'), 'Operations administrator bootstrap is missing.');
 operations_source_assert(str_contains($notifications, 'portal/admin.php?view=operations'), 'Operations navigation entry is missing.');
