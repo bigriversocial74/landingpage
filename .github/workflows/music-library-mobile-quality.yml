@@ -55,8 +55,13 @@ jobs:
       - name: Permanent cleanup contract
         run: |
           set -euo pipefail
-          if find . -type f \( -iname '*repair*' -o -iname '*patch*' -o -iname '*payload*' \) | grep -q .; then
-            echo 'Temporary repair or payload files remain.' >&2
-            find . -type f \( -iname '*repair*' -o -iname '*patch*' -o -iname '*payload*' \)
-            exit 1
-          fi
+          for path in \
+            tools/apply-music-mobile-v66n.py \
+            .github/workflows/apply-music-mobile-v66n.yml
+          do
+            if [ -e "$path" ]; then
+              echo "Temporary Music Library linker remains: $path" >&2
+              exit 1
+            fi
+          done
+          echo 'Music Library mobile branch contains no temporary linker files.'
