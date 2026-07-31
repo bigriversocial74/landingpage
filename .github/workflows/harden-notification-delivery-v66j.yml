@@ -1,0 +1,52 @@
+name: Harden Notification Delivery v66J
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/harden-notification-delivery-v66j.yml'
+      - 'tools/harden-notification-delivery-v66j.py'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.head_ref == 'feature/notification-delivery-preferences-v66j-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply final hardening
+        run: |
+          set -euo pipefail
+          python3 tools/harden-notification-delivery-v66j.py
+      - name: Validate hardened source
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y php-mbstring
+          php -l portal/notification-delivery.php
+          php -l portal/notification-delivery-admin.php
+          php -l tests/notification-delivery-v66j.php
+          php -l tests/notification-delivery-db-v66j.php
+          php tests/notification-delivery-v66j.php
+          grep -F "if (empty(\$preference['configured'])) return 0;" portal/notification-delivery.php >/dev/null
+          grep -F 'notification_delivery_runtime_authorization' portal/notification-delivery.php >/dev/null
+          grep -F 'AND status="leased" AND lease_token=:lease_token' portal/notification-delivery.php >/dev/null
+          grep -F 'The current notification preference no longer authorizes this delivery.' portal/notification-delivery.php >/dev/null
+          grep -F 'The delivery worker lease expired at the attempt limit.' portal/notification-delivery.php >/dev/null
+      - name: Commit hardened application
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            portal/notification-delivery.php \
+            portal/notification-delivery-admin.php \
+            tests/notification-delivery-v66j.php \
+            tests/notification-delivery-db-v66j.php
+          git commit -m 'Harden Notification Delivery runtime policy v66J'
+          git push origin HEAD:${{ github.head_ref }}
