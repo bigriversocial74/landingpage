@@ -84,7 +84,7 @@ $publishedCount = count(array_filter($posts, static fn(array $post): bool => $po
 $draftCount = count(array_filter($posts, static fn(array $post): bool => $post['status'] === 'draft'));
 $activitySettings = activitypub_settings();
 
-portal_header('Social Posts', 'communications', $user);
+portal_header('Social Posts', 'social-posts', $user);
 ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
 <div class="pod-social-admin">
