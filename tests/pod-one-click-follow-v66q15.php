@@ -33,13 +33,13 @@ foreach ([
     'function pod_follow_create_intent',
     'function pod_follow_verify_intent_token',
     "hash_hmac('sha256'",
-    "'expires_at' => $now + 10 * 60",
+    "'expires_at' => \$now + 10 * 60",
     'function pod_follow_fetch_remote_intent',
     'activitypub_fetch_json($intentUrl, 1)',
     'pod_follow_same_origin($intentUrl, $targetActor)',
     'pod_follow_same_origin($returnUrl, $targetActor)',
     'function pod_follow_safe_login_return',
-    "$path !== 'pod-follow-authorize.php'",
+    "\$path !== 'pod-follow-authorize.php'",
 ] as $contract) {
     $require($handoff, $contract, 'Signed POD follow handoff');
 }
@@ -55,11 +55,11 @@ foreach ([
 }
 foreach ([
     'pod_follow_fetch_remote_intent($intentUrl)',
-    "$_SESSION['pod_follow_pending_intent_url']",
-    "portal/login.php?role=pod&return_to=",
+    "\$_SESSION['pod_follow_pending_intent_url']",
+    'portal/login.php?role=pod&return_to=',
     'federated_interactions_follow_actor($targetActor',
     'activitypub_process_delivery_queue(20)',
-    "SELECT status FROM activitypub_following",
+    'SELECT status FROM activitypub_following',
     "'pod_follow_one_click_completed'",
     'pod_follow_append_result(',
 ] as $contract) {
