@@ -74,9 +74,9 @@ foreach ([
     'new ResizeObserver(scheduleCoverPlayGeometry)',
     '.music-library-cover-play-row{position:relative!important}',
     'position:absolute!important;z-index:4!important;display:block!important',
-    '.music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}',
-    '.music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}',
-    '.music-library-new-row{grid-template-columns:52px minmax(0,1fr)!important}',
+    '.music-library-summary-grid{--music-summary-cover-size:52px}',
+    'grid-template-columns:var(--music-summary-cover-size) minmax(0,1fr)!important',
+    'grid-template-columns:18px var(--music-summary-cover-size) minmax(0,1fr) 38px 24px!important',
 ] as $contract) {
     $require($musicRuntime, $contract, 'Position-preserving cover play controls');
 }
@@ -93,6 +93,11 @@ $forbid(
     $musicRuntime,
     "dashboard.querySelectorAll('.music-library-song-row').forEach",
     'All Songs play control'
+);
+$forbid(
+    $musicRuntime,
+    'grid-template-columns:18px 40px minmax(0,1fr)',
+    'Uniform Top Songs cover sizing'
 );
 foreach ([
     'class="music-library-all-songs"',
@@ -131,4 +136,4 @@ foreach (['CREATE TABLE', 'ALTER TABLE', 'DROP TABLE'] as $forbidden) {
     $forbid($adminRuntime . $musicRuntime . $follow, $forbidden, 'Runtime schema mutation');
 }
 
-echo "v66Q.16 full-viewport modal, fixed-position summary covers, overlay play controls, and dual-method Follow contract passed.\n";
+echo "v66Q.18 full-viewport modal, uniform fixed-position summary covers, invisible overlay play controls, and dual-method Follow contract passed.\n";
