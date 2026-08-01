@@ -1,11 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-public-follow-v66Q11 */
+/* North Mountain Media build: 20260801-public-follow-v66Q14 */
 
 require_once __DIR__ . '/activitypub-service.php';
-require_once __DIR__ . '/publishing.php';
-require_once __DIR__ . '/publishing-workflow.php';
 
 function nmm_public_follow_context(): array
 {
@@ -15,34 +13,32 @@ function nmm_public_follow_context(): array
         return $context;
     }
 
+    $podEnabled = nmm_module_enabled('social_feed');
+    $activityPubConfigured = false;
+    $displayName = trim((string)setting('site_name', 'This POD')) ?: 'This POD';
+    $account = '';
+
     try {
         $settings = activitypub_settings();
-        $activityEnabled = !empty($settings['enabled']);
-        $displayName = trim((string)($settings['display_name'] ?? ''));
-        $account = $activityEnabled ? '@' . activitypub_account() : '';
+        $activityPubConfigured = !empty($settings['enabled']);
+        $configuredName = trim((string)($settings['display_name'] ?? ''));
+        if ($configuredName !== '') {
+            $displayName = $configuredName;
+        }
+        if ($podEnabled && $activityPubConfigured) {
+            $account = '@' . activitypub_account();
+        }
     } catch (Throwable $exception) {
         error_log('[Public Follow] ActivityPub context failed: ' . $exception->getMessage());
-        $activityEnabled = false;
-        $displayName = trim((string)setting('site_name', 'This POD'));
-        $account = '';
     }
 
-    if ($displayName === '') {
-        $displayName = trim((string)setting('site_name', 'This POD')) ?: 'This POD';
-    }
-
-    try {
-        $blogSettings = publishing_blog_settings();
-        $rssEnabled = nmm_module_enabled('blog')
-            && nmm_module_enabled('rss')
-            && !empty($blogSettings['rss_enabled']);
-    } catch (Throwable $exception) {
-        error_log('[Public Follow] RSS context failed: ' . $exception->getMessage());
-        $rssEnabled = false;
-    }
+    // The Settings-page module toggles are the public capability source of truth.
+    // RSS does not require the Blog module because the enabled feed can publish
+    // social, syndicated, podcast, or other public feed records independently.
+    $rssEnabled = nmm_module_enabled('rss');
 
     $methods = [];
-    if ($activityEnabled) {
+    if ($podEnabled) {
         $methods[] = 'pod';
     }
     if ($rssEnabled) {
@@ -51,7 +47,8 @@ function nmm_public_follow_context(): array
 
     return $context = [
         'display_name' => $displayName,
-        'activity_enabled' => $activityEnabled,
+        'activity_enabled' => $podEnabled,
+        'activitypub_configured' => $activityPubConfigured,
         'account' => $account,
         'follow_url' => app_url('follow-pod.php'),
         'pod_discovery_url' => app_url('pod-discovery.php'),
@@ -71,9 +68,9 @@ function nmm_public_follow_assets_html(): string
     }
 
     return '<link rel="stylesheet" href="'
-        . e(app_url('assets/css/public-follow-v66q9.css?v=20260801-v66Q11'))
+        . e(app_url('assets/css/public-follow-v66q9.css?v=20260801-v66Q14'))
         . '"><script defer src="'
-        . e(app_url('assets/js/public-follow-v66q9.js?v=20260801-v66Q11'))
+        . e(app_url('assets/js/public-follow-v66q9.js?v=20260801-v66Q14'))
         . '"></script>';
 }
 
@@ -166,7 +163,11 @@ function nmm_public_follow_modal_html(): string
                         <button type="button" data-follow-copy="<?=e($context['account'] !== '' ? 'account' : 'pod')?>">Copy follow address</button>
                     </div>
 
-                    <p class="public-follow-note">The POD does not receive your password. Your password stays with your HomeServer or social provider, which sends the signed Follow request.</p>
+                    <?php if ($context['activitypub_configured']): ?>
+                        <p class="public-follow-note">The POD does not receive your password. Your password stays with your HomeServer or social provider, which sends the signed Follow request.</p>
+                    <?php else: ?>
+                        <p class="public-follow-note">Social Feed following is active through the POD discovery address. A public social address appears here when the ActivityPub identity is configured.</p>
+                    <?php endif; ?>
                 </section>
             <?php endif; ?>
 
@@ -179,7 +180,7 @@ function nmm_public_follow_modal_html(): string
                     <?=$showTabs ? 'hidden' : ''?>
                 >
                     <h3>Follow public posts with RSS</h3>
-                    <p>RSS delivers newly published articles directly to your chosen feed reader without an account or algorithmic timeline.</p>
+                    <p>RSS delivers newly published updates directly to your chosen feed reader without an account or algorithmic timeline.</p>
 
                     <label class="public-follow-field">
                         <span>RSS feed URL</span>
