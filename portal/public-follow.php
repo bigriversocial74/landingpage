@@ -17,6 +17,7 @@ function nmm_public_follow_context(): array
     $activityPubConfigured = false;
     $displayName = trim((string)setting('site_name', 'This POD')) ?: 'This POD';
     $account = '';
+    $targetActor = app_url('activitypub-actor.php');
 
     try {
         $settings = activitypub_settings();
@@ -24,6 +25,7 @@ function nmm_public_follow_context(): array
         $configuredName = trim((string)($settings['display_name'] ?? ''));
         if ($configuredName !== '') $displayName = $configuredName;
         if ($podEnabled && $activityPubConfigured) $account = '@' . activitypub_account();
+        $targetActor = activitypub_actor_url();
     } catch (Throwable $exception) {
         error_log('[Public Follow] ActivityPub context failed: ' . $exception->getMessage());
     }
@@ -36,15 +38,15 @@ function nmm_public_follow_context(): array
     $rssEnabled = nmm_module_enabled('rss');
 
     $methods = [];
-    if ($podEnabled && $activityPubConfigured) $methods[] = 'pod';
+    if ($podEnabled) $methods[] = 'pod';
     if ($rssEnabled) $methods[] = 'rss';
 
     return $context = [
         'display_name' => $displayName,
-        'activity_enabled' => $podEnabled && $activityPubConfigured,
+        'activity_enabled' => $podEnabled,
         'activitypub_configured' => $activityPubConfigured,
         'account' => $account,
-        'target_actor' => $activityPubConfigured ? activitypub_actor_url() : '',
+        'target_actor' => $targetActor,
         'intent_endpoint' => app_url('pod-follow-intent.php'),
         'follow_url' => app_url('follow-pod.php'),
         'pod_discovery_url' => app_url('pod-discovery.php'),
