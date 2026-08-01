@@ -17,6 +17,7 @@ foreach ($portalSidebarGroups as $groupLabel => $items) {
     }
 }
 ?>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal-sidebar-accordion-v66q11.css?v=20260801-v66Q11'))?>">
 <aside
     class="portal-sidebar portal-sidebar-shared"
     id="portalSidebar"
