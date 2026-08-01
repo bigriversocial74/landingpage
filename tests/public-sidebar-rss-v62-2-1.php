@@ -5,6 +5,8 @@ $root = dirname(__DIR__);
 $files = [
     'sidebar' => $root . '/portal/public-sidebar.php',
     'follow' => $root . '/portal/public-follow.php',
+    'feed' => $root . '/blog-feed.php',
+    'workflow' => $root . '/portal/publishing-workflow.php',
     'style' => $root . '/assets/css/public-follow-v66q9.css',
     'script' => $root . '/assets/js/public-follow-v66q9.js',
 ];
@@ -22,21 +24,37 @@ $checks = [
     'shared Follow helper' => ["require_once __DIR__ . '/public-follow.php'", $content['sidebar']],
     'plain Follow link' => ['public-sidebar-follow-link', $content['sidebar']],
     'single Follow modal render' => ['nmm_render_public_follow_modal', $content['sidebar']],
-    'POD follow tab' => ['POD / HomeServer', $content['follow']],
-    'RSS follow tab' => ['RSS Feed', $content['follow']],
+    'publishing workflow source of truth' => ["require_once __DIR__ . '/publishing-workflow.php'", $content['follow']],
+    'live blog settings lookup' => ['$blogSettings = publishing_blog_settings()', $content['follow']],
+    'RSS setting authority' => ["!empty(\$blogSettings['rss_enabled'])", $content['follow']],
+    'live feed uses same settings' => ['$settings = publishing_blog_settings()', $content['feed']],
+    'live feed enabled test' => ["if (!\$settings['rss_enabled'])", $content['feed']],
+    'workflow RSS setting' => ["'rss_enabled' => publishing_setting(", $content['workflow']],
+    'POD follow option' => ['POD / HomeServer', $content['follow']],
+    'RSS follow option' => ['RSS Feed', $content['follow']],
     'POD discovery URL' => ['pod-discovery.php', $content['follow']],
     'standalone follow fallback' => ['follow-pod.php', $content['follow']],
     'RSS feed URL' => ['blog-feed.php', $content['follow']],
     'RSS explanation' => ['RSS delivers newly published articles', $content['follow']],
     'RSS copy action' => ['Copy RSS URL', $content['follow']],
     'RSS open-feed action' => ['Open feed', $content['follow']],
-    'tabbed interface' => ['role="tablist"', $content['follow']],
+    'methods collection' => ["\$methods[] = 'pod'", $content['follow']],
+    'RSS methods collection' => ["\$methods[] = 'rss'", $content['follow']],
+    'hide Follow when no methods' => ["if (\$context['method_count'] === 0)", $content['follow']],
+    'dual-mode tabs only' => ["\$showTabs = \$context['method_count'] === 2", $content['follow']],
+    'conditional POD panel' => ["if (\$context['activity_enabled'])", $content['follow']],
+    'conditional RSS panel' => ["if (\$context['rss_enabled'])", $content['follow']],
+    'conditional tab list' => ['if ($showTabs)', $content['follow']],
     'POD panel' => ['data-follow-panel="pod"', $content['follow']],
     'RSS panel' => ['data-follow-panel="rss"', $content['follow']],
+    'default method contract' => ['data-follow-default-method=', $content['follow']],
     'plain text sidebar styling' => ['.workspace-sidebar .sidebar-actions>a', $content['style']],
     'normal sidebar link padding' => ['padding:5px 0!important', $content['style']],
     'modal open behavior' => ['const openModal', $content['script']],
     'modal close behavior' => ['const closeModal', $content['script']],
+    'conditional default method' => ['modal.dataset.followDefaultMethod', $content['script']],
+    'method selection' => ['const selectMethod', $content['script']],
+    'single-mode close focus' => ["querySelector('.public-follow-close')?.focus()", $content['script']],
     'copy behavior' => ['navigator.clipboard?.writeText', $content['script']],
     'keyboard tabs' => ['ArrowRight', $content['script']],
     'Escape close behavior' => ["event.key === 'Escape'", $content['script']],
@@ -55,9 +73,12 @@ foreach ([
     'const openRssModal',
     'const closeRssModal',
     'rss-sidebar-button',
+    'RSS publishing is not currently enabled for this site.',
+    "nmm_site_setting('blog_rss_enabled'",
+    "selectTab('pod')",
 ] as $obsolete) {
-    if (str_contains($content['sidebar'] . $content['script'], $obsolete)) {
-        fwrite(STDERR, "Obsolete RSS-only modal behavior remains: {$obsolete}\n");
+    if (str_contains($content['sidebar'] . $content['follow'] . $content['script'], $obsolete)) {
+        fwrite(STDERR, "Obsolete RSS/Follow behavior remains: {$obsolete}\n");
         exit(1);
     }
 }
@@ -72,4 +93,9 @@ if (substr_count($content['follow'], 'data-follow-modal-close') < 2) {
     exit(1);
 }
 
-fwrite(STDOUT, "Public RSS goals retained by unified Follow modal v66Q.9.\n");
+if (substr_count($content['follow'], 'data-follow-modal-open>Follow</a>') !== 1) {
+    fwrite(STDERR, "The shared helper must emit one Follow label, not separate Follow and RSS buttons.\n");
+    exit(1);
+}
+
+fwrite(STDOUT, "Capability-driven unified Follow modal v66Q.11 passed.\n");

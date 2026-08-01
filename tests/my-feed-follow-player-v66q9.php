@@ -35,6 +35,7 @@ $publicSidebar = $read('portal/public-sidebar.php');
 $publicSidebarJs = $read('assets/js/public-sidebar.js');
 $publicAccount = $read('portal/public-account-menu.php');
 $portalSidebar = $read('portal/sidebar.php');
+$portalSidebarJs = $read('assets/js/portal-sidebar-accordion-v66q11.js');
 $portalShellCss = $read('assets/css/portal-shell-v66q7.css');
 $musicCss = $read('assets/css/music-mobile-upgrade-v66n.css');
 
@@ -119,35 +120,46 @@ foreach ([
 ] as $forbidden) {
     $forbid($publicSidebar . $publicSidebarJs, $forbidden, 'Legacy RSS-only modal');
 }
+$forbid($publicSidebar, 'profile-chip', 'Public sidebar profile footer');
+$forbid($publicSidebar, 'Phoenix, Arizona', 'Public sidebar profile footer');
 
 foreach ([
-    'portal-nav-group-label',
-    'portal-nav-group-links',
+    'portal-nav-group-heading',
+    'portal-nav-group-toggle',
+    'data-nav-group-toggle',
+    'data-nav-group-panel',
     'data-portal-navigation',
+    'portal-sidebar-accordion-v66q11.js',
 ] as $contract) {
     $require($portalSidebar, $contract, 'Shared portal sidebar');
 }
 foreach ([
-    'portal-nav-group-toggle',
-    'data-nav-group-toggle',
-    'aria-expanded="true"',
-] as $forbidden) {
-    $forbid($portalSidebar, $forbidden, 'Plain text portal sidebar');
+    'localStorage.getItem',
+    'localStorage.setItem',
+    'aria-expanded',
+    'panel.hidden',
+    'applyState',
+] as $contract) {
+    $require($portalSidebarJs, $contract, 'Persisted sidebar accordion');
 }
 foreach ([
+    'overflow:hidden',
     'background:transparent',
     'border-radius:0',
     'text-decoration:underline',
     'font-size:13px',
+    'line-height:1.2',
 ] as $contract) {
-    $require($portalShellCss, $contract, 'Plain text portal sidebar styling');
+    $require($portalShellCss, $contract, 'Plain text fixed sidebar styling');
 }
 foreach ([
     'box-shadow:inset 3px',
     'background:#e8fafa',
-    'border-radius:9px;color:#556171',
 ] as $forbidden) {
     $forbid($portalShellCss, $forbidden, 'Decorative portal navigation');
+}
+if (preg_match('/\.portal-nav-authenticated\s*\{[^}]*overflow\s*:\s*auto/s', $portalShellCss) === 1) {
+    v66q9_fail('Authenticated sidebar navigation still scrolls.');
 }
 $require($followCss, '.workspace-sidebar .sidebar-actions>a', 'Plain text public sidebar');
 
@@ -182,4 +194,4 @@ foreach (['CREATE TABLE', 'ALTER TABLE', 'DROP TABLE'] as $forbidden) {
     $forbid($runtime . $feed . $follow, $forbidden, 'Runtime schema mutation');
 }
 
-echo "v66Q.9 My Feed, Follow modal, plain sidebar, and professional player contract passed.\n";
+echo "v66Q.9 production contracts retained under fixed accordion sidebar v66Q.11.\n";

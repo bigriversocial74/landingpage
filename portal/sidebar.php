@@ -1,13 +1,29 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-plain-shared-sidebar-v66Q9 */
+/* North Mountain Media build: 20260801-fixed-sidebar-accordion-v66Q11 */
 
 if (!isset($portalSidebarGroups, $portalSidebarHomeUrl, $active)) {
     throw new LogicException('The shared portal sidebar was not initialized.');
 }
+
+$portalSidebarActiveGroup = '';
+foreach ($portalSidebarGroups as $groupLabel => $items) {
+    foreach ($items as $item) {
+        if ($active === (string)($item['key'] ?? '')) {
+            $portalSidebarActiveGroup = (string)$groupLabel;
+            break 2;
+        }
+    }
+}
 ?>
-<aside class="portal-sidebar portal-sidebar-shared" id="portalSidebar" data-portal-sidebar>
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal-sidebar-accordion-v66q11.css?v=20260801-v66Q11'))?>">
+<aside
+    class="portal-sidebar portal-sidebar-shared"
+    id="portalSidebar"
+    data-portal-sidebar
+    data-sidebar-storage-key="nmm.portal.sidebar.open-group.v66q11"
+>
     <div class="portal-brand">
         <a href="<?=e((string)$portalSidebarHomeUrl)?>">
             <img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>">
@@ -16,11 +32,41 @@ if (!isset($portalSidebarGroups, $portalSidebarHomeUrl, $active)) {
     </div>
 
     <nav class="portal-nav portal-nav-authenticated" aria-label="Portal navigation" data-portal-navigation>
-        <?php foreach ($portalSidebarGroups as $groupLabel => $items): ?>
-            <section class="portal-nav-group">
-                <p class="portal-nav-group-label"><?=e((string)$groupLabel)?></p>
-                <div class="portal-nav-group-links">
-                    <?php foreach ($items as $item): ?>
+        <?php foreach ($portalSidebarGroups as $groupIndex => $groupItems): ?>
+            <?php
+            $groupLabel = (string)$groupIndex;
+            $groupKey = strtolower(trim((string)preg_replace('/[^a-z0-9]+/i', '-', $groupLabel), '-'));
+            if ($groupKey === '') {
+                $groupKey = 'group-' . substr(sha1($groupLabel), 0, 8);
+            }
+            $panelId = 'portal-nav-panel-' . $groupKey;
+            $isExpanded = $portalSidebarActiveGroup !== ''
+                ? $portalSidebarActiveGroup === $groupLabel
+                : $groupLabel === array_key_first($portalSidebarGroups);
+            ?>
+            <section
+                class="portal-nav-group <?=$isExpanded ? 'is-open' : ''?>"
+                data-nav-group="<?=e($groupKey)?>"
+            >
+                <h2 class="portal-nav-group-heading">
+                    <button
+                        class="portal-nav-group-toggle"
+                        type="button"
+                        data-nav-group-toggle
+                        aria-expanded="<?=$isExpanded ? 'true' : 'false'?>"
+                        aria-controls="<?=e($panelId)?>"
+                    >
+                        <span><?=e($groupLabel)?></span>
+                        <span class="portal-nav-group-chevron" aria-hidden="true">⌄</span>
+                    </button>
+                </h2>
+                <div
+                    class="portal-nav-group-links"
+                    id="<?=e($panelId)?>"
+                    data-nav-group-panel
+                    <?=$isExpanded ? '' : 'hidden'?>
+                >
+                    <?php foreach ($groupItems as $item): ?>
                         <a
                             class="<?=($active === (string)$item['key']) ? 'active' : ''?>"
                             href="<?=e((string)$item['url'])?>"
@@ -36,3 +82,4 @@ if (!isset($portalSidebarGroups, $portalSidebarHomeUrl, $active)) {
         <a href="<?=e(app_url('portal/logout.php'))?>">Sign out</a>
     </div>
 </aside>
+<script src="<?=e(app_url('assets/js/portal-sidebar-accordion-v66q11.js?v=20260801-v66Q11'))?>"></script>

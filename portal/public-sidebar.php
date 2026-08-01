@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-public-sidebar-v66Q9 */
+/* North Mountain Media build: 20260801-public-sidebar-v66Q11 */
 
 require_once __DIR__ . '/appointments-booking.php';
 require_once __DIR__ . '/public-follow.php';
@@ -18,11 +18,6 @@ function nmm_public_sidebar_url(string $path): string
 
 function nmm_render_public_sidebar(array $context): void
 {
-    $profileName = trim((string)($context['profile_name'] ?? 'David Evans'));
-    $profileImage = trim((string)(
-        $context['profile_image']
-        ?? 'assets/images/david-evans-profile.jpg'
-    ));
     $projects = is_array($context['projects'] ?? null) ? $context['projects'] : [];
     $showBookings = array_key_exists('bookings_available', $context)
         ? (bool)$context['bookings_available']
@@ -89,13 +84,6 @@ function nmm_render_public_sidebar(array $context): void
                     </nav>
                 </section>
             <?php endif; ?>
-        </div>
-
-        <div class="sidebar-foot">
-            <div class="profile-chip">
-                <span class="profile-avatar"><img alt="<?=nmm_public_sidebar_escape($profileName)?> profile photo" src="<?=nmm_public_sidebar_escape($profileImage)?>"></span>
-                <span><strong><?=nmm_public_sidebar_escape($profileName)?></strong><span>Phoenix, Arizona</span></span>
-            </div>
         </div>
     </aside>
     <button aria-label="Close sidebar" class="sidebar-backdrop" data-sidebar-close type="button"></button>
