@@ -34,7 +34,6 @@ $sidebar = $read('portal/sidebar.php');
 $navigation = $read('portal/navigation.php');
 $account = $read('portal/account-menu.php');
 $publishing = $read('portal/publishing-center.php');
-$publishingJs = $read('assets/js/publishing-center-v66q.js');
 $myFeed = $read('portal/social-posts.php');
 $feedCss = $read('assets/css/social-feed-v66q7.css');
 $federatedFeed = $read('portal/federated-feed.php');
@@ -108,30 +107,28 @@ foreach ([
 foreach ([
     'nmm_module_enabled((string)$module)',
     'data-publishing-direct',
+    'data-publishing-option',
+] as $contract) {
+    $require($publishing, $contract, 'Direct footer publishing links');
+}
+foreach ([
+    '<iframe',
     'data-footer-publishing',
     'data-footer-publishing-frame',
     'data-footer-publishing-direct-open',
-    'assets/js/publishing-center-v66q.js',
-] as $contract) {
-    $require($publishing, $contract, 'Footer Publishing workspace');
+    'publishing-center-v66q.js',
+    '?modal=1',
+    'searchParams.set',
+    'addEventListener',
+] as $needle) {
+    $forbid($publishing, $needle, 'Direct footer publishing links');
 }
 foreach ([
-    'window.location.origin',
-    "searchParams.set('modal', '1')",
-    'data-footer-publishing-direct-open',
-    'publish-story.php',
-    'publish-social-post.php',
-    'overrideUrl',
-] as $contract) {
-    $require($publishingJs, $contract, 'Authoritative Publishing controller');
-}
-foreach ([
-    'stopImmediatePropagation',
     'portal-dashboard-publishing-v66q5.js',
     'portal-shell-v66q6.js',
     'portal-unified-runtime-v66q3.js',
 ] as $needle) {
-    $forbid($shell . $publishing . $publishingJs, $needle, 'Live Publishing path');
+    $forbid($shell, $needle, 'Live Publishing path');
 }
 
 $storiesPosition = strpos($myFeed, 'Recent stories');
@@ -145,18 +142,25 @@ foreach ([
     "require_once __DIR__ . '/federated-timeline.php'",
     'story-rail-create',
     'my-feed-story-create',
+    'portal/publish-story.php',
+    'portal/publish-social-post.php',
     'Follow users and their content will appear here.',
     'social_posts_render_card',
     'federated_timeline_query',
 ] as $contract) {
     $require($myFeed, $contract, 'My Feed');
 }
-foreach (['Posts and Stories', 'social-feed-guidance'] as $needle) {
+foreach (['Posts and Stories', 'social-feed-guidance', '?modal=1'] as $needle) {
     $forbid($myFeed, $needle, 'My Feed');
 }
-$require($feedCss, '.my-feed-item-local', 'My Feed styling');
+$require(
+    $feedCss,
+    '.my-feed-item-local .pod-social-card>header>div>span{display:none}',
+    'My Feed ActivityPub-handle suppression'
+);
 
 foreach ([
+    "require_once __DIR__ . '/publishing.php'",
     "require_once __DIR__ . '/stories-service.php'",
     "require_once __DIR__ . '/social-posts-service.php'",
     "require_once __DIR__ . '/federated-timeline.php'",
@@ -172,6 +176,7 @@ foreach ([
     'No federated conversations match this view.',
     'No conversation selected.',
     'Federated Messages is temporarily unavailable.',
+    'The failure was contained so the portal did not return HTTP 500.',
 ] as $contract) {
     $require($federatedMessages, $contract, 'Federated Messages');
 }
@@ -199,4 +204,4 @@ foreach (['setup-dashboard', 'position:fixed', 'results-panel'] as $needle) {
     $forbid($agentChat, $needle, 'Agent Chat workspace');
 }
 
-echo "v66Q.7 portal runtime, feed, Publishing, navigation, and account-menu contract passed.\n";
+echo "v66Q.7 direct-link publishing, feed, navigation, federation, and account-menu contract passed.\n";
