@@ -34,7 +34,13 @@ foreach ([
 }
 
 foreach ([
+    '20260801-top-song-title-offset-v66Q19',
+    "style.dataset.musicCoverPlayStyles = 'v66Q.19'",
     '.music-library-summary-grid{--music-summary-cover-size:52px}',
+    '.music-library-compact-track>div{',
+    'grid-column:3!important',
+    'padding-left:10px!important',
+    'box-sizing:border-box!important',
     'width:var(--music-summary-cover-size)!important',
     'height:var(--music-summary-cover-size)!important',
     "button.style.setProperty('opacity', '0', 'important')",
@@ -84,4 +90,4 @@ if ($allSongsPosition === false || !str_contains(substr($page, $allSongsPosition
     v66q18_fail('All Songs explicit Play controls were changed.');
 }
 
-echo "v66Q.18 summary covers are uniformly 52x52 with no visible Play circles.\n";
+echo "v66Q.19 Top Songs titles are offset right of the fixed 52x52 covers.\n";

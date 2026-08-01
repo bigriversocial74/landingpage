@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-uniform-summary-covers-v66Q18 */
+/* North Mountain Media build: 20260801-top-song-title-offset-v66Q19 */
 (() => {
   'use strict';
 
@@ -16,7 +16,7 @@
     document.querySelector('[data-music-cover-play-styles]')?.remove();
 
     const style = document.createElement('style');
-    style.dataset.musicCoverPlayStyles = 'v66Q.18';
+    style.dataset.musicCoverPlayStyles = 'v66Q.19';
     style.textContent = `
       .music-library-summary-grid{--music-summary-cover-size:52px}
       .music-library-continue-row{
@@ -26,6 +26,12 @@
       .music-library-compact-track{
         grid-template-columns:18px var(--music-summary-cover-size) minmax(0,1fr) 38px 24px!important;
         min-height:64px!important;
+      }
+      .music-library-compact-track>div{
+        grid-column:3!important;
+        min-width:0!important;
+        padding-left:10px!important;
+        box-sizing:border-box!important;
       }
       .music-library-new-row{
         grid-template-columns:var(--music-summary-cover-size) minmax(0,1fr)!important;
