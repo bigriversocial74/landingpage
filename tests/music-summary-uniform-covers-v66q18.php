@@ -40,8 +40,8 @@ foreach ([
     "button.style.setProperty('opacity', '0', 'important')",
     "button.style.setProperty('background', 'transparent', 'important')",
     "button.style.setProperty('box-shadow', 'none', 'important')",
-    "button.style.setProperty('width', `${imageRect.width}px`, 'important')",
-    "button.style.setProperty('height', `${imageRect.height}px`, 'important')",
+    "button.style.setProperty('width', `\${imageRect.width}px`, 'important')",
+    "button.style.setProperty('height', `\${imageRect.height}px`, 'important')",
     'transform:none!important',
 ] as $required) {
     if (!str_contains($runtime, $required)) {
@@ -59,8 +59,13 @@ foreach ([
     }
 }
 
-if (substr_count($page, 'data-music-summary-cover-hit') !== 4) {
-    v66q18_fail('Expected one CSS selector reference and three summary hit targets.');
+preg_match_all(
+    '/<button\b[\s\S]*?data-music-summary-cover-hit[\s\S]*?<\/button>/',
+    $page,
+    $summaryButtons
+);
+if (count($summaryButtons[0] ?? []) !== 3) {
+    v66q18_fail('Expected exactly three summary cover hit targets.');
 }
 
 foreach (['music-library-continue-row', 'music-library-compact-track', 'music-library-new-row'] as $rowClass) {
