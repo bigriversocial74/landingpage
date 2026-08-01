@@ -9,6 +9,12 @@ $unifiedRuntimePath = $root . '/assets/js/portal-unified-runtime-v66q3.js';
 $unifiedRuntime = is_file($unifiedRuntimePath)
     ? (string)file_get_contents($unifiedRuntimePath)
     : '';
+$publishingRuntime = (string)file_get_contents(
+    $root . '/assets/js/portal-dashboard-publishing-v66q5.js'
+);
+$agentRuntime = (string)file_get_contents(
+    $root . '/assets/js/portal-agent-chat-v66q4.js'
+);
 $publishing = (string)file_get_contents(
     $root . '/portal/publishing-center.php'
 );
@@ -16,12 +22,51 @@ $portal = (string)file_get_contents(
     $root . '/assets/js/portal.js'
 );
 
+$successorLoaded = str_contains(
+    $publishing,
+    'portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'
+) && str_contains(
+    $publishing,
+    'portal-shell-v66q6.js?v=20260731-v66Q6'
+);
 $unifiedLoaded = str_contains(
     $publishing,
     'portal-unified-runtime-v66q3.js?v=20260731-v66Q3'
 );
 
-if ($unifiedLoaded) {
+if ($successorLoaded) {
+    foreach ([
+        'window.location.origin',
+        'configured.pathname',
+        'data-publishing-url',
+        "window.addEventListener('click'",
+        'event.stopImmediatePropagation()',
+        'elements.frame.hidden = false',
+    ] as $needle) {
+        if (!str_contains($publishingRuntime, $needle)) {
+            throw new RuntimeException(
+                'Successor Publishing runtime is missing retained v66Q.2 protection: '
+                . $needle
+            );
+        }
+    }
+
+    foreach ([
+        "dataset.portalActive !== 'agent'",
+        'integrateAgentWorkspace',
+        'agent-chat-conversation',
+        'admin-assistant-active',
+        'messages.childElementCount > 0',
+        'MutationObserver',
+    ] as $needle) {
+        if (!str_contains($agentRuntime, $needle)) {
+            throw new RuntimeException(
+                'Successor Agent runtime is missing retained v66Q.2 protection: '
+                . $needle
+            );
+        }
+    }
+} elseif ($unifiedLoaded) {
     foreach ([
         'window.location.origin',
         'configured.pathname',
