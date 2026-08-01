@@ -60,6 +60,9 @@ $storiesEnabled = nmm_module_enabled('stories');
 $socialSchemaAvailable = social_posts_schema_available();
 $storiesSchemaAvailable = stories_schema_available();
 $timelineSchemaAvailable = federated_timeline_schema_available();
+$storyItems = ($storiesEnabled && $storiesSchemaAvailable)
+    ? stories_feed($userId, 40)
+    : [];
 
 $ownerPosts = ($socialEnabled && $socialSchemaAvailable)
     ? social_posts_owner_posts($userId, 150)
@@ -122,7 +125,55 @@ portal_header('My Feed', 'social-posts', $user);
 >
     <?php if ($storiesEnabled): ?>
         <?php if ($storiesSchemaAvailable): ?>
-            <?php stories_render_rail($userId, 40); ?>
+            <section class="stories-rail-panel my-feed-stories" aria-labelledby="storiesRailTitle">
+                <header>
+                    <div>
+                        <span>Stories</span>
+                        <h2 id="storiesRailTitle">Recent stories</h2>
+                    </div>
+                    <a class="my-feed-story-create" href="<?=e(app_url('portal/publish-story.php'))?>" aria-label="Create story">+</a>
+                </header>
+                <div class="stories-rail" data-stories-rail>
+                    <a class="story-rail-create" href="<?=e(app_url('portal/publish-story.php'))?>">
+                        <b>＋</b>
+                        <span>Add story</span>
+                    </a>
+                    <?php foreach ($storyItems as $story): ?>
+                        <?php
+                        $storyAuthor = (string)($story['direction'] === 'local'
+                            ? ($story['owner_name'] ?: 'Your POD')
+                            : ($story['remote_display_name'] ?: $story['remote_username'] ?: 'Remote user'));
+                        $storyPayload = [
+                            'id' => (int)$story['id'],
+                            'title' => (string)($story['title'] ?? ''),
+                            'body' => (string)($story['body_text'] ?? ''),
+                            'author' => $storyAuthor,
+                            'published' => (string)$story['published_at'],
+                            'expires' => (string)$story['expires_at'],
+                            'media_kind' => (string)$story['media_kind'],
+                            'media_url' => (string)($story['media_url'] ?? ''),
+                            'media_alt' => (string)($story['media_alt'] ?? ''),
+                            'link_url' => (string)($story['link_url'] ?? ''),
+                            'direction' => (string)$story['direction'],
+                            'load_media' => (string)$story['direction'] === 'local',
+                        ];
+                        ?>
+                        <button
+                            class="story-rail-card <?=empty($story['first_viewed_at']) ? 'unviewed' : 'viewed'?>"
+                            type="button"
+                            data-story-open
+                            data-story="<?=e(json_encode($storyPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR))?>"
+                        >
+                            <span class="story-rail-ring"><i><?=e(mb_strtoupper(mb_substr($storyAuthor, 0, 1)))?></i></span>
+                            <strong><?=e($storyAuthor)?></strong>
+                            <small><?=e((string)($story['title'] ?: 'New story'))?></small>
+                        </button>
+                    <?php endforeach; ?>
+                    <?php if (!$storyItems): ?>
+                        <div class="stories-rail-empty">No active stories yet. Create the first story or follow users to see theirs here.</div>
+                    <?php endif; ?>
+                </div>
+            </section>
         <?php else: ?>
             <section class="my-feed-notice" role="status">
                 <strong>Stories are temporarily unavailable.</strong>
