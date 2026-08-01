@@ -46,18 +46,18 @@ while (($markerPosition = strpos($page, $marker, $markerOffset)) !== false) {
         $buttonStart,
         ($buttonEnd + strlen('</button>')) - $buttonStart
     );
-    $ariaPosition = strpos($buttonMarkup, 'aria-label=');
-    $openingTagEnd = $ariaPosition === false
+    $closingTagStart = strrpos($buttonMarkup, '</button>');
+    $openingTagEnd = $closingTagStart === false
         ? false
-        : strpos($buttonMarkup, '>', $ariaPosition);
-    if ($openingTagEnd === false) {
-        v66q17_fail('Unable to locate the end of a summary button opening tag.');
+        : strrpos(substr($buttonMarkup, 0, $closingTagStart), '>');
+    if ($openingTagEnd === false || $closingTagStart === false) {
+        v66q17_fail('Unable to locate the summary button body boundaries.');
     }
 
     $buttonBody = substr(
         $buttonMarkup,
         $openingTagEnd + 1,
-        strrpos($buttonMarkup, '</button>') - ($openingTagEnd + 1)
+        $closingTagStart - ($openingTagEnd + 1)
     );
     if (trim(strip_tags((string)$buttonBody)) !== '') {
         v66q17_fail('A summary cover hit target contains visible button content.');
