@@ -8,5 +8,6 @@ require __DIR__ . '/live-ui-repair-v66q8.php';
 require __DIR__ . '/microphone-policy-v66q8.php';
 require __DIR__ . '/portal-sidebar-accordion-v66q11.php';
 require __DIR__ . '/sidebar-account-music-v66q12.php';
+require __DIR__ . '/admin-actions-fullwidth-v66q13.php';
 
-echo "v66Q.12 consolidated portal repair contract passed.\n";
+echo "v66Q.13 consolidated portal repair contract passed.\n";
