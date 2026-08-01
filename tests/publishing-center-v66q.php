@@ -26,12 +26,13 @@ $checks = [
         'agent_chat_render',
     ],
     'portal/social-posts.php' => [
-        'Posts and Stories',
+        'social-feed-stories',
+        'social-feed-column',
         'stories_render_rail',
         'data-publishing-open="social-post"',
         "nmm_module_enabled('stories')",
-        'Save draft',
-        'Blog and RSS remain independent',
+        'portal/publish-story.php?modal=1',
+        'portal/publish-social-post.php?modal=1',
     ],
     'portal/social-posts-service.php' => [
         "nmm_module_enabled('social_feed')",
