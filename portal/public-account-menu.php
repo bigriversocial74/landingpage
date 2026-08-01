@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260731-public-account-menu-v66Q7 */
+/* North Mountain Media build: 20260801-public-account-follow-v66Q9 */
+
+require_once __DIR__ . '/public-follow.php';
 
 function nmm_public_account_menu_html(): string
 {
@@ -35,25 +37,28 @@ function nmm_render_public_account_menu(): void
 
 function nmm_inject_public_account_menu(string $html): string
 {
-    $stylesheet = '<link rel="stylesheet" href="'
-        . e(app_url('assets/css/public-account-menu-v66q7.css?v=20260731-v66Q7'))
-        . '">';
+    $assets = '<link rel="stylesheet" href="'
+        . e(app_url('assets/css/public-account-menu-v66q7.css?v=20260801-v66Q9'))
+        . '">'
+        . nmm_public_follow_assets_html();
+
     if (!str_contains($html, 'public-account-menu-v66q7.css')) {
-        $html = preg_replace(
-            '#</head>#i',
-            $stylesheet . '</head>',
-            $html,
-            1
-        ) ?? $html;
+        $html = preg_replace('#</head>#i', $assets . '</head>', $html, 1) ?? $html;
     }
 
+    $headerActions = '';
+    if (!str_contains($html, 'data-follow-modal-open')) {
+        $headerActions .= nmm_public_follow_trigger_html('public-header-follow-link');
+    }
     if (!str_contains($html, 'data-public-account-menu')) {
-        $html = preg_replace(
-            '#</header>#i',
-            nmm_public_account_menu_html() . '</header>',
-            $html,
-            1
-        ) ?? $html;
+        $headerActions .= nmm_public_account_menu_html();
+    }
+    if ($headerActions !== '') {
+        $html = preg_replace('#</header>#i', $headerActions . '</header>', $html, 1) ?? $html;
+    }
+
+    if (!str_contains($html, 'data-follow-modal')) {
+        $html = preg_replace('#</body>#i', nmm_public_follow_modal_html() . '</body>', $html, 1) ?? $html;
     }
 
     return $html;
