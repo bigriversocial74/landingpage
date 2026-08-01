@@ -58,8 +58,10 @@ foreach ([
 }
 
 foreach ([
-    "button.textContent = ''",
+    'button.replaceChildren()',
     "button.classList.add('music-library-cover-play')",
+    "button.style.opacity = '0'",
+    "'button[data-music-summary-cover-hit][data-music-play]'",
     'image.getBoundingClientRect()',
     'button.style.left =',
     'button.style.top =',
