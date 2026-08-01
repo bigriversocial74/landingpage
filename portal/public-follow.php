@@ -84,7 +84,7 @@ function nmm_public_follow_trigger_html(string $class = ''): string
     return '<a'
         . $classAttribute
         . ' href="' . e($fallbackUrl) . '"'
-        . ' data-follow-modal-open data-follow-button-state="idle">Follow</a>';
+        . ' data-follow-button-state="idle" data-follow-modal-open>Follow</a>';
 }
 
 function nmm_public_follow_modal_html(): string
