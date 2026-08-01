@@ -7,7 +7,8 @@ $files = [
     'visitor' => 'portal/visitor-intelligence.php',
     'api' => 'api/music-play.php',
     'player' => 'assets/js/music-player.js',
-    'bootstrap' => 'portal/bootstrap.php',
+    'shell' => 'portal/bootstrap-shell.php',
+    'sidebar' => 'portal/sidebar.php',
     'css' => 'assets/css/portal.css',
     'admin' => 'portal/admin.php',
 ];
@@ -39,8 +40,8 @@ $checks = [
     'verified listening panel' => ['Verified listening', $source['analytics']],
     'recent playback sessions' => ['Recent listening activity', $source['analytics']],
     'shared first navigation style' => ['.portal-nav-group:first-child', $source['css']],
-    'top nav special class removed' => ['class="portal-nav-group"', $source['bootstrap']],
-    'portal asset cache key' => ['20260728-content-controls-v62.1', $source['bootstrap']],
+    'shared navigation group class' => ['class="portal-nav-group"', $source['sidebar']],
+    'portal asset cache key' => ['20260728-content-controls-v62.1', $source['shell']],
     'CRM lifecycle detail' => ["str_starts_with(\n                        (string)\$visitorEvent['event_type'],\n                        'music_track_'", $source['admin']],
 ];
 
@@ -59,7 +60,7 @@ if (str_contains($source['api'], "'recorded' => true,\n    'demo'")) {
     fwrite(STDERR, "Music API still claims an unconditional successful recording.\n");
     exit(1);
 }
-if (str_contains($source['bootstrap'], "portal-nav-group <?= \$groupActive ? 'is-current'")) {
+if (str_contains($source['sidebar'], "portal-nav-group <?= \$groupActive ? 'is-current'")) {
     fwrite(STDERR, "Top/active navigation still receives a special layout class.\n");
     exit(1);
 }
