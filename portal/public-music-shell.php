@@ -54,6 +54,7 @@ function music_render_public_header(
 ): void {
 ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/music-ui-v66q12.css?v=20260801-v66Q12'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/music-ui-v66q12-fixes.css?v=20260801-v66Q12'))?>">
 <script defer src="<?=e(app_url('assets/js/music-ui-v66q12.js?v=20260801-v66Q12'))?>"></script>
 <header class="workspace-header">
 <button
