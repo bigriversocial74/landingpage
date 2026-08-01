@@ -34,9 +34,13 @@ Options -Indexes
     SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 </IfModule>
 
-# Allow same-origin microphone use on public and relationship-scoped call surfaces.
+# Allow same-origin microphone use on the public workspace and call surfaces.
+# Remove both Apache and FastCGI/PHP copies first so browsers receive one
+# effective Permissions-Policy instead of intersecting duplicate policies.
 <IfModule mod_headers.c>
-    <FilesMatch "^(index|index-preview|call-dave|connected-call|connected-receptionist|pod-call|admin|client)\.php$">
+    <FilesMatch "^(index|index-preview|landing-page|workspace|call-dave|connected-call|connected-receptionist|pod-call|admin|client)\.php$">
+        Header onsuccess unset Permissions-Policy
+        Header always unset Permissions-Policy
         Header always set Permissions-Policy "camera=(), microphone=(self), geolocation=(), payment=(), usb=()"
     </FilesMatch>
 </IfModule>
