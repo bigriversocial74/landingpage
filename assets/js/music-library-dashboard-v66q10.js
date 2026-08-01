@@ -92,6 +92,7 @@
     button.classList.add('music-library-cover-play');
     button.dataset.coverPlayOverlay = '1';
     button.replaceChildren();
+    button.textContent = '';
     button.style.opacity = '0';
     button.style.color = 'transparent';
     button.style.background = 'transparent';
