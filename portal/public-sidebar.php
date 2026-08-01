@@ -1,10 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-public-sidebar-v66Q11 */
+/* North Mountain Media build: 20260801-public-sidebar-v66Q12 */
 
 require_once __DIR__ . '/appointments-booking.php';
 require_once __DIR__ . '/public-follow.php';
+require_once __DIR__ . '/public-account-menu.php';
 
 function nmm_public_sidebar_escape(mixed $value): string
 {
@@ -38,6 +39,7 @@ function nmm_render_public_sidebar(array $context): void
         : 'North Mountain Media';
     ?>
     <?=nmm_public_follow_assets_html()?>
+    <?=nmm_public_account_assets_html()?>
 
     <aside aria-label="Workspace navigation" class="workspace-sidebar" id="workspaceSidebar">
         <div class="sidebar-head">
