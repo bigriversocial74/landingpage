@@ -185,7 +185,7 @@ function nmm_public_follow_modal_html(): string
                     <?=$showTabs ? 'hidden' : ''?>
                 >
                     <h3>Follow public posts with RSS</h3>
-                    <p>RSS delivers newly published updates directly to your chosen feed reader without an account or algorithmic timeline.</p>
+                    <p>RSS delivers newly published articles and other public updates directly to your chosen feed reader without an account or algorithmic timeline.</p>
 
                     <label class="public-follow-field">
                         <span>RSS feed URL</span>
