@@ -57,23 +57,41 @@ foreach ([
 }
 
 foreach ([
-    "dashboard.querySelectorAll('.music-library-continue-row')",
-    "dashboard.querySelectorAll('.music-library-compact-track')",
-    "dashboard.querySelectorAll('.music-library-new-row')",
-    "coverButton.className = 'music-library-cover-play'",
-    "target.dataset.musicPlay = ''",
-    'explicitPlay.remove()',
+    "...dashboard.querySelectorAll('.music-library-continue-row')",
+    "...dashboard.querySelectorAll('.music-library-compact-track')",
+    "...dashboard.querySelectorAll('.music-library-new-row')",
+    "row.classList.add('music-library-cover-play-row')",
+    "button.classList.add('music-library-cover-play')",
+    "button.dataset.coverPlayOverlay = '1'",
+    "button.textContent = ''",
+    'const rowRect = row.getBoundingClientRect()',
+    'const imageRect = image.getBoundingClientRect()',
+    'button.style.left = `${imageRect.left - rowRect.left}px`',
+    'button.style.top = `${imageRect.top - rowRect.top}px`',
+    'button.style.width = `${imageRect.width}px`',
+    'button.style.height = `${imageRect.height}px`',
     'new MutationObserver(normalizeTopSectionPlayControls)',
+    'new ResizeObserver(scheduleCoverPlayGeometry)',
+    '.music-library-cover-play-row{position:relative!important}',
+    'position:absolute!important;z-index:4!important;display:block!important',
     '.music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}',
     '.music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}',
     '.music-library-new-row{grid-template-columns:52px minmax(0,1fr)!important}',
-    '.music-library-new-row>.music-library-play-control:not(.music-library-cover-play){display:none!important}',
 ] as $contract) {
-    $require($musicRuntime, $contract, 'Cover artwork play controls');
+    $require($musicRuntime, $contract, 'Position-preserving cover play controls');
+}
+foreach ([
+    'image.replaceWith(',
+    'imageContainer.replaceWith(',
+    'appendChild(image)',
+    'explicitPlay.remove()',
+    "document.createElement('button')",
+] as $forbidden) {
+    $forbid($musicRuntime, $forbidden, 'Album cover DOM position');
 }
 $forbid(
     $musicRuntime,
-    "dashboard.querySelectorAll('.music-library-song-row').forEach(convertRowCoverToPlay)",
+    "dashboard.querySelectorAll('.music-library-song-row').forEach",
     'All Songs play control'
 );
 foreach ([
@@ -113,4 +131,4 @@ foreach (['CREATE TABLE', 'ALTER TABLE', 'DROP TABLE'] as $forbidden) {
     $forbid($adminRuntime . $musicRuntime . $follow, $forbidden, 'Runtime schema mutation');
 }
 
-echo "v66Q.15 full-viewport modal, all summary cover-play controls, and dual-method Follow contract passed.\n";
+echo "v66Q.16 full-viewport modal, fixed-position summary covers, overlay play controls, and dual-method Follow contract passed.\n";
