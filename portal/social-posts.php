@@ -1,29 +1,17 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-live-my-feed-v66Q8 */
+/* North Mountain Media build: 20260801-my-feed-v66Q9 */
 
 require __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/activitypub-service.php';
 require_once __DIR__ . '/social-posts-service.php';
 require_once __DIR__ . '/stories-service.php';
 require_once __DIR__ . '/federated-timeline.php';
+require_once __DIR__ . '/my-feed-runtime.php';
 
 $user = require_role('admin');
 $userId = (int)$user['id'];
-
-function my_feed_runtime_error(string $service, Throwable $exception): string
-{
-    error_log(sprintf(
-        '[My Feed] %s failed: %s in %s:%d',
-        $service,
-        $exception->getMessage(),
-        $exception->getFile(),
-        $exception->getLine()
-    ));
-
-    return $service . ' is temporarily unavailable. The rest of My Feed remains available.';
-}
 
 function my_feed_story_json(array $payload): string
 {
@@ -50,11 +38,11 @@ function my_feed_render_local_post(array $post): void
         while (ob_get_level() > $level) {
             ob_end_clean();
         }
-        error_log('[My Feed] Local post render failed: ' . $exception->getMessage());
+        my_feed_log_failure('local post rendering', $exception);
         ?>
-        <div class="my-feed-notice" role="status">
+        <div class="my-feed-empty" role="status">
             <strong>This post could not be displayed.</strong>
-            <span>The remaining feed continues below.</span>
+            <p>The remaining feed continues below.</p>
         </div>
         <?php
     }
@@ -103,54 +91,36 @@ if (is_post()) {
     redirect('portal/social-posts.php');
 }
 
-$runtimeNotices = [];
-$socialEnabled = false;
-$storiesEnabled = false;
-$socialSchemaAvailable = false;
-$storiesSchemaAvailable = false;
-$timelineSchemaAvailable = false;
-
 try {
     $socialEnabled = nmm_module_enabled('social_feed');
+} catch (Throwable $exception) {
+    my_feed_log_failure('Social Feed module setting', $exception);
+    $socialEnabled = true;
+}
+
+try {
     $storiesEnabled = nmm_module_enabled('stories');
 } catch (Throwable $exception) {
-    $runtimeNotices[] = my_feed_runtime_error('Module settings', $exception);
+    my_feed_log_failure('Stories module setting', $exception);
+    $storiesEnabled = true;
 }
 
-try {
-    $socialSchemaAvailable = social_posts_schema_available();
-} catch (Throwable $exception) {
-    $runtimeNotices[] = my_feed_runtime_error('Social Posts', $exception);
-}
+$storyResult = $storiesEnabled
+    ? my_feed_load_stories($userId, 40)
+    : ['available' => false, 'items' => []];
+$storyItems = $storyResult['items'];
 
-try {
-    $storiesSchemaAvailable = stories_schema_available();
-} catch (Throwable $exception) {
-    $runtimeNotices[] = my_feed_runtime_error('Stories', $exception);
-}
-
-try {
-    $timelineSchemaAvailable = federated_timeline_schema_available();
-} catch (Throwable $exception) {
-    $runtimeNotices[] = my_feed_runtime_error('Federated Timeline', $exception);
-}
-
-$storyItems = [];
-if ($storiesEnabled && $storiesSchemaAvailable) {
-    try {
-        $storyItems = stories_feed($userId, 40);
-    } catch (Throwable $exception) {
-        $storiesSchemaAvailable = false;
-        $runtimeNotices[] = my_feed_runtime_error('Stories', $exception);
-    }
-}
-
+$socialSchemaAvailable = false;
 $ownerPosts = [];
-if ($socialEnabled && $socialSchemaAvailable) {
+if ($socialEnabled) {
     try {
-        $ownerPosts = social_posts_owner_posts($userId, 150);
+        $socialSchemaAvailable = social_posts_schema_available();
+        if ($socialSchemaAvailable) {
+            $ownerPosts = social_posts_owner_posts($userId, 150);
+        }
     } catch (Throwable $exception) {
-        $runtimeNotices[] = my_feed_runtime_error('Local Social Feed', $exception);
+        my_feed_log_failure('local Social Feed query', $exception);
+        $socialSchemaAvailable = false;
     }
 }
 
@@ -163,39 +133,14 @@ $drafts = array_values(array_filter(
     static fn(array $post): bool => (string)($post['status'] ?? '') === 'draft'
 ));
 
-$remotePosts = [];
-if ($socialEnabled && $timelineSchemaAvailable) {
-    try {
-        $remotePosts = federated_timeline_query(
-            $userId,
-            ['queue' => 'following'],
-            150
-        );
-    } catch (Throwable $exception) {
-        $timelineSchemaAvailable = false;
-        $runtimeNotices[] = my_feed_runtime_error('Federated Timeline', $exception);
-    }
-}
-
-$remoteActions = [];
-if ($timelineSchemaAvailable && $remotePosts) {
-    try {
-        $remoteActions = federated_timeline_actions_for_posts(
-            array_column($remotePosts, 'id')
-        );
-    } catch (Throwable $exception) {
-        $runtimeNotices[] = my_feed_runtime_error('Federated actions', $exception);
-    }
-}
-
-$followingCount = 0;
-try {
-    $followingCount = (int)db()->query(
-        'SELECT COUNT(*) FROM activitypub_following WHERE status="accepted"'
-    )->fetchColumn();
-} catch (Throwable $exception) {
-    error_log('[My Feed] Following count failed: ' . $exception->getMessage());
-}
+$timelineResult = $socialEnabled
+    ? my_feed_load_federated_posts($userId, 150)
+    : ['available' => false, 'items' => [], 'actions_available' => false];
+$remotePosts = $timelineResult['items'];
+$remoteActions = $timelineResult['actions_available']
+    ? my_feed_remote_actions($remotePosts)
+    : [];
+$followingCount = my_feed_following_count();
 
 $feedItems = [];
 foreach ($publishedPosts as $post) {
@@ -224,83 +169,70 @@ portal_header('My Feed', 'social-posts', $user);
 ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/stories-v66o.css?v=20260731-v66O'))?>">
-<link rel="stylesheet" href="<?=e(app_url('assets/css/social-feed-v66q7.css?v=20260801-v66Q8'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/social-feed-v66q7.css?v=20260801-v66Q9'))?>">
 
 <div
     class="my-feed"
     data-stories-app
     data-story-view-endpoint="<?=e(app_url('api/story-view.php'))?>"
     data-csrf="<?=e(csrf_token())?>"
+    data-my-feed-runtime="v66Q.9"
 >
-    <?php foreach (array_values(array_unique($runtimeNotices)) as $notice): ?>
-        <section class="my-feed-notice" role="status">
-            <strong>My Feed recovered from a service error.</strong>
-            <span><?=e($notice)?></span>
-        </section>
-    <?php endforeach; ?>
-
     <?php if ($storiesEnabled): ?>
-        <?php if ($storiesSchemaAvailable): ?>
-            <section class="stories-rail-panel my-feed-stories" aria-labelledby="storiesRailTitle">
-                <header>
-                    <div>
-                        <span>Stories</span>
-                        <h2 id="storiesRailTitle">Recent stories</h2>
-                    </div>
-                    <a class="my-feed-story-create" href="<?=e(app_url('portal/publish-story.php'))?>" aria-label="Create story">+</a>
-                </header>
-                <div class="stories-rail" data-stories-rail>
-                    <a class="story-rail-create" href="<?=e(app_url('portal/publish-story.php'))?>">
-                        <b>＋</b>
-                        <span>Add story</span>
-                    </a>
-                    <?php foreach ($storyItems as $story): ?>
-                        <?php
-                        $direction = (string)($story['direction'] ?? 'local');
-                        $storyAuthor = $direction === 'local'
-                            ? (string)($story['owner_name'] ?? 'Your POD')
-                            : (string)(
-                                $story['remote_display_name']
-                                ?? $story['remote_username']
-                                ?? 'Remote user'
-                            );
-                        $storyPayload = [
-                            'id' => (int)($story['id'] ?? 0),
-                            'title' => (string)($story['title'] ?? ''),
-                            'body' => (string)($story['body_text'] ?? ''),
-                            'author' => $storyAuthor,
-                            'published' => (string)($story['published_at'] ?? ''),
-                            'expires' => (string)($story['expires_at'] ?? ''),
-                            'media_kind' => (string)($story['media_kind'] ?? 'none'),
-                            'media_url' => (string)($story['media_url'] ?? ''),
-                            'media_alt' => (string)($story['media_alt'] ?? ''),
-                            'link_url' => (string)($story['link_url'] ?? ''),
-                            'direction' => $direction,
-                            'load_media' => $direction === 'local',
-                        ];
-                        ?>
-                        <button
-                            class="story-rail-card <?=empty($story['first_viewed_at']) ? 'unviewed' : 'viewed'?>"
-                            type="button"
-                            data-story-open
-                            data-story="<?=e(my_feed_story_json($storyPayload))?>"
-                        >
-                            <span class="story-rail-ring"><i><?=e(mb_strtoupper(mb_substr($storyAuthor, 0, 1)))?></i></span>
-                            <strong><?=e($storyAuthor)?></strong>
-                            <small><?=e((string)($story['title'] ?? 'New story'))?></small>
-                        </button>
-                    <?php endforeach; ?>
-                    <?php if (!$storyItems): ?>
-                        <div class="stories-rail-empty">No active stories yet. Create the first story or follow users to see theirs here.</div>
-                    <?php endif; ?>
+        <section class="stories-rail-panel my-feed-stories" aria-labelledby="storiesRailTitle">
+            <header>
+                <div>
+                    <span>Stories</span>
+                    <h2 id="storiesRailTitle">Recent stories</h2>
                 </div>
-            </section>
-        <?php else: ?>
-            <section class="my-feed-notice" role="status">
-                <strong>Stories are temporarily unavailable.</strong>
-                <span>The Social Feed remains available below.</span>
-            </section>
-        <?php endif; ?>
+                <a class="my-feed-story-create" href="<?=e(app_url('portal/publish-story.php'))?>" aria-label="Create story">+</a>
+            </header>
+            <div class="stories-rail" data-stories-rail>
+                <a class="story-rail-create" href="<?=e(app_url('portal/publish-story.php'))?>">
+                    <b>＋</b>
+                    <span>Add story</span>
+                </a>
+                <?php foreach ($storyItems as $story): ?>
+                    <?php
+                    $direction = (string)($story['direction'] ?? 'local');
+                    $storyAuthor = $direction === 'local'
+                        ? (string)($story['owner_name'] ?? 'Your POD')
+                        : (string)(
+                            $story['remote_display_name']
+                            ?? $story['remote_username']
+                            ?? 'Remote user'
+                        );
+                    $storyPayload = [
+                        'id' => (int)($story['id'] ?? 0),
+                        'title' => (string)($story['title'] ?? ''),
+                        'body' => (string)($story['body_text'] ?? ''),
+                        'author' => $storyAuthor,
+                        'published' => (string)($story['published_at'] ?? ''),
+                        'expires' => (string)($story['expires_at'] ?? ''),
+                        'media_kind' => (string)($story['media_kind'] ?? 'none'),
+                        'media_url' => (string)($story['media_url'] ?? ''),
+                        'media_alt' => (string)($story['media_alt'] ?? ''),
+                        'link_url' => (string)($story['link_url'] ?? ''),
+                        'direction' => $direction,
+                        'load_media' => $direction === 'local',
+                    ];
+                    ?>
+                    <button
+                        class="story-rail-card <?=empty($story['first_viewed_at']) ? 'unviewed' : 'viewed'?>"
+                        type="button"
+                        data-story-open
+                        data-story="<?=e(my_feed_story_json($storyPayload))?>"
+                    >
+                        <span class="story-rail-ring"><i><?=e(mb_strtoupper(mb_substr($storyAuthor, 0, 1)))?></i></span>
+                        <strong><?=e($storyAuthor)?></strong>
+                        <small><?=e((string)($story['title'] ?? 'New story'))?></small>
+                    </button>
+                <?php endforeach; ?>
+                <?php if (!$storyItems): ?>
+                    <div class="stories-rail-empty">No active stories yet. Create the first story or follow users to see theirs here.</div>
+                <?php endif; ?>
+            </div>
+        </section>
     <?php endif; ?>
 
     <section class="my-feed-stream" aria-labelledby="myFeedStreamTitle">
@@ -321,8 +253,8 @@ portal_header('My Feed', 'social-posts', $user);
             </div>
         <?php elseif (!$socialSchemaAvailable): ?>
             <div class="my-feed-empty">
-                <strong>Social Feed is temporarily unavailable.</strong>
-                <p>The page recovered without returning an HTTP 500 response.</p>
+                <strong>Social Feed is unavailable.</strong>
+                <p>Local posts could not be loaded. No feed data was changed.</p>
             </div>
         <?php else: ?>
             <?php if ($followingCount === 0): ?>
@@ -385,29 +317,31 @@ portal_header('My Feed', 'social-posts', $user);
                             <?php if ($body !== ''): ?><p class="my-feed-remote-body"><?=nl2br(e($body))?></p><?php endif; ?>
 
                             <div class="my-feed-remote-actions">
-                                <form method="post">
-                                    <?=csrf_field()?>
-                                    <input type="hidden" name="action" value="<?=!empty($actions['like']) ? 'undo_timeline_action' : 'timeline_action'?>">
-                                    <?php if (!empty($actions['like'])): ?>
-                                        <input type="hidden" name="action_id" value="<?=(int)$actions['like']['id']?>">
-                                    <?php else: ?>
-                                        <input type="hidden" name="timeline_action" value="like">
-                                        <input type="hidden" name="post_id" value="<?=$postId?>">
-                                    <?php endif; ?>
-                                    <button type="submit"><?=!empty($actions['like']) ? 'Unlike' : 'Like'?></button>
-                                </form>
+                                <?php if ($timelineResult['actions_available']): ?>
+                                    <form method="post">
+                                        <?=csrf_field()?>
+                                        <input type="hidden" name="action" value="<?=!empty($actions['like']) ? 'undo_timeline_action' : 'timeline_action'?>">
+                                        <?php if (!empty($actions['like'])): ?>
+                                            <input type="hidden" name="action_id" value="<?=(int)$actions['like']['id']?>">
+                                        <?php else: ?>
+                                            <input type="hidden" name="timeline_action" value="like">
+                                            <input type="hidden" name="post_id" value="<?=$postId?>">
+                                        <?php endif; ?>
+                                        <button type="submit"><?=!empty($actions['like']) ? 'Unlike' : 'Like'?></button>
+                                    </form>
 
-                                <form method="post">
-                                    <?=csrf_field()?>
-                                    <input type="hidden" name="action" value="<?=!empty($actions['announce']) ? 'undo_timeline_action' : 'timeline_action'?>">
-                                    <?php if (!empty($actions['announce'])): ?>
-                                        <input type="hidden" name="action_id" value="<?=(int)$actions['announce']['id']?>">
-                                    <?php else: ?>
-                                        <input type="hidden" name="timeline_action" value="announce">
-                                        <input type="hidden" name="post_id" value="<?=$postId?>">
-                                    <?php endif; ?>
-                                    <button type="submit"><?=!empty($actions['announce']) ? 'Undo boost' : 'Boost'?></button>
-                                </form>
+                                    <form method="post">
+                                        <?=csrf_field()?>
+                                        <input type="hidden" name="action" value="<?=!empty($actions['announce']) ? 'undo_timeline_action' : 'timeline_action'?>">
+                                        <?php if (!empty($actions['announce'])): ?>
+                                            <input type="hidden" name="action_id" value="<?=(int)$actions['announce']['id']?>">
+                                        <?php else: ?>
+                                            <input type="hidden" name="timeline_action" value="announce">
+                                            <input type="hidden" name="post_id" value="<?=$postId?>">
+                                        <?php endif; ?>
+                                        <button type="submit"><?=!empty($actions['announce']) ? 'Undo boost' : 'Boost'?></button>
+                                    </form>
+                                <?php endif; ?>
 
                                 <form method="post">
                                     <?=csrf_field()?>
@@ -420,17 +354,19 @@ portal_header('My Feed', 'social-posts', $user);
                                 <?php if ($sourceUrl !== ''): ?><a href="<?=e($sourceUrl)?>" target="_blank" rel="noopener noreferrer">Open original</a><?php endif; ?>
                             </div>
 
-                            <form method="post" class="my-feed-reply">
-                                <?=csrf_field()?>
-                                <input type="hidden" name="action" value="timeline_action">
-                                <input type="hidden" name="timeline_action" value="reply">
-                                <input type="hidden" name="post_id" value="<?=$postId?>">
-                                <label>
-                                    <span class="sr-only">Reply to <?=e($displayName)?></span>
-                                    <input name="reply_text" maxlength="4000" required placeholder="Write a reply">
-                                </label>
-                                <button type="submit">Reply</button>
-                            </form>
+                            <?php if ($timelineResult['actions_available']): ?>
+                                <form method="post" class="my-feed-reply">
+                                    <?=csrf_field()?>
+                                    <input type="hidden" name="action" value="timeline_action">
+                                    <input type="hidden" name="timeline_action" value="reply">
+                                    <input type="hidden" name="post_id" value="<?=$postId?>">
+                                    <label>
+                                        <span class="sr-only">Reply to <?=e($displayName)?></span>
+                                        <input name="reply_text" maxlength="4000" required placeholder="Write a reply">
+                                    </label>
+                                    <button type="submit">Reply</button>
+                                </form>
+                            <?php endif; ?>
                         </article>
                     <?php endif; ?>
                 <?php endforeach; ?>
@@ -463,10 +399,10 @@ portal_header('My Feed', 'social-posts', $user);
         <?php endif; ?>
     </section>
 
-    <?php if ($storiesEnabled && $storiesSchemaAvailable): ?><?php stories_render_viewer(); ?><?php endif; ?>
+    <?php if ($storiesEnabled && $storyResult['available']): ?><?php stories_render_viewer(); ?><?php endif; ?>
 </div>
 
-<?php if ($storiesEnabled && $storiesSchemaAvailable): ?>
-<script src="<?=e(app_url('assets/js/stories-v66o.js?v=20260801-v66Q8'))?>"></script>
+<?php if ($storiesEnabled && $storyResult['available']): ?>
+<script src="<?=e(app_url('assets/js/stories-v66o.js?v=20260801-v66Q9'))?>"></script>
 <?php endif; ?>
 <?php portal_footer(); ?>

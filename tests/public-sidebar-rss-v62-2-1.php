@@ -2,52 +2,44 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-$sidebarPath = $root . '/portal/public-sidebar.php';
-$stylePath = $root . '/assets/css/public-sidebar-v62-2-1.css';
-$scriptPath = $root . '/assets/js/public-sidebar.js';
+$files = [
+    'sidebar' => $root . '/portal/public-sidebar.php',
+    'follow' => $root . '/portal/public-follow.php',
+    'style' => $root . '/assets/css/public-follow-v66q9.css',
+    'script' => $root . '/assets/js/public-follow-v66q9.js',
+];
 
-foreach ([$sidebarPath, $stylePath, $scriptPath] as $path) {
+$content = [];
+foreach ($files as $key => $path) {
     if (!is_file($path)) {
         fwrite(STDERR, "Missing required source: {$path}\n");
         exit(1);
     }
+    $content[$key] = (string)file_get_contents($path);
 }
 
-$sidebar = (string)file_get_contents($sidebarPath);
-$style = (string)file_get_contents($stylePath);
-$script = (string)file_get_contents($scriptPath);
-
 $checks = [
-    'v62.2.1 stylesheet load' => [
-        'assets/css/public-sidebar-v62-2-1.css?v=20260728-v62.2.1',
-        $sidebar,
-    ],
-    'conversation section scope' => [
-        'sidebar-section sidebar-conversation-section',
-        $sidebar,
-    ],
-    'RSS modal trigger' => ['data-rss-modal-open', $sidebar],
-    'compact RSS icon width attribute' => ['width="17"', $sidebar],
-    'compact RSS icon height attribute' => ['height="17"', $sidebar],
-    'RSS label' => ['<span>RSS Feed</span>', $sidebar],
-    'RSS explanation' => ['RSS lets you receive newly published articles', $sidebar],
-    'RSS feed URL field' => ['data-rss-feed-url', $sidebar],
-    'RSS copy action' => ['Copy RSS Feed URL', $sidebar],
-    'RSS open-feed action' => ['>Open feed</a>', $sidebar],
-    'RSS close buttons' => ['data-rss-modal-close', $sidebar],
-    'conversation menu reset' => [
-        '.sidebar-conversation-section .sidebar-custom-menu',
-        $style,
-    ],
-    'conversation item alignment' => ['justify-content:flex-start', $style],
-    'normal sidebar item padding' => ['padding:5px 0', $style],
-    '17 pixel RSS icon' => ['width:17px!important', $style],
-    '17 pixel RSS icon cap' => ['max-width:17px!important', $style],
-    'mobile sidebar coverage' => ['@media(max-width:760px)', $style],
-    'modal open behavior' => ['const openRssModal', $script],
-    'modal close behavior' => ['const closeRssModal', $script],
-    'copy behavior' => ['navigator.clipboard?.writeText', $script],
-    'Escape close behavior' => ["event.key === 'Escape'", $script],
+    'shared Follow helper' => ["require_once __DIR__ . '/public-follow.php'", $content['sidebar']],
+    'plain Follow link' => ['public-sidebar-follow-link', $content['sidebar']],
+    'single Follow modal render' => ['nmm_render_public_follow_modal', $content['sidebar']],
+    'POD follow tab' => ['POD / HomeServer', $content['follow']],
+    'RSS follow tab' => ['RSS Feed', $content['follow']],
+    'POD discovery URL' => ['pod-discovery.php', $content['follow']],
+    'standalone follow fallback' => ['follow-pod.php', $content['follow']],
+    'RSS feed URL' => ['blog-feed.php', $content['follow']],
+    'RSS explanation' => ['RSS delivers newly published articles', $content['follow']],
+    'RSS copy action' => ['Copy RSS URL', $content['follow']],
+    'RSS open-feed action' => ['Open feed', $content['follow']],
+    'tabbed interface' => ['role="tablist"', $content['follow']],
+    'POD panel' => ['data-follow-panel="pod"', $content['follow']],
+    'RSS panel' => ['data-follow-panel="rss"', $content['follow']],
+    'plain text sidebar styling' => ['.workspace-sidebar .sidebar-actions>a', $content['style']],
+    'normal sidebar link padding' => ['padding:5px 0!important', $content['style']],
+    'modal open behavior' => ['const openModal', $content['script']],
+    'modal close behavior' => ['const closeModal', $content['script']],
+    'copy behavior' => ['navigator.clipboard?.writeText', $content['script']],
+    'keyboard tabs' => ['ArrowRight', $content['script']],
+    'Escape close behavior' => ["event.key === 'Escape'", $content['script']],
 ];
 
 foreach ($checks as $label => [$needle, $haystack]) {
@@ -57,26 +49,27 @@ foreach ($checks as $label => [$needle, $haystack]) {
     }
 }
 
-$callPosition = strpos($sidebar, 'data-call-widget-open');
-$rssPosition = strpos($sidebar, 'data-rss-modal-open');
-if ($callPosition === false || $rssPosition === false || $rssPosition <= $callPosition) {
-    fwrite(STDERR, "RSS Feed must remain directly after the Conversation navigation and Call Us fallback.\n");
+foreach ([
+    'data-rss-modal-open',
+    'data-rss-modal-close',
+    'const openRssModal',
+    'const closeRssModal',
+    'rss-sidebar-button',
+] as $obsolete) {
+    if (str_contains($content['sidebar'] . $content['script'], $obsolete)) {
+        fwrite(STDERR, "Obsolete RSS-only modal behavior remains: {$obsolete}\n");
+        exit(1);
+    }
+}
+
+if (substr_count($content['sidebar'], 'nmm_public_follow_trigger_html') !== 1) {
+    fwrite(STDERR, "Expected exactly one shared Follow trigger in the public sidebar.\n");
     exit(1);
 }
 
-if (substr_count($sidebar, 'data-rss-modal-open') !== 1) {
-    fwrite(STDERR, "Expected exactly one RSS modal trigger.\n");
+if (substr_count($content['follow'], 'data-follow-modal-close') < 2) {
+    fwrite(STDERR, "The Follow modal requires both backdrop and close-button controls.\n");
     exit(1);
 }
 
-if (substr_count($sidebar, 'data-rss-modal-close') < 2) {
-    fwrite(STDERR, "RSS modal backdrop and close-button controls are required.\n");
-    exit(1);
-}
-
-if (preg_match('/\.rss-sidebar-button\s+svg\s*\{[^}]*width\s*:\s*(?:[2-9][0-9]|1[89])[0-9]*px/si', $style)) {
-    fwrite(STDERR, "RSS sidebar icon exceeds the compact 16–18 pixel target.\n");
-    exit(1);
-}
-
-fwrite(STDOUT, "Public sidebar RSS v62.2.1 regression passed.\n");
+fwrite(STDOUT, "Public RSS goals retained by unified Follow modal v66Q.9.\n");

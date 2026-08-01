@@ -1,21 +1,14 @@
-/* North Mountain Media music dashboard v49 */
+/* North Mountain Media music dashboard v66Q.10 */
 (() => {
   'use strict';
 
   const storageKey = 'nmm_music_recent_v1';
-  const container = document.querySelector(
-    '[data-recently-played]'
-  );
+  const container = document.querySelector('[data-recently-played]');
 
   const readRecent = () => {
     try {
-      const value = JSON.parse(
-        localStorage.getItem(storageKey) || '[]'
-      );
-
-      return Array.isArray(value)
-        ? value
-        : [];
+      const value = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return Array.isArray(value) ? value : [];
     } catch (error) {
       return [];
     }
@@ -23,10 +16,7 @@
 
   const writeRecent = (items) => {
     try {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify(items.slice(0, 4))
-      );
+      localStorage.setItem(storageKey, JSON.stringify(items.slice(0, 6)));
     } catch (error) {
       // Storage can be unavailable in strict privacy mode.
     }
@@ -37,31 +27,14 @@
     button.type = 'button';
     button.dataset.musicPlay = '';
     button.dataset.trackId = String(track.id || 0);
-    button.dataset.trackTitle = String(
-      track.title || ''
-    );
-    button.dataset.trackArtist = String(
-      track.artist || ''
-    );
-    button.dataset.trackAlbum = String(
-      track.album || ''
-    );
-    button.dataset.trackStream = String(
-      track.stream || ''
-    );
-    button.dataset.trackCover = String(
-      track.cover || ''
-    );
-    button.dataset.trackDuration = String(
-      track.duration || 0
-    );
-    button.dataset.trackDemo = track.demo
-      ? '1'
-      : '0';
-    button.setAttribute(
-      'aria-label',
-      `Play ${track.title || 'track'}`
-    );
+    button.dataset.trackTitle = String(track.title || '');
+    button.dataset.trackArtist = String(track.artist || '');
+    button.dataset.trackAlbum = String(track.album || '');
+    button.dataset.trackStream = String(track.stream || '');
+    button.dataset.trackCover = String(track.cover || '');
+    button.dataset.trackDuration = String(track.duration || 0);
+    button.dataset.trackDemo = track.demo ? '1' : '0';
+    button.setAttribute('aria-label', `Play ${track.title || 'track'}`);
     button.textContent = '▶';
 
     return button;
@@ -71,73 +44,53 @@
     if (!container) return;
 
     const recent = readRecent();
-
-    if (!recent.length) {
-      return;
-    }
+    if (!recent.length) return;
 
     container.replaceChildren();
 
     recent.forEach((track) => {
-      const article = document.createElement(
-        'article'
-      );
-      article.className =
-        'music-dashboard-recent-item';
+      const article = document.createElement('article');
+      article.className = 'music-dashboard-recent-item music-library-cover-card';
 
       const art = document.createElement('div');
       const image = document.createElement('img');
       image.src = String(track.cover || '');
-      image.alt =
-        `${track.title || 'Track'} cover`;
+      image.alt = `${track.title || 'Track'} cover`;
       image.loading = 'lazy';
 
       art.append(image, playButtonFor(track));
 
       const title = document.createElement('strong');
-      title.textContent = String(
-        track.title || 'Untitled track'
-      );
+      title.textContent = String(track.title || 'Untitled track');
 
-      const type = document.createElement('span');
-      type.textContent = 'Recently played';
+      const artist = document.createElement('span');
+      artist.textContent = String(track.artist || 'Recently played');
 
-      article.append(art, title, type);
+      article.append(art, title, artist);
       container.appendChild(article);
     });
   };
 
-  window.addEventListener(
-    'nmm:music-play',
-    (event) => {
-      const track = event.detail;
+  window.addEventListener('nmm:music-play', (event) => {
+    const track = event.detail;
+    if (!track?.id) return;
 
-      if (!track?.id) return;
-
-      const recent = readRecent().filter(
-        (item) => Number(item.id) !== Number(track.id)
-      );
-
-      recent.unshift(track);
-      writeRecent(recent);
-      renderRecent();
-    }
-  );
+    const recent = readRecent().filter(
+      (item) => Number(item.id) !== Number(track.id)
+    );
+    recent.unshift(track);
+    writeRecent(recent);
+    renderRecent();
+  });
 
   document.addEventListener('click', (event) => {
     const favorite = event.target.closest(
-      '.music-dashboard-heart, '
-      + '.music-feature-favorite, '
-      + '.music-player-favorite'
+      '.music-dashboard-heart, .music-feature-favorite, .music-player-favorite'
     );
-
     if (!favorite) return;
 
     favorite.classList.toggle('active');
-    favorite.textContent = favorite.classList
-      .contains('active')
-      ? '♥'
-      : '♡';
+    favorite.textContent = favorite.classList.contains('active') ? '♥' : '♡';
   });
 
   renderRecent();
