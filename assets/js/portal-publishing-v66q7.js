@@ -43,8 +43,10 @@
     }
   };
 
-  const select = (link) => {
-    const directUrl = normalize(link?.href || link?.dataset.publishingUrl || '');
+  const select = (link, overrideUrl = '') => {
+    const directUrl = normalize(
+      overrideUrl || link?.href || link?.dataset.publishingUrl || ''
+    );
     if (!directUrl || !frame) return false;
 
     links.forEach((item) => item.classList.toggle('is-active', item === link));
@@ -110,15 +112,18 @@
     const match = links.find((link) => link.dataset.publishingDirect === key);
     if (!match) return;
     if (
-      event.button !== 0
+      event.defaultPrevented
+      || event.button !== 0
       || event.metaKey
       || event.ctrlKey
       || event.shiftKey
       || event.altKey
     ) return;
+
+    const requestedUrl = trigger.dataset.publishingUrl || trigger.href || '';
     event.preventDefault();
     document.querySelector('[data-admin-quick-toggle]')?.click();
     document.querySelector('[data-admin-launcher-tab="publishing"]')?.click();
-    window.requestAnimationFrame(() => select(match));
+    window.requestAnimationFrame(() => select(match, requestedUrl));
   });
 })();
