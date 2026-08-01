@@ -19,10 +19,11 @@ if($audio['kind']!=='audio'){fwrite(STDERR,"Audio classification failed.\n");exi
 $root=dirname(__DIR__);
 $paths=[
  'media'=>'portal/feed-reader-media.php','core'=>'portal/feed-reader-core.php','view'=>'portal/feed-reader-view.php','api'=>'portal/feed-reader-api.php',
- 'bootstrap'=>'portal/bootstrap.php','script'=>'assets/js/feed-reader-social.js','css'=>'assets/css/feed-reader-media-v66b.css',
+ 'bootstrap'=>'portal/bootstrap.php','foundation'=>'portal/bootstrap-foundation.php','script'=>'assets/js/feed-reader-social.js','css'=>'assets/css/feed-reader-media-v66b.css',
  'migration'=>'database/feed_reader_media_v66b.sql','schema'=>'database/north_mountain_portal.sql',
 ];
 $source=[];foreach($paths as $key=>$path){$source[$key]=(string)file_get_contents($root.'/'.$path);if($source[$key]===''){fwrite(STDERR,"Missing {$path}.\n");exit(1);}}
+$source['bootstrap'].=$source['foundation'];
 $checks=[
  ['subscription resolver','feed_reader_resolve_subscription_url',$source['core']],
  ['media module','feed-reader-media.php',$source['view'].$source['api']],
