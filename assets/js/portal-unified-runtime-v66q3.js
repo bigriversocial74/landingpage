@@ -47,34 +47,51 @@
     nav.querySelectorAll('a')
   ).find((link) => link.textContent.trim() === label) || null;
 
+  const removeCommunicationsSurface = () => {
+    document.querySelectorAll(
+      'a[href*="view=communications"], '
+      + '[data-admin-quick-prompt="Unread communications"]'
+    ).forEach((element) => element.remove());
+  };
+
   const organizeNavigation = () => {
-    const navigation = adminNavigationGroups();
-    if (!navigation) return;
-
-    const { nav, groups } = navigation;
-    const move = (label, groupName) => {
-      const link = findNavigationLink(nav, label);
-      const destination = groups.get(groupName);
-      if (link && destination) destination.appendChild(link);
-    };
-
-    move('Unified Inbox', 'Relationships');
-    move('Visitor Intelligence', 'System');
-    move('Site Analytics', 'System');
-
-    findNavigationLink(nav, 'Notifications')?.remove();
-
-    const clientsEnabled = Boolean(
-      nav.querySelector('a[href*="view=clients"]')
+    const allNavigation = Array.from(
+      document.querySelectorAll('.portal-nav')
     );
 
-    if (!clientsEnabled) {
-      findNavigationLink(nav, 'Communications')?.remove();
-      document.querySelectorAll(
-        'a[href*="view=communications"], '
-        + '[data-admin-quick-prompt="Unread communications"]'
-      ).forEach((element) => element.remove());
+    allNavigation.forEach((nav) => {
+      findNavigationLink(nav, 'Notifications')?.remove();
+    });
+
+    const adminNavigation = adminNavigationGroups();
+    if (adminNavigation) {
+      const { nav, groups } = adminNavigation;
+      const move = (label, groupName) => {
+        const link = findNavigationLink(nav, label);
+        const destination = groups.get(groupName);
+        if (link && destination) destination.appendChild(link);
+      };
+
+      move('Unified Inbox', 'Relationships');
+      move('Visitor Intelligence', 'System');
+      move('Site Analytics', 'System');
+
+      const clientsEnabled = Boolean(
+        nav.querySelector('a[href*="view=clients"]')
+      );
+      if (!clientsEnabled) removeCommunicationsSurface();
+      return;
     }
+
+    const clientNavigation = document.querySelector('.portal-nav');
+    if (!clientNavigation) return;
+
+    const clientsEnabled = Boolean(
+      clientNavigation.querySelector(
+        'a[href*="view=projects"], a[href*="view=files"]'
+      )
+    );
+    if (!clientsEnabled) removeCommunicationsSurface();
   };
 
   const simplifyMyFeed = () => {
