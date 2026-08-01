@@ -155,9 +155,11 @@ foreach ([
 foreach ([
     'box-shadow:inset 3px',
     'background:#e8fafa',
-    'overflow:auto',
 ] as $forbidden) {
-    $forbid($portalShellCss, $forbidden, 'Decorative or scrolling portal navigation');
+    $forbid($portalShellCss, $forbidden, 'Decorative portal navigation');
+}
+if (preg_match('/\.portal-nav-authenticated\s*\{[^}]*overflow\s*:\s*auto/s', $portalShellCss) === 1) {
+    v66q9_fail('Authenticated sidebar navigation still scrolls.');
 }
 $require($followCss, '.workspace-sidebar .sidebar-actions>a', 'Plain text public sidebar');
 
