@@ -97,7 +97,7 @@ foreach ([
     $require($follow, $contract, 'Capability-driven public Follow');
 }
 $forbid($follow, "nmm_module_enabled('blog')", 'RSS Follow capability');
-$forbid($follow, "$rssEnabled = nmm_module_enabled('rss') &&", 'RSS Follow capability');
+$forbid($follow, '$rssEnabled = nmm_module_enabled(\'rss\') &&', 'RSS Follow capability');
 foreach ([
     'nmm_public_follow_assets_html()',
     'nmm_public_follow_trigger_html',
