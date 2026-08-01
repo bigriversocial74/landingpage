@@ -17,8 +17,7 @@ function nmm_public_follow_context(): array
 
     try {
         $settings = activitypub_settings();
-        $activityEnabled = !empty($settings['enabled'])
-            && nmm_module_enabled('federation');
+        $activityEnabled = !empty($settings['enabled']);
         $displayName = trim((string)($settings['display_name'] ?? ''));
         $account = $activityEnabled ? '@' . activitypub_account() : '';
     } catch (Throwable $exception) {
