@@ -12,13 +12,11 @@ function nmm_public_follow_context(): array
         $activityEnabled = !empty($settings['enabled']);
         $displayName = trim((string)($settings['display_name'] ?? ''));
         $account = '@' . activitypub_account();
-        $actorUrl = activitypub_actor_url();
     } catch (Throwable $exception) {
         error_log('[Public Follow] ActivityPub context failed: ' . $exception->getMessage());
         $activityEnabled = false;
         $displayName = trim((string)setting('site_name', 'This POD'));
         $account = '';
-        $actorUrl = app_url('activitypub-actor.php');
     }
 
     if ($displayName === '') {
@@ -26,9 +24,11 @@ function nmm_public_follow_context(): array
     }
 
     try {
+        $rssSettingEnabled = !function_exists('nmm_site_setting')
+            || nmm_site_setting('blog_rss_enabled', '1') === '1';
         $rssEnabled = nmm_module_enabled('blog')
             && nmm_module_enabled('rss')
-            && nmm_site_setting('blog_rss_enabled', '1') === '1';
+            && $rssSettingEnabled;
     } catch (Throwable $exception) {
         error_log('[Public Follow] RSS context failed: ' . $exception->getMessage());
         $rssEnabled = false;
@@ -38,7 +38,6 @@ function nmm_public_follow_context(): array
         'display_name' => $displayName,
         'activity_enabled' => $activityEnabled,
         'account' => $account,
-        'actor_url' => $actorUrl,
         'follow_url' => app_url('follow-pod.php'),
         'pod_discovery_url' => app_url('pod-discovery.php'),
         'rss_enabled' => $rssEnabled,
@@ -74,62 +73,22 @@ function nmm_public_follow_modal_html(): string
     ob_start();
     ?>
     <section class="public-follow-modal" data-follow-modal aria-hidden="true" hidden>
-        <button
-            class="public-follow-backdrop"
-            type="button"
-            data-follow-modal-close
-            aria-label="Close Follow options"
-        ></button>
-        <div
-            class="public-follow-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="publicFollowTitle"
-        >
-            <button
-                class="public-follow-close"
-                type="button"
-                data-follow-modal-close
-                aria-label="Close Follow options"
-            >×</button>
+        <button class="public-follow-backdrop" type="button" data-follow-modal-close aria-label="Close Follow options"></button>
+        <div class="public-follow-dialog" role="dialog" aria-modal="true" aria-labelledby="publicFollowTitle">
+            <button class="public-follow-close" type="button" data-follow-modal-close aria-label="Close Follow options">×</button>
 
             <span class="public-follow-eyebrow">Follow this site</span>
             <h2 id="publicFollowTitle"><?=e($context['display_name'])?></h2>
-            <p class="public-follow-intro">
-                Choose a private POD/HomeServer follow or subscribe to public updates through RSS.
-            </p>
+            <p class="public-follow-intro">Choose a POD/HomeServer follow or subscribe to public updates through RSS.</p>
 
             <div class="public-follow-tabs" role="tablist" aria-label="Follow methods">
-                <button
-                    type="button"
-                    role="tab"
-                    id="publicFollowPodTab"
-                    aria-selected="true"
-                    aria-controls="publicFollowPodPanel"
-                    data-follow-tab="pod"
-                >POD / HomeServer</button>
-                <button
-                    type="button"
-                    role="tab"
-                    id="publicFollowRssTab"
-                    aria-selected="false"
-                    aria-controls="publicFollowRssPanel"
-                    data-follow-tab="rss"
-                    tabindex="-1"
-                >RSS Feed</button>
+                <button type="button" role="tab" id="publicFollowPodTab" aria-selected="true" aria-controls="publicFollowPodPanel" data-follow-tab="pod">POD / HomeServer</button>
+                <button type="button" role="tab" id="publicFollowRssTab" aria-selected="false" aria-controls="publicFollowRssPanel" data-follow-tab="rss" tabindex="-1">RSS Feed</button>
             </div>
 
-            <section
-                class="public-follow-panel"
-                id="publicFollowPodPanel"
-                role="tabpanel"
-                aria-labelledby="publicFollowPodTab"
-                data-follow-panel="pod"
-            >
+            <section class="public-follow-panel" id="publicFollowPodPanel" role="tabpanel" aria-labelledby="publicFollowPodTab" data-follow-panel="pod">
                 <h3>Follow through your POD or compatible social server</h3>
-                <p>
-                    Use the POD identity below from a paired HomeServer, another POD, Mastodon, or another ActivityPub-compatible service.
-                </p>
+                <p>Use this POD identity from a paired HomeServer, another POD, Mastodon, or another ActivityPub-compatible service.</p>
 
                 <?php if ($context['account'] !== ''): ?>
                     <label class="public-follow-field">
@@ -151,22 +110,13 @@ function nmm_public_follow_modal_html(): string
                 <?php if (!$context['activity_enabled']): ?>
                     <p class="public-follow-note">ActivityPub following is currently disabled. The POD discovery address remains available for compatible clients.</p>
                 <?php else: ?>
-                    <p class="public-follow-note">Your password stays with your HomeServer or social provider. This site receives only the signed Follow request.</p>
+                    <p class="public-follow-note">The POD does not receive your password. Your password stays with your HomeServer or social provider, which sends the signed Follow request.</p>
                 <?php endif; ?>
             </section>
 
-            <section
-                class="public-follow-panel"
-                id="publicFollowRssPanel"
-                role="tabpanel"
-                aria-labelledby="publicFollowRssTab"
-                data-follow-panel="rss"
-                hidden
-            >
+            <section class="public-follow-panel" id="publicFollowRssPanel" role="tabpanel" aria-labelledby="publicFollowRssTab" data-follow-panel="rss" hidden>
                 <h3>Follow public posts with RSS</h3>
-                <p>
-                    RSS delivers newly published articles directly to your chosen feed reader without an account or algorithmic timeline.
-                </p>
+                <p>RSS delivers newly published articles directly to your chosen feed reader without an account or algorithmic timeline.</p>
 
                 <?php if ($context['rss_enabled']): ?>
                     <label class="public-follow-field">
