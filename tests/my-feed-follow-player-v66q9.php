@@ -138,7 +138,8 @@ foreach ([
     'localStorage.setItem',
     'aria-expanded',
     'panel.hidden',
-    'applyState',
+    'setGroupState',
+    'JSON.stringify(openGroupKeys())',
 ] as $contract) {
     $require($portalSidebarJs, $contract, 'Persisted sidebar accordion');
 }
@@ -194,4 +195,4 @@ foreach (['CREATE TABLE', 'ALTER TABLE', 'DROP TABLE'] as $forbidden) {
     $forbid($runtime . $feed . $follow, $forbidden, 'Runtime schema mutation');
 }
 
-echo "v66Q.9 production contracts retained under fixed accordion sidebar v66Q.11.\n";
+echo "v66Q.9 production contracts retained under independent accordion sidebar v66Q.12.\n";

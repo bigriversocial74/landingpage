@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-fixed-sidebar-accordion-v66Q11 */
+/* North Mountain Media build: 20260801-independent-sidebar-state-v66Q12 */
 
 if (!isset($portalSidebarGroups, $portalSidebarHomeUrl, $active)) {
     throw new LogicException('The shared portal sidebar was not initialized.');
@@ -17,12 +17,12 @@ foreach ($portalSidebarGroups as $groupLabel => $items) {
     }
 }
 ?>
-<link rel="stylesheet" href="<?=e(app_url('assets/css/portal-sidebar-accordion-v66q11.css?v=20260801-v66Q11'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/portal-sidebar-accordion-v66q11.css?v=20260801-v66Q12'))?>">
 <aside
     class="portal-sidebar portal-sidebar-shared"
     id="portalSidebar"
     data-portal-sidebar
-    data-sidebar-storage-key="nmm.portal.sidebar.open-group.v66q11"
+    data-sidebar-storage-key="nmm.portal.sidebar.open-groups.v66q12"
 >
     <div class="portal-brand">
         <a href="<?=e((string)$portalSidebarHomeUrl)?>">
@@ -82,4 +82,4 @@ foreach ($portalSidebarGroups as $groupLabel => $items) {
         <a href="<?=e(app_url('portal/logout.php'))?>">Sign out</a>
     </div>
 </aside>
-<script src="<?=e(app_url('assets/js/portal-sidebar-accordion-v66q11.js?v=20260801-v66Q11'))?>"></script>
+<script src="<?=e(app_url('assets/js/portal-sidebar-accordion-v66q11.js?v=20260801-v66Q12'))?>"></script>
