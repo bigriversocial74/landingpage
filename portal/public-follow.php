@@ -34,6 +34,8 @@ function nmm_public_follow_context(): array
         error_log('[Public Follow] ActivityPub context failed: ' . $exception->getMessage());
     }
 
+    $blogSettings = publishing_blog_settings();
+
     // The Settings-page module toggles are the public capability source of truth.
     // RSS does not require the Blog module because the enabled feed can publish
     // social, syndicated, podcast, or other public feed records independently.
@@ -55,6 +57,7 @@ function nmm_public_follow_context(): array
         'follow_url' => app_url('follow-pod.php'),
         'pod_discovery_url' => app_url('pod-discovery.php'),
         'rss_enabled' => $rssEnabled,
+        'rss_setting_enabled' => !empty($blogSettings['rss_enabled']),
         'rss_url' => app_url('blog-feed.php'),
         'methods' => $methods,
         'method_count' => count($methods),
