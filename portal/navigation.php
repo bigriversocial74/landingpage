@@ -17,8 +17,6 @@ function portal_admin_navigation_groups(): array
         ],
         'Relationships' => [
             portal_navigation_link('inbox', 'Unified Inbox', app_url('portal/admin.php?view=inbox')),
-            portal_navigation_link('crm', 'CRM', app_url('portal/admin.php?view=crm')),
-            portal_navigation_link('administrators', 'Administrators', app_url('portal/admin.php?view=administrators')),
         ],
         'Work' => [],
         'System' => [
@@ -53,6 +51,16 @@ function portal_admin_navigation_groups(): array
             app_url('portal/admin.php?view=call-center')
         );
     }
+    $groups['Relationships'][] = portal_navigation_link(
+        'crm',
+        'CRM',
+        app_url('portal/admin.php?view=crm')
+    );
+    $groups['Relationships'][] = portal_navigation_link(
+        'administrators',
+        'Administrators',
+        app_url('portal/admin.php?view=administrators')
+    );
     if (nmm_module_enabled('clients')) {
         $groups['Relationships'][] = portal_navigation_link(
             'clients',
