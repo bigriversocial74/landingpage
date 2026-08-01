@@ -1,0 +1,236 @@
+name: Apply v66Q.6 portal cleanup
+
+on:
+  push:
+    branches:
+      - repair/dashboard-publishing-navigation-v66q5-20260731
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/dashboard-publishing-navigation-v66q5-20260731
+          fetch-depth: 0
+      - name: Apply permanent source changes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              file = Path(path)
+              source = file.read_text()
+              if old not in source:
+                  raise SystemExit(f'Missing source contract in {path}: {old[:100]!r}')
+              file.write_text(source.replace(old, new, count))
+
+          bootstrap = 'portal/bootstrap.php'
+          replace(
+              bootstrap,
+              """        'Operations' => [
+            'agent' => 'Agent Chat',
+            'dashboard' => 'Dashboard',
+            'inbox' => 'Unified Inbox',
+            'social-posts' => 'My Feed',
+            'music' => 'Music Library',
+            'analytics' => 'Visitor Intelligence',
+            'site-analytics' => 'Site Analytics',
+            'call-center' => 'Call Center',
+            'communications' => 'Communications',
+            'notifications' => 'Notifications',
+        ],
+        'Relationships' => [
+            'clients' => 'Clients',
+            'crm' => 'CRM',
+            'leads' => 'Leads',
+            'administrators' => 'Administrators',
+        ],""",
+              """        'Operations' => [
+            'agent' => 'Agent Chat',
+            'dashboard' => 'Dashboard',
+            'social-posts' => 'My Feed',
+            'music' => 'Music Library',
+            'communications' => 'Communications',
+        ],
+        'Relationships' => [
+            'inbox' => 'Unified Inbox',
+            'call-center' => 'Call Center',
+            'clients' => 'Clients',
+            'crm' => 'CRM',
+            'leads' => 'Leads',
+            'administrators' => 'Administrators',
+        ],"""
+          )
+          replace(
+              bootstrap,
+              """        'System' => [
+            'settings' => 'Settings',
+            'account' => 'Account',
+        ],""",
+              """        'System' => [
+            'analytics' => 'Visitor Intelligence',
+            'site-analytics' => 'Site Analytics',
+            'settings' => 'Settings',
+            'account' => 'Account',
+        ],"""
+          )
+          replace(
+              bootstrap,
+              """            'clients' => [
+                ['Relationships','clients'],
+                ['Work','projects'],
+                ['Work','files'],
+            ],""",
+              """            'clients' => [
+                ['Relationships','clients'],
+                ['Operations','communications'],
+                ['Work','projects'],
+                ['Work','files'],
+            ],"""
+          )
+          replace(
+              bootstrap,
+              "'call_us' => [['Operations','call-center']],",
+              "'call_us' => [['Relationships','call-center']],"
+          )
+          replace(
+              bootstrap,
+              """            <a href="<?= e(app_url('index.php')) ?>">Public site</a>
+            <a href="<?= e(app_url('portal/logout.php')) ?>">Sign out</a>""",
+              """            <a href="<?= e(app_url('index.php')) ?>">Public site</a>"""
+          )
+          replace(
+              bootstrap,
+              """                <?php if(nmm_module_enabled('call_us')):?>
+                <a class="portal-top-action" href="<?= e($callCenterUrl) ?>">
+                    <?= $isAdmin ? 'Call Center' : 'Call Us' ?>
+                </a>
+                <?php endif;?>
+
+""",
+              ""
+          )
+          replace(
+              bootstrap,
+              """<script src="<?= e(app_url('assets/js/portal.js?v=20260728-content-controls-v62.1')) ?>"></script>
+<script src="<?= e(app_url('assets/js/publishing-center-v66q.js?v=20260731-v66Q')) ?>"></script>""",
+              """<script src="<?= e(app_url('assets/js/portal.js?v=20260728-content-controls-v62.1')) ?>"></script>
+<script src="<?= e(app_url('assets/js/portal-shell-v66q6.js?v=20260731-v66Q6')) ?>"></script>
+<script src="<?= e(app_url('assets/js/publishing-center-v66q.js?v=20260731-v66Q')) ?>"></script>"""
+          )
+
+          publishing = 'portal/publishing-center.php'
+          replace(
+              publishing,
+              """                            <button
+                                type="button"
+                                data-publishing-option="<?=e($item['key'])?>"
+                                data-publishing-url="<?=e(app_url($item['url']))?>"
+                                aria-pressed="false"
+                            >
+                                <strong><?=e($item['label'])?></strong>
+                                <small><?=e($item['description'])?></small>
+                            </button>""",
+              """                            <a
+                                href="<?=e(app_url($item['url']))?>"
+                                data-publishing-option="<?=e($item['key'])?>"
+                                data-publishing-url="<?=e(app_url($item['url']))?>"
+                                aria-pressed="false"
+                            >
+                                <strong><?=e($item['label'])?></strong>
+                                <small><?=e($item['description'])?></small>
+                            </a>"""
+          )
+          replace(
+              publishing,
+              '<script src="../assets/js/portal-unified-runtime-v66q3.js?v=20260731-v66Q3"></script>\n',
+              ''
+          )
+
+          css = Path('assets/css/publishing-center-v66q.css')
+          css_text = css.read_text()
+          marker = '/* v66Q.6 progressive publishing links */'
+          if marker not in css_text:
+              css.write_text(css_text + """
+
+/* v66Q.6 progressive publishing links */
+.publishing-center-menu a[data-publishing-option]{width:100%;display:block;text-align:left;border:0;background:transparent;border-radius:13px;padding:11px 12px;margin:2px 0;color:#172231;text-decoration:none}
+.publishing-center-menu a[data-publishing-option]:hover,.publishing-center-menu a[data-publishing-option].is-active{background:#fff;box-shadow:0 8px 22px rgba(18,32,48,.08)}
+.social-feed-stories header a[data-publishing-open]{display:grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid #dce4e9;border-radius:999px;color:#172231;background:#fff;font-size:22px;font-weight:800;text-decoration:none}
+.social-feed-record-actions a[data-publishing-open]{display:inline-flex;align-items:center;border:0;border-radius:999px;padding:8px 12px;color:#172231;background:#eef3f5;font-weight:800;text-decoration:none}
+.social-feed-empty a[data-publishing-open]{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;padding:11px 16px;color:#fff;background:#0f766e;font-weight:800;text-decoration:none}
+.social-feed-drafts a[data-publishing-open]{display:inline-flex;align-items:center;border:1px solid #dfe6ec;border-radius:999px;padding:8px 11px;color:#172231;background:#f7f9fa;text-decoration:none}
+""")
+
+          replace(
+              'landing-page.php',
+              """<script src="<?=e(app_url('assets/js/social-posts-v66p.js?v=20260731-v66P'))?>"></script>
+<script src="<?=e(app_url('assets/js/landing-page.js?v=20260727-visual-site-builder-v61'))?>"></script>""",
+              """<script src="<?=e(app_url('assets/js/social-posts-v66p.js?v=20260731-v66P'))?>"></script>
+<script src="<?=e(app_url('assets/js/public-user-menu-v66q6.js?v=20260731-v66Q6'))?>"></script>
+<script src="<?=e(app_url('assets/js/landing-page.js?v=20260727-visual-site-builder-v61'))?>"></script>"""
+          )
+          replace(
+              'portal/site-builder-core.php',
+              """<script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.8'))?>"></script>""",
+              """<script src="<?=e(app_url('assets/js/public-user-menu-v66q6.js?v=20260731-v66Q6'))?>"></script><script src="<?=e(app_url('assets/js/site-public.js?v=20260727-v61.8'))?>"></script>"""
+          )
+
+          test = Path('tests/portal-unified-runtime-v66q3.php')
+          test_text = test.read_text()
+          old = """if (!str_contains(
+    $publishing,
+    '../assets/js/portal-unified-runtime-v66q3.js?v=20260731-v66Q3'
+)) {
+    v66q3_fail('Publishing Center does not load the cache-busted v66Q.3 runtime.');
+}"""
+          new = """if (!str_contains(
+    $publishing,
+    'portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'
+)) {
+    v66q3_fail('Publishing Center does not load the certified successor controller.');
+}
+if (str_contains($publishing, 'portal-unified-runtime-v66q3.js')) {
+    v66q3_fail('The superseded v66Q.3 runtime remains loaded.');
+}"""
+          if old not in test_text:
+              raise SystemExit('Missing retained v66Q.3 test block')
+          test.write_text(test_text.replace(old, new, 1))
+
+          workflow = Path('.github/workflows/publishing-center-quality.yml')
+          workflow_text = workflow.read_text()
+          workflow_text = workflow_text.replace(
+              "      - 'tests/agent-chat-workspace-v66q4.php'\n",
+              "      - 'tests/agent-chat-workspace-v66q4.php'\n      - 'tests/portal-shell-user-menu-v66q6.php'\n",
+              1
+          )
+          workflow_text = workflow_text.replace(
+              "          php -l tests/agent-chat-workspace-v66q4.php\n",
+              "          php -l tests/agent-chat-workspace-v66q4.php\n          php -l tests/portal-shell-user-menu-v66q6.php\n",
+              1
+          )
+          workflow_text = workflow_text.replace(
+              "          node --check assets/js/portal-agent-chat-v66q4.js\n",
+              "          node --check assets/js/portal-agent-chat-v66q4.js\n          node --check assets/js/portal-shell-v66q6.js\n          node --check assets/js/public-user-menu-v66q6.js\n",
+              1
+          )
+          workflow_text = workflow_text.replace(
+              "      - name: Retained Social Posts contract\n        run: php tests/social-posts-v66p.php\n",
+              "      - name: Portal shell and user menu contract\n        run: php tests/portal-shell-user-menu-v66q6.php\n      - name: Retained Social Posts contract\n        run: php tests/social-posts-v66p.php\n",
+              1
+          )
+          workflow.write_text(workflow_text)
+          PY
+      - name: Commit permanent source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add portal/bootstrap.php portal/publishing-center.php portal/site-builder-core.php landing-page.php assets/css/publishing-center-v66q.css tests/portal-unified-runtime-v66q3.php .github/workflows/publishing-center-quality.yml
+          git commit -m "Complete portal shell and publishing cleanup v66Q.6"
+          git push origin HEAD:repair/dashboard-publishing-navigation-v66q5-20260731
