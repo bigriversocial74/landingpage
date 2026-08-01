@@ -8,17 +8,23 @@ on:
       - 'music-collection.php'
       - 'music-collection-preview.php'
       - 'assets/css/music-mobile-upgrade-v66n.css'
+      - 'assets/css/music-library-dashboard-v66q10.css'
+      - 'assets/js/music-dashboard.js'
+      - 'assets/js/music-library-dashboard-v66q10.js'
       - 'tests/music-library-mobile-v66n.php'
       - '.github/workflows/music-library-mobile-quality.yml'
   push:
     branches:
-      - fix/music-library-mobile-player-v66n-20260731
+      - repair/my-feed-follow-sidebar-v66q9
     paths:
       - 'music-library.php'
       - 'music-library-preview.php'
       - 'music-collection.php'
       - 'music-collection-preview.php'
       - 'assets/css/music-mobile-upgrade-v66n.css'
+      - 'assets/css/music-library-dashboard-v66q10.css'
+      - 'assets/js/music-dashboard.js'
+      - 'assets/js/music-library-dashboard-v66q10.js'
       - 'tests/music-library-mobile-v66n.php'
       - '.github/workflows/music-library-mobile-quality.yml'
 
@@ -38,30 +44,43 @@ jobs:
           php -l music-collection.php
           php -l music-collection-preview.php
           php -l tests/music-library-mobile-v66n.php
-      - name: Mobile UI and player contract
+      - name: JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check assets/js/music-dashboard.js
+          node --check assets/js/music-library-dashboard-v66q10.js
+      - name: Reference dashboard and player contract
         run: php tests/music-library-mobile-v66n.php
       - name: CSS structure
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          css = Path('assets/css/music-mobile-upgrade-v66n.css').read_text(encoding='utf-8')
-          if css.count('{') != css.count('}'):
-              raise SystemExit('Unbalanced CSS braces.')
-          if '@media(max-width:820px)' not in css or '@media(max-width:560px)' not in css:
-              raise SystemExit('Required mobile breakpoints are missing.')
-          print('Music Library mobile CSS structure passed.')
+          paths = [
+              Path('assets/css/music-mobile-upgrade-v66n.css'),
+              Path('assets/css/music-library-dashboard-v66q10.css'),
+          ]
+          for path in paths:
+              css = path.read_text(encoding='utf-8')
+              if css.count('{') != css.count('}'):
+                  raise SystemExit(f'Unbalanced CSS braces in {path}.')
+          dashboard = paths[1].read_text(encoding='utf-8')
+          if '@media(max-width:820px)' not in dashboard or '@media(max-width:560px)' not in dashboard:
+              raise SystemExit('Required dashboard mobile breakpoints are missing.')
+          print('Music Library v66Q.10 CSS structure passed.')
           PY
       - name: Permanent cleanup contract
         run: |
           set -euo pipefail
           for path in \
             tools/apply-music-mobile-v66n.py \
-            .github/workflows/apply-music-mobile-v66n.yml
+            tools/apply-music-library-v66q10.py \
+            .github/workflows/apply-music-mobile-v66n.yml \
+            .github/workflows/apply-music-library-v66q10.yml
           do
             if [ -e "$path" ]; then
               echo "Temporary Music Library linker remains: $path" >&2
               exit 1
             fi
           done
-          echo 'Music Library mobile branch contains no temporary linker files.'
+          echo 'Music Library branch contains no temporary linker files.'
