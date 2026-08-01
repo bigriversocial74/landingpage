@@ -202,7 +202,7 @@ function publishing_center_render_footer_links(): void
             <iframe title="Publishing form" data-footer-publishing-frame hidden></iframe>
         </section>
     </div>
-    <script src="<?=e(app_url('assets/js/portal-publishing-v66q7.js?v=20260731-v66Q7'))?>"></script>
+    <script src="<?=e(app_url('assets/js/publishing-center-v66q.js?v=20260731-v66Q7'))?>"></script>
     <?php
 }
 
