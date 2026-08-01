@@ -164,26 +164,46 @@ function publishing_center_catalog_groups(): array
 
 function publishing_center_render_footer_links(): void
 {
-    foreach (publishing_center_catalog_groups() as $group => $items) {
-        ?>
-        <section class="admin-assistant-publishing-group">
-            <span><?=e($group)?></span>
-            <div class="admin-assistant-action-grid">
-                <?php foreach ($items as $item): ?>
-                    <a
-                        href="<?=e(app_url((string)$item['url']))?>"
-                        data-publishing-direct="<?=e((string)$item['key'])?>"
-                        data-publishing-option="<?=e((string)$item['key'])?>"
-                    >
-                        <span>Create</span>
-                        <strong><?=e((string)$item['label'])?></strong>
-                        <small><?=e((string)$item['description'])?></small>
-                    </a>
-                <?php endforeach; ?>
+    ?>
+    <div class="footer-publishing-layout" data-footer-publishing>
+        <div class="footer-publishing-menu" data-footer-publishing-menu>
+            <?php foreach (publishing_center_catalog_groups() as $group => $items): ?>
+                <section class="admin-assistant-publishing-group">
+                    <span><?=e($group)?></span>
+                    <div class="admin-assistant-action-grid">
+                        <?php foreach ($items as $item): ?>
+                            <a
+                                href="<?=e(app_url((string)$item['url']))?>"
+                                data-publishing-direct="<?=e((string)$item['key'])?>"
+                                data-publishing-option="<?=e((string)$item['key'])?>"
+                            >
+                                <span>Create</span>
+                                <strong><?=e((string)$item['label'])?></strong>
+                                <small><?=e((string)$item['description'])?></small>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endforeach; ?>
+        </div>
+
+        <section class="footer-publishing-stage" aria-live="polite">
+            <div class="footer-publishing-empty" data-footer-publishing-empty>
+                <strong>Select a publishing option</strong>
+                <span>The enabled form will load here without leaving the current page.</span>
             </div>
+            <div class="footer-publishing-loading" data-footer-publishing-loading hidden>
+                Loading publishing form…
+            </div>
+            <div class="footer-publishing-error" data-footer-publishing-error hidden>
+                <strong>The form could not be loaded in the workspace.</strong>
+                <a href="#" data-footer-publishing-direct-open>Open form directly</a>
+            </div>
+            <iframe title="Publishing form" data-footer-publishing-frame hidden></iframe>
         </section>
-        <?php
-    }
+    </div>
+    <script src="<?=e(app_url('assets/js/portal-publishing-v66q7.js?v=20260731-v66Q7'))?>"></script>
+    <?php
 }
 
 function publishing_center_render_modal(): void
