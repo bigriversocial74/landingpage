@@ -31,6 +31,7 @@ function portal_header(string $title, string $active, array $user): void
     <meta name="csrf-token" content="<?=e(csrf_token())?>">
     <title><?=e($title)?> — <?=e(setting('site_name', 'North Mountain Media'))?></title>
     <link rel="stylesheet" href="<?=e(app_url('assets/css/portal.css?v=20260731-v66Q7'))?>">
+    <link rel="stylesheet" href="<?=e(app_url('assets/css/publishing-center-v66q.css?v=20260731-v66Q7'))?>">
     <link rel="stylesheet" href="<?=e(app_url('assets/css/portal-shell-v66q7.css?v=20260731-v66Q7'))?>">
     <?php if ($active === 'feeds'): ?><link rel="stylesheet" href="<?=e(app_url('assets/css/feed-reader.css?v=20260728-content-controls-v62.1'))?>"><?php endif; ?>
     <?php if ($active === 'inbox'): ?><link rel="stylesheet" href="<?=e(app_url('assets/css/unified-inbox.css?v=20260730-v66D'))?>"><?php endif; ?>
@@ -44,6 +45,7 @@ function portal_header(string $title, string $active, array $user): void
     data-call-center-api="<?=e($callCenterApiUrl)?>"
     data-admin-assistant-api="<?=e($adminAssistantApiUrl)?>"
     data-portal-active="<?=e($active)?>"
+    data-portal-modal="<?=isset($_GET['modal']) && $_GET['modal'] === '1' ? '1' : '0'?>"
 >
 <div class="portal-shell">
     <?php require __DIR__ . '/sidebar.php'; ?>
