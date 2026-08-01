@@ -31,18 +31,43 @@ foreach ([
     }
 }
 
-preg_match_all(
-    '/<button\b(?=[^>]*data-music-summary-cover-hit)[^>]*>(.*?)<\/button>/s',
-    $page,
-    $summaryButtons
-);
-if (count($summaryButtons[0] ?? []) !== 3) {
-    v66q17_fail('Expected exactly three summary cover hit targets.');
-}
-foreach (($summaryButtons[1] ?? []) as $buttonBody) {
+$marker = 'data-music-summary-cover-hit';
+$markerOffset = 0;
+$summaryButtonCount = 0;
+while (($markerPosition = strpos($page, $marker, $markerOffset)) !== false) {
+    $buttonStart = strrpos(substr($page, 0, $markerPosition), '<button');
+    $buttonEnd = strpos($page, '</button>', $markerPosition);
+    if ($buttonStart === false || $buttonEnd === false) {
+        v66q17_fail('Unable to isolate a summary cover hit target.');
+    }
+
+    $buttonMarkup = substr(
+        $page,
+        $buttonStart,
+        ($buttonEnd + strlen('</button>')) - $buttonStart
+    );
+    $ariaPosition = strpos($buttonMarkup, 'aria-label=');
+    $openingTagEnd = $ariaPosition === false
+        ? false
+        : strpos($buttonMarkup, '>', $ariaPosition);
+    if ($openingTagEnd === false) {
+        v66q17_fail('Unable to locate the end of a summary button opening tag.');
+    }
+
+    $buttonBody = substr(
+        $buttonMarkup,
+        $openingTagEnd + 1,
+        strrpos($buttonMarkup, '</button>') - ($openingTagEnd + 1)
+    );
     if (trim(strip_tags((string)$buttonBody)) !== '') {
         v66q17_fail('A summary cover hit target contains visible button content.');
     }
+
+    $summaryButtonCount++;
+    $markerOffset = $markerPosition + strlen($marker);
+}
+if ($summaryButtonCount !== 3) {
+    v66q17_fail('Expected exactly three summary cover hit targets.');
 }
 
 foreach ([
@@ -59,6 +84,7 @@ foreach ([
 
 foreach ([
     'button.replaceChildren()',
+    "button.textContent = ''",
     "button.classList.add('music-library-cover-play')",
     "button.style.opacity = '0'",
     "'button[data-music-summary-cover-hit][data-music-play]'",
