@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-public-follow-v66Q9 */
+/* North Mountain Media build: 20260801-public-follow-v66Q11 */
 (() => {
   'use strict';
 
@@ -13,22 +13,31 @@
   const tabs = [...modal.querySelectorAll('[data-follow-tab]')];
   const panels = [...modal.querySelectorAll('[data-follow-panel]')];
   const status = modal.querySelector('[data-follow-status]');
+  const defaultMethod = String(
+    modal.dataset.followDefaultMethod
+    || panels[0]?.dataset.followPanel
+    || ''
+  );
   let returnFocus = null;
 
   const focusable = () => [...modal.querySelectorAll(
     'a[href],button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])'
   )].filter((element) => !element.hidden && element.offsetParent !== null);
 
-  const selectTab = (name, focus = false) => {
+  const selectMethod = (name, focus = false) => {
+    if (!name) return;
+
     tabs.forEach((tab) => {
       const active = tab.dataset.followTab === name;
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
       tab.tabIndex = active ? 0 : -1;
       if (active && focus) tab.focus();
     });
+
     panels.forEach((panel) => {
       panel.hidden = panel.dataset.followPanel !== name;
     });
+
     if (status) status.textContent = '';
   };
 
@@ -45,9 +54,17 @@
     modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('public-follow-open');
-    selectTab('pod');
+    selectMethod(defaultMethod);
+
     window.requestAnimationFrame(() => {
-      modal.querySelector('[data-follow-tab="pod"]')?.focus();
+      const activeTab = tabs.find(
+        (tab) => tab.dataset.followTab === defaultMethod
+      );
+      if (activeTab) {
+        activeTab.focus();
+        return;
+      }
+      modal.querySelector('.public-follow-close')?.focus();
     });
   };
 
@@ -61,7 +78,7 @@
   closeButtons.forEach((button) => button.addEventListener('click', closeModal));
 
   tabs.forEach((tab, index) => {
-    tab.addEventListener('click', () => selectTab(tab.dataset.followTab || 'pod'));
+    tab.addEventListener('click', () => selectMethod(tab.dataset.followTab || defaultMethod));
     tab.addEventListener('keydown', (event) => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
@@ -70,7 +87,7 @@
       if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
       if (event.key === 'Home') next = 0;
       if (event.key === 'End') next = tabs.length - 1;
-      selectTab(tabs[next].dataset.followTab || 'pod', true);
+      selectMethod(tabs[next].dataset.followTab || defaultMethod, true);
     });
   });
 
