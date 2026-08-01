@@ -8,12 +8,19 @@ require_once __DIR__ . '/portal/site-builder-core.php';
 require_once __DIR__ . '/portal/music-library.php';
 require_once __DIR__ . '/portal/activitypub-service.php';
 require_once __DIR__ . '/portal/social-posts-service.php';
+require_once __DIR__ . '/portal/public-account-menu.php';
 
 nmm_require_public_module('landing_page');
 
-$visualHome=site_builder_public_page('home');
-if($visualHome){
-    site_builder_render_page($visualHome,site_builder_decode((string)$visualHome['published_json']),false);
+$visualHome = site_builder_public_page('home');
+if ($visualHome) {
+    ob_start();
+    site_builder_render_page(
+        $visualHome,
+        site_builder_decode((string)$visualHome['published_json']),
+        false
+    );
+    echo nmm_inject_public_account_menu((string)ob_get_clean());
     exit;
 }
 
@@ -41,7 +48,9 @@ if (nmm_module_enabled('resume')) $navigation[] = ['Resume', 'workspace.php#resu
 if (nmm_module_enabled('music_library')) $navigation[] = ['Music', 'music-library.php'];
 if (nmm_module_enabled('blog')) $navigation[] = ['Blog', 'blog.php'];
 if (nmm_module_enabled('events')) $navigation[] = ['Events', 'events.php'];
-if (nmm_module_enabled('bookings') && booking_public_link_available()) $navigation[] = [booking_settings()['sidebar_label'] ?: 'Bookings', 'booking.php'];
+if (nmm_module_enabled('bookings') && booking_public_link_available()) {
+    $navigation[] = [booking_settings()['sidebar_label'] ?: 'Bookings', 'booking.php'];
+}
 if (nmm_module_enabled('project_intake')) $navigation[] = ['Project Intake', 'intake.php'];
 if (nmm_module_enabled('call_us')) $navigation[] = ['Call Us', 'call-dave.php'];
 
@@ -56,9 +65,10 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-sr
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="build-version" content="20260727-visual-site-builder-v61">
+<meta name="build-version" content="20260731-public-account-menu-v66Q7">
 <?php nmm_render_seo_meta($headline, $subheadline, 'index.php'); ?>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/landing-page.css?v=20260727-visual-site-builder-v61'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/public-account-menu-v66q7.css?v=20260731-v66Q7'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/social-posts-v66p.css?v=20260731-v66P'))?>">
 </head>
 <body class="landing-body landing-template-<?=e($template)?>">
@@ -68,50 +78,52 @@ header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-sr
 </a>
 <button class="landing-menu-button" type="button" aria-expanded="false" aria-controls="landingNavigation" data-landing-menu><span></span><span></span><span></span></button>
 <nav class="landing-navigation" id="landingNavigation" data-landing-navigation>
-<?php $customHeaderRendered=site_builder_render_menu_location('header','landing-custom-menu');?>
-<?php if(!$customHeaderRendered):?><?php foreach($navigation as [$label,$url]):?><a href="<?=e(app_url($url))?>"><?=e($label)?></a><?php endforeach;?><?php endif;?>
-<a class="landing-login" href="<?=e(app_url('portal/login.php?role=client'))?>">Client Login</a>
+<?php $customHeaderRendered = site_builder_render_menu_location('header', 'landing-custom-menu'); ?>
+<?php if (!$customHeaderRendered): ?>
+    <?php foreach ($navigation as [$label, $url]): ?><a href="<?=e(app_url($url))?>"><?=e($label)?></a><?php endforeach; ?>
+<?php endif; ?>
+<?php nmm_render_public_account_menu(); ?>
 </nav>
 </header>
 
 <main>
 <section class="landing-hero">
 <div class="landing-hero-copy">
-<?php if($eyebrow!==''):?><p class="landing-eyebrow"><?=e($eyebrow)?></p><?php endif;?>
+<?php if ($eyebrow !== ''): ?><p class="landing-eyebrow"><?=e($eyebrow)?></p><?php endif; ?>
 <h1><?=e($headline)?></h1>
-<?php if($subheadline!==''):?><p class="landing-subheadline"><?=e($subheadline)?></p><?php endif;?>
-<?php if($body!==''):?><p class="landing-body-copy"><?=e($body)?></p><?php endif;?>
+<?php if ($subheadline !== ''): ?><p class="landing-subheadline"><?=e($subheadline)?></p><?php endif; ?>
+<?php if ($body !== ''): ?><p class="landing-body-copy"><?=e($body)?></p><?php endif; ?>
 <div class="landing-actions">
-<?php if($primaryLabel!==''&&$primaryUrl!==''):?><a class="landing-button landing-button-primary" href="<?=e(nmm_public_link_url($primaryUrl))?>"><?=e($primaryLabel)?></a><?php endif;?>
-<?php if($secondaryLabel!==''&&$secondaryUrl!==''):?><a class="landing-button" href="<?=e(nmm_public_link_url($secondaryUrl))?>"><?=e($secondaryLabel)?></a><?php endif;?>
+<?php if ($primaryLabel !== '' && $primaryUrl !== ''): ?><a class="landing-button landing-button-primary" href="<?=e(nmm_public_link_url($primaryUrl))?>"><?=e($primaryLabel)?></a><?php endif; ?>
+<?php if ($secondaryLabel !== '' && $secondaryUrl !== ''): ?><a class="landing-button" href="<?=e(nmm_public_link_url($secondaryUrl))?>"><?=e($secondaryLabel)?></a><?php endif; ?>
 </div>
 </div>
-<?php if($heroImage!==''):?><figure class="landing-hero-media"><img src="<?=e($heroImage)?>" alt="<?=e(nmm_site_setting('landing_hero_image_alt','North Mountain Media featured work'))?>"></figure><?php endif;?>
+<?php if ($heroImage !== ''): ?><figure class="landing-hero-media"><img src="<?=e($heroImage)?>" alt="<?=e(nmm_site_setting('landing_hero_image_alt', 'North Mountain Media featured work'))?>"></figure><?php endif; ?>
 </section>
 
 <section class="landing-feature-section">
 <div class="landing-feature-intro">
-<?php if($sectionEyebrow!==''):?><p class="landing-eyebrow"><?=e($sectionEyebrow)?></p><?php endif;?>
+<?php if ($sectionEyebrow !== ''): ?><p class="landing-eyebrow"><?=e($sectionEyebrow)?></p><?php endif; ?>
 <h2><?=e($sectionTitle)?></h2>
 <p><?=e($sectionBody)?></p>
 </div>
 <div class="landing-feature-layout">
 <div class="landing-feature-grid">
-<?php foreach($features as $index=>$feature):?><article><span><?=str_pad((string)($index+1),2,'0',STR_PAD_LEFT)?></span><h3><?=e($feature['title'])?></h3><?php if($feature['description']!==''):?><p><?=e($feature['description'])?></p><?php endif;?></article><?php endforeach;?>
+<?php foreach ($features as $index => $feature): ?><article><span><?=str_pad((string)($index + 1), 2, '0', STR_PAD_LEFT)?></span><h3><?=e($feature['title'])?></h3><?php if ($feature['description'] !== ''): ?><p><?=e($feature['description'])?></p><?php endif; ?></article><?php endforeach; ?>
 </div>
-<?php if($secondaryImage!==''):?><figure class="landing-secondary-media"><img src="<?=e($secondaryImage)?>" alt="<?=e(nmm_site_setting('landing_secondary_image_alt','North Mountain Media project detail'))?>"></figure><?php endif;?>
+<?php if ($secondaryImage !== ''): ?><figure class="landing-secondary-media"><img src="<?=e($secondaryImage)?>" alt="<?=e(nmm_site_setting('landing_secondary_image_alt', 'North Mountain Media project detail'))?>"></figure><?php endif; ?>
 </div>
 </section>
 
-<?php social_posts_render_landing();?>
+<?php social_posts_render_landing(); ?>
 <section class="landing-final-cta">
-<p><?=e(nmm_site_setting('landing_cta_eyebrow','Ready to build'))?></p>
-<h2><?=e(nmm_site_setting('landing_cta_title','Turn the next idea into a connected working system.'))?></h2>
-<?php if($primaryLabel!==''&&$primaryUrl!==''):?><a class="landing-button landing-button-primary" href="<?=e(nmm_public_link_url($primaryUrl))?>"><?=e($primaryLabel)?></a><?php endif;?>
+<p><?=e(nmm_site_setting('landing_cta_eyebrow', 'Ready to build'))?></p>
+<h2><?=e(nmm_site_setting('landing_cta_title', 'Turn the next idea into a connected working system.'))?></h2>
+<?php if ($primaryLabel !== '' && $primaryUrl !== ''): ?><a class="landing-button landing-button-primary" href="<?=e(nmm_public_link_url($primaryUrl))?>"><?=e($primaryLabel)?></a><?php endif; ?>
 </section>
 </main>
-<footer class="landing-footer"><div><?php if(!site_builder_render_menu_location('footer','landing-footer-menu')):?><span><?=e($footerText)?></span><?php endif;?></div><a href="<?=e(app_url('portal/login.php?role=admin'))?>">Administrator</a></footer>
+<footer class="landing-footer"><div><?php if (!site_builder_render_menu_location('footer', 'landing-footer-menu')): ?><span><?=e($footerText)?></span><?php endif; ?></div></footer>
 <script src="<?=e(app_url('assets/js/social-posts-v66p.js?v=20260731-v66P'))?>"></script>
-<script src="<?=e(app_url('assets/js/landing-page.js?v=20260727-visual-site-builder-v61'))?>"></script>
+<script src="<?=e(app_url('assets/js/landing-page.js?v=20260731-v66Q7'))?>"></script>
 </body>
 </html>
