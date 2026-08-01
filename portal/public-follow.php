@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-public-follow-v66Q14 */
+/* North Mountain Media build: 20260801-public-follow-v66Q15 */
 
 require_once __DIR__ . '/activitypub-service.php';
 require_once __DIR__ . '/publishing.php';
@@ -11,9 +11,7 @@ function nmm_public_follow_context(): array
 {
     static $context = null;
 
-    if (is_array($context)) {
-        return $context;
-    }
+    if (is_array($context)) return $context;
 
     $podEnabled = nmm_module_enabled('social_feed');
     $activityPubConfigured = false;
@@ -24,12 +22,8 @@ function nmm_public_follow_context(): array
         $settings = activitypub_settings();
         $activityPubConfigured = !empty($settings['enabled']);
         $configuredName = trim((string)($settings['display_name'] ?? ''));
-        if ($configuredName !== '') {
-            $displayName = $configuredName;
-        }
-        if ($podEnabled && $activityPubConfigured) {
-            $account = '@' . activitypub_account();
-        }
+        if ($configuredName !== '') $displayName = $configuredName;
+        if ($podEnabled && $activityPubConfigured) $account = '@' . activitypub_account();
     } catch (Throwable $exception) {
         error_log('[Public Follow] ActivityPub context failed: ' . $exception->getMessage());
     }
@@ -42,18 +36,16 @@ function nmm_public_follow_context(): array
     $rssEnabled = nmm_module_enabled('rss');
 
     $methods = [];
-    if ($podEnabled) {
-        $methods[] = 'pod';
-    }
-    if ($rssEnabled) {
-        $methods[] = 'rss';
-    }
+    if ($podEnabled && $activityPubConfigured) $methods[] = 'pod';
+    if ($rssEnabled) $methods[] = 'rss';
 
     return $context = [
         'display_name' => $displayName,
-        'activity_enabled' => $podEnabled,
+        'activity_enabled' => $podEnabled && $activityPubConfigured,
         'activitypub_configured' => $activityPubConfigured,
         'account' => $account,
+        'target_actor' => $activityPubConfigured ? activitypub_actor_url() : '',
+        'intent_endpoint' => app_url('pod-follow-intent.php'),
         'follow_url' => app_url('follow-pod.php'),
         'pod_discovery_url' => app_url('pod-discovery.php'),
         'rss_enabled' => $rssEnabled,
@@ -68,27 +60,21 @@ function nmm_public_follow_context(): array
 function nmm_public_follow_assets_html(): string
 {
     $context = nmm_public_follow_context();
-    if ($context['method_count'] === 0) {
-        return '';
-    }
+    if ($context['method_count'] === 0) return '';
 
     return '<link rel="stylesheet" href="'
-        . e(app_url('assets/css/public-follow-v66q9.css?v=20260801-v66Q14'))
+        . e(app_url('assets/css/public-follow-v66q9.css?v=20260801-v66Q15'))
         . '"><script defer src="'
-        . e(app_url('assets/js/public-follow-v66q9.js?v=20260801-v66Q14'))
+        . e(app_url('assets/js/public-follow-v66q9.js?v=20260801-v66Q15'))
         . '"></script>';
 }
 
 function nmm_public_follow_trigger_html(string $class = ''): string
 {
     $context = nmm_public_follow_context();
-    if ($context['method_count'] === 0) {
-        return '';
-    }
+    if ($context['method_count'] === 0) return '';
 
-    $classAttribute = trim($class) !== ''
-        ? ' class="' . e(trim($class)) . '"'
-        : '';
+    $classAttribute = trim($class) !== '' ? ' class="' . e(trim($class)) . '"' : '';
     $fallbackUrl = $context['activity_enabled']
         ? (string)$context['follow_url']
         : (string)$context['rss_url'];
@@ -96,15 +82,13 @@ function nmm_public_follow_trigger_html(string $class = ''): string
     return '<a'
         . $classAttribute
         . ' href="' . e($fallbackUrl) . '"'
-        . ' data-follow-modal-open>Follow</a>';
+        . ' data-follow-modal-open data-follow-button-state="idle">Follow</a>';
 }
 
 function nmm_public_follow_modal_html(): string
 {
     $context = nmm_public_follow_context();
-    if ($context['method_count'] === 0) {
-        return '';
-    }
+    if ($context['method_count'] === 0) return '';
 
     $showTabs = $context['method_count'] === 2;
     $defaultMethod = (string)$context['default_method'];
@@ -115,6 +99,10 @@ function nmm_public_follow_modal_html(): string
         class="public-follow-modal"
         data-follow-modal
         data-follow-default-method="<?=e($defaultMethod)?>"
+        data-follow-target-actor="<?=e($context['target_actor'])?>"
+        data-follow-target-name="<?=e($context['display_name'])?>"
+        data-follow-intent-endpoint="<?=e($context['intent_endpoint'])?>"
+        data-follow-csrf="<?=e(csrf_token())?>"
         aria-hidden="true"
         hidden
     >
@@ -128,7 +116,7 @@ function nmm_public_follow_modal_html(): string
                 <?php if ($showTabs): ?>
                     Follow through your POD/HomeServer or subscribe to public updates through RSS.
                 <?php elseif ($context['activity_enabled']): ?>
-                    Follow this site through your POD, HomeServer, or another compatible social server.
+                    Sign in to your POD once. Your POD sends the signed ActivityPub Follow request automatically.
                 <?php else: ?>
                     Subscribe to public updates through your RSS reader.
                 <?php endif; ?>
@@ -148,31 +136,35 @@ function nmm_public_follow_modal_html(): string
                     <?=$showTabs ? 'role="tabpanel" aria-labelledby="publicFollowPodTab"' : 'aria-label="POD and HomeServer follow"'?>
                     data-follow-panel="pod"
                 >
-                    <h3>Follow through your POD or compatible social server</h3>
-                    <p>Use this POD identity from a paired HomeServer, another POD, Mastodon, or another ActivityPub-compatible service.</p>
+                    <h3>Sign in to your POD to follow</h3>
+                    <p>After authentication, your POD sends a signed ActivityPub Follow and returns you here. This site never receives your POD password.</p>
 
-                    <?php if ($context['account'] !== ''): ?>
+                    <form class="public-follow-pod-form" data-follow-pod-form>
                         <label class="public-follow-field">
-                            <span>Social address</span>
-                            <input type="text" value="<?=e($context['account'])?>" readonly data-follow-copy-source="account">
+                            <span>Your POD address</span>
+                            <input
+                                type="url"
+                                name="home_pod_origin"
+                                placeholder="https://yourname.vp3.me"
+                                inputmode="url"
+                                autocomplete="url"
+                                required
+                                data-follow-home-pod
+                            >
                         </label>
-                    <?php endif; ?>
+                        <div class="public-follow-actions">
+                            <button class="primary" type="submit" data-follow-pod-submit>Sign in and follow</button>
+                            <button type="button" data-follow-forget-pod hidden>Use another POD</button>
+                        </div>
+                    </form>
 
-                    <label class="public-follow-field">
-                        <span>POD discovery URL</span>
-                        <input type="text" value="<?=e($context['pod_discovery_url'])?>" readonly data-follow-copy-source="pod">
-                    </label>
-
-                    <div class="public-follow-actions">
-                        <a class="primary" href="<?=e($context['follow_url'])?>">Continue to follow</a>
-                        <button type="button" data-follow-copy="<?=e($context['account'] !== '' ? 'account' : 'pod')?>">Copy follow address</button>
+                    <div class="public-follow-known-pod" data-follow-known-pod hidden>
+                        <span>Continue with your remembered POD</span>
+                        <strong data-follow-known-pod-origin></strong>
                     </div>
 
-                    <?php if ($context['activitypub_configured']): ?>
-                        <p class="public-follow-note">The POD does not receive your password. Your password stays with your HomeServer or social provider, which sends the signed Follow request.</p>
-                    <?php else: ?>
-                        <p class="public-follow-note">Social Feed following is active through the POD discovery address. A public social address appears here when the ActivityPub identity is configured.</p>
-                    <?php endif; ?>
+                    <p class="public-follow-note">The original Follow click is the authorization. If your POD session is active, no second approval is required. If it is not active, your POD asks you to sign in and then resumes the follow automatically.</p>
+                    <noscript><p class="public-follow-note">JavaScript is required for one-click POD follow. You can still use the <a href="<?=e($context['follow_url'])?>">manual ActivityPub follow page</a>.</p></noscript>
                 </section>
             <?php endif; ?>
 
