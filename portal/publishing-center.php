@@ -1,139 +1,28 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260731-publishing-center-v66Q6 */
+/* North Mountain Media build: 20260731-publishing-center-v66Q7 */
 
 function publishing_center_catalog(): array
 {
     $items = [
-        [
-            'key' => 'social-post',
-            'group' => 'Social',
-            'label' => 'Social post',
-            'description' => 'Publish a permanent public or follower-only ActivityPub Note.',
-            'module' => 'social_feed',
-            'url' => 'portal/publish-social-post.php?modal=1',
-        ],
-        [
-            'key' => 'story',
-            'group' => 'Social',
-            'label' => 'Story',
-            'description' => 'Publish a temporary update for approved followers.',
-            'module' => 'stories',
-            'url' => 'portal/publish-story.php?modal=1',
-        ],
-        [
-            'key' => 'blog',
-            'group' => 'Publishing',
-            'label' => 'Blog post',
-            'description' => 'Write and publish a full article.',
-            'module' => 'blog',
-            'url' => 'portal/admin.php?view=blog&edit=new&modal=1',
-        ],
-        [
-            'key' => 'event',
-            'group' => 'Publishing',
-            'label' => 'Event',
-            'description' => 'Create an event or registration page.',
-            'module' => 'events',
-            'url' => 'portal/admin.php?view=events&edit=new&modal=1',
-        ],
-        [
-            'key' => 'booking',
-            'group' => 'Publishing',
-            'label' => 'Appointment type',
-            'description' => 'Configure a public booking option.',
-            'module' => 'bookings',
-            'url' => 'portal/admin.php?view=bookings&type=new&modal=1',
-        ],
-        [
-            'key' => 'portfolio',
-            'group' => 'Content',
-            'label' => 'Portfolio project',
-            'description' => 'Add a project, case study, media, and outcomes.',
-            'module' => 'portfolio',
-            'url' => 'portal/admin.php?view=portfolio&edit=new&modal=1',
-        ],
-        [
-            'key' => 'resume',
-            'group' => 'Content',
-            'label' => 'Resume post',
-            'description' => 'Add a role, accomplishment, or career entry.',
-            'module' => 'resume',
-            'url' => 'portal/admin.php?view=resume&edit=new&modal=1',
-        ],
-        [
-            'key' => 'music-track',
-            'group' => 'Media',
-            'label' => 'Song',
-            'description' => 'Connect protected audio, metadata, artwork, and publishing state.',
-            'module' => 'music_library',
-            'url' => 'portal/admin.php?view=music&section=tracks&edit=new&modal=1',
-        ],
-        [
-            'key' => 'music-album',
-            'group' => 'Media',
-            'label' => 'Album',
-            'description' => 'Create an album and organize its published songs.',
-            'module' => 'music_library',
-            'url' => 'portal/admin.php?view=music&section=albums&edit=new&modal=1',
-        ],
-        [
-            'key' => 'music-playlist',
-            'group' => 'Media',
-            'label' => 'Playlist',
-            'description' => 'Build an ordered public or private song collection.',
-            'module' => 'music_library',
-            'url' => 'portal/admin.php?view=music&section=playlists&edit=new&modal=1',
-        ],
-        [
-            'key' => 'client',
-            'group' => 'Relationships',
-            'label' => 'Client',
-            'description' => 'Create a protected client portal account.',
-            'module' => 'clients',
-            'url' => 'portal/admin.php?view=clients&edit=new&modal=1',
-        ],
-        [
-            'key' => 'lead',
-            'group' => 'Relationships',
-            'label' => 'Lead / CRM contact',
-            'description' => 'Create a new relationship record and follow-up.',
-            'module' => 'leads',
-            'url' => 'portal/admin.php?view=crm&create=1&modal=1',
-        ],
-        [
-            'key' => 'proposal',
-            'group' => 'Work',
-            'label' => 'Proposal',
-            'description' => 'Build a proposal or estimate.',
-            'module' => 'project_intake',
-            'url' => 'portal/admin.php?view=proposals&edit=new&modal=1',
-        ],
-        [
-            'key' => 'project',
-            'group' => 'Work',
-            'label' => 'Client project',
-            'description' => 'Start a protected client project.',
-            'module' => 'clients',
-            'url' => 'portal/admin.php?view=projects&edit=new&modal=1',
-        ],
-        [
-            'key' => 'knowledge',
-            'group' => 'Work',
-            'label' => 'Knowledge asset',
-            'description' => 'Add text, documents, audio, video, or images for the agent.',
-            'module' => null,
-            'url' => 'portal/admin.php?view=knowledge&section=add&modal=1',
-        ],
-        [
-            'key' => 'file',
-            'group' => 'Work',
-            'label' => 'Protected file',
-            'description' => 'Upload a file for a client or project.',
-            'module' => 'clients',
-            'url' => 'portal/admin.php?view=files&modal=1',
-        ],
+        ['key'=>'story','group'=>'Social','label'=>'Story','description'=>'Publish a temporary update for approved followers.','module'=>'stories','url'=>'portal/publish-story.php'],
+        ['key'=>'social-post','group'=>'Social','label'=>'Social post','description'=>'Publish a permanent public or follower-only ActivityPub Note.','module'=>'social_feed','url'=>'portal/publish-social-post.php'],
+        ['key'=>'blog','group'=>'Publishing','label'=>'Blog / article','description'=>'Write and publish a full article.','module'=>'blog','url'=>'portal/admin.php?view=blog&edit=new'],
+        ['key'=>'event','group'=>'Publishing','label'=>'Event','description'=>'Create an event or registration page.','module'=>'events','url'=>'portal/admin.php?view=events&edit=new'],
+        ['key'=>'booking','group'=>'Publishing','label'=>'Appointment type','description'=>'Configure a public booking option.','module'=>'bookings','url'=>'portal/admin.php?view=bookings&type=new'],
+        ['key'=>'syndication','group'=>'Publishing','label'=>'Syndication / RSS','description'=>'Manage enabled RSS sources and syndication publishing.','module'=>'rss','url'=>'portal/admin.php?view=syndication'],
+        ['key'=>'portfolio','group'=>'Content','label'=>'Portfolio project','description'=>'Add a project, case study, media, and outcomes.','module'=>'portfolio','url'=>'portal/admin.php?view=portfolio&edit=new'],
+        ['key'=>'resume','group'=>'Content','label'=>'Resume post','description'=>'Add a role, accomplishment, or career entry.','module'=>'resume','url'=>'portal/admin.php?view=resume&edit=new'],
+        ['key'=>'music-track','group'=>'Music','label'=>'Song','description'=>'Connect protected audio, metadata, artwork, and publishing state.','module'=>'music_library','url'=>'portal/admin.php?view=music&section=tracks&edit=new'],
+        ['key'=>'music-album','group'=>'Music','label'=>'Album','description'=>'Create an album and organize its published songs.','module'=>'music_library','url'=>'portal/admin.php?view=music&section=albums&edit=new'],
+        ['key'=>'music-playlist','group'=>'Music','label'=>'Playlist','description'=>'Build an ordered public or private song collection.','module'=>'music_library','url'=>'portal/admin.php?view=music&section=playlists&edit=new'],
+        ['key'=>'client','group'=>'Relationships','label'=>'Client','description'=>'Create a protected client portal account.','module'=>'clients','url'=>'portal/admin.php?view=clients&edit=new'],
+        ['key'=>'lead','group'=>'Relationships','label'=>'Lead / CRM contact','description'=>'Create a relationship record and follow-up.','module'=>'leads','url'=>'portal/admin.php?view=crm&create=1'],
+        ['key'=>'proposal','group'=>'Client work','label'=>'Proposal','description'=>'Build a proposal or estimate.','module'=>'project_intake','url'=>'portal/admin.php?view=proposals&edit=new'],
+        ['key'=>'project','group'=>'Client work','label'=>'Client project','description'=>'Start a protected client project.','module'=>'clients','url'=>'portal/admin.php?view=projects&edit=new'],
+        ['key'=>'file','group'=>'Client work','label'=>'Protected file','description'=>'Upload a file for a client or project.','module'=>'clients','url'=>'portal/admin.php?view=files'],
+        ['key'=>'knowledge','group'=>'Agent knowledge','label'=>'Knowledge asset','description'=>'Add approved text, documents, audio, video, or images.','module'=>null,'url'=>'portal/admin.php?view=knowledge&section=add'],
     ];
 
     return array_values(array_filter(
@@ -145,90 +34,60 @@ function publishing_center_catalog(): array
     ));
 }
 
-function publishing_center_render_modal(): void
+function publishing_center_catalog_groups(): array
 {
-    $user = current_user();
-    ?>
-<script src="<?=e(app_url('assets/js/portal-shell-v66q6.js?v=20260731-v66Q6'))?>"></script>
-<?php
-    if (!$user || ($user['role'] ?? '') !== 'admin') return;
-
     $groups = [];
     foreach (publishing_center_catalog() as $item) {
         $groups[(string)$item['group']][] = $item;
     }
+    return $groups;
+}
+
+function publishing_center_render_footer_links(): void
+{
     ?>
-<section
-    class="publishing-center"
-    data-publishing-center
-    hidden
-    aria-hidden="true"
->
-    <button
-        class="publishing-center-backdrop"
-        type="button"
-        data-publishing-close
-        aria-label="Close Publishing Center"
-    ></button>
-
-    <div
-        class="publishing-center-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="publishingCenterTitle"
-        aria-describedby="publishingCenterDescription"
-        tabindex="-1"
-        data-publishing-dialog
-    >
-        <header class="publishing-center-header">
-            <div>
-                <span>Create and publish</span>
-                <h2 id="publishingCenterTitle">Publishing +</h2>
-                <p id="publishingCenterDescription">
-                    Choose a content type, then complete its secure form without leaving your current workspace.
-                </p>
-            </div>
-            <button type="button" data-publishing-close aria-label="Close Publishing Center">×</button>
-        </header>
-
-        <div class="publishing-center-layout">
-            <aside class="publishing-center-menu" aria-label="Publishing options">
-                <?php foreach ($groups as $group => $items): ?>
-                    <section>
-                        <span><?=e($group)?></span>
+    <div class="footer-publishing-layout" data-footer-publishing>
+        <div class="footer-publishing-menu" data-footer-publishing-menu>
+            <?php foreach (publishing_center_catalog_groups() as $group => $items): ?>
+                <section class="admin-assistant-publishing-group">
+                    <span><?=e($group)?></span>
+                    <div class="admin-assistant-action-grid">
                         <?php foreach ($items as $item): ?>
                             <a
-                                href="<?=e(app_url($item['url']))?>"
-                                data-publishing-option="<?=e($item['key'])?>"
-                                data-publishing-url="<?=e(app_url($item['url']))?>"
-                                aria-pressed="false"
+                                href="<?=e(app_url((string)$item['url']))?>"
+                                data-publishing-direct="<?=e((string)$item['key'])?>"
+                                data-publishing-option="<?=e((string)$item['key'])?>"
                             >
-                                <strong><?=e($item['label'])?></strong>
-                                <small><?=e($item['description'])?></small>
+                                <span>Create</span>
+                                <strong><?=e((string)$item['label'])?></strong>
+                                <small><?=e((string)$item['description'])?></small>
                             </a>
                         <?php endforeach; ?>
-                    </section>
-                <?php endforeach; ?>
-            </aside>
-
-            <section class="publishing-center-stage" aria-live="polite">
-                <div class="publishing-center-empty" data-publishing-empty>
-                    <span>+</span>
-                    <h3>Select a publishing option</h3>
-                    <p>
-                        The existing secure form opens here with its validation, uploads,
-                        permissions, and save workflow intact.
-                    </p>
-                </div>
-                <div class="publishing-center-loading" data-publishing-loading hidden>
-                    <span></span>
-                    <strong>Loading publishing form</strong>
-                </div>
-                <iframe title="Publishing form" data-publishing-frame hidden></iframe>
-            </section>
+                    </div>
+                </section>
+            <?php endforeach; ?>
         </div>
+
+        <section class="footer-publishing-stage" aria-live="polite">
+            <div class="footer-publishing-empty" data-footer-publishing-empty>
+                <strong>Select a publishing option</strong>
+                <span>The enabled form will load here without leaving the current page.</span>
+            </div>
+            <div class="footer-publishing-loading" data-footer-publishing-loading hidden>
+                Loading publishing form…
+            </div>
+            <div class="footer-publishing-error" data-footer-publishing-error hidden>
+                <strong>The form could not be loaded in the workspace.</strong>
+                <a href="#" data-footer-publishing-direct-open>Open form directly</a>
+            </div>
+            <iframe title="Publishing form" data-footer-publishing-frame hidden></iframe>
+        </section>
     </div>
-</section>
-<script src="<?=e(app_url('assets/js/portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'))?>"></script>
-<?php
+    <script src="<?=e(app_url('assets/js/publishing-center-v66q.js?v=20260731-v66Q7'))?>"></script>
+    <?php
+}
+
+function publishing_center_render_modal(): void
+{
+    // v66Q.7 intentionally has no second Publishing modal. The footer + launcher owns it.
 }

@@ -58,8 +58,9 @@ $root = NMM_ROOT;
 $paths = [
     'core'=>'portal/unified-inbox.php', 'api'=>'portal/unified-inbox-api.php',
     'adapter'=>'portal/homeserver-adapter.php', 'admin'=>'portal/admin.php',
-    'bootstrap'=>'portal/bootstrap.php', 'css'=>'assets/css/unified-inbox.css',
-    'script'=>'assets/js/unified-inbox.js', 'migration'=>'database/unified_social_inbox_v66d.sql',
+    'navigation'=>'portal/navigation.php', 'shell'=>'portal/bootstrap-shell.php',
+    'css'=>'assets/css/unified-inbox.css', 'script'=>'assets/js/unified-inbox.js',
+    'migration'=>'database/unified_social_inbox_v66d.sql',
     'schema'=>'database/north_mountain_portal.sql', 'workflow'=>'.github/workflows/unified-social-inbox-quality.yml',
 ];
 $source=[];
@@ -72,8 +73,8 @@ $checks = [
     ['admin view',"'inbox'",$source['admin']],
     ['admin action','unified_inbox_handle_admin_action',$source['admin']],
     ['admin render','unified_inbox_render',$source['admin']],
-    ['navigation','Unified Inbox',$source['bootstrap']],
-    ['inbox stylesheet','unified-inbox.css?v=20260730-v66D',$source['bootstrap']],
+    ['navigation','Unified Inbox',$source['navigation']],
+    ['inbox stylesheet','unified-inbox.css?v=20260730-v66D',$source['shell']],
     ['communications adapter','unified_inbox_communication_items',$source['core']],
     ['POD adapter','unified_inbox_pod_items',$source['core']],
     ['comments adapter','unified_inbox_comment_items',$source['core']],
