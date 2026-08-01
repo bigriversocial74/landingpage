@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-public-follow-v66Q9 */
+/* North Mountain Media build: 20260801-public-follow-v66Q15 */
 .workspace-sidebar .sidebar-actions,
 .workspace-sidebar .sidebar-custom-menu,
 .workspace-sidebar .portfolio-sidebar-links{
@@ -79,9 +79,19 @@ body.public-follow-open{overflow:hidden}
 .public-follow-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:13px}
 .public-follow-actions a,.public-follow-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 14px;border:1px solid #dce3e9;border-radius:10px;color:#455363;background:#fff;font:inherit;font-size:.72rem;font-weight:800;text-decoration:none;cursor:pointer}
 .public-follow-actions .primary,.public-follow-actions button.primary{color:#fff;border-color:#17202b;background:#17202b}
+.public-follow-actions button:disabled{opacity:.58;cursor:wait}
 .public-follow-note{padding:11px 12px;border:1px solid #e4e8ec;border-radius:11px;background:#f8fafb;font-size:.7rem!important}
 .public-follow-status{min-height:19px;margin:12px 0 0;color:#247345;font-size:.68rem}
+.public-follow-status[data-follow-status-type="error"]{color:#a33939}
+.public-follow-status[data-follow-status-type="success"]{color:#247345}
+.public-follow-pod-form{margin-top:4px}
+.public-follow-known-pod{display:grid;gap:3px;margin-top:13px;padding:11px 12px;border:1px solid #dfe6eb;border-radius:11px;background:#f6f8fa}
+.public-follow-known-pod[hidden]{display:none!important}
+.public-follow-known-pod span{color:#667382;font-size:.65rem;font-weight:700}
+.public-follow-known-pod strong{overflow-wrap:anywhere;color:#1c2835;font-size:.76rem}
 [data-follow-modal-open]{cursor:pointer}
+[data-follow-modal-open][data-follow-button-state="following"],
+[data-follow-modal-open][data-follow-button-state="pending"]{font-weight:800}
 @media(max-width:620px){
   .public-follow-modal{padding:10px}
   .public-follow-dialog{padding:25px 18px 20px;border-radius:18px}
