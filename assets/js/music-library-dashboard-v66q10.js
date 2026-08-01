@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-music-library-cover-play-v66Q14 */
+/* North Mountain Media build: 20260801-music-library-cover-play-v66Q15 */
 (() => {
   'use strict';
 
@@ -14,10 +14,11 @@
   const installCoverPlayStyles = () => {
     if (document.querySelector('[data-music-cover-play-styles]')) return;
     const style = document.createElement('style');
-    style.dataset.musicCoverPlayStyles = 'v66Q.14';
+    style.dataset.musicCoverPlayStyles = 'v66Q.15';
     style.textContent = `
       .music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}
       .music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}
+      .music-library-new-row{grid-template-columns:52px minmax(0,1fr)!important}
       .music-library-cover-play{
         display:block!important;width:52px!important;height:52px!important;padding:0!important;
         border:0!important;border-radius:9px!important;background:transparent!important;
@@ -35,7 +36,8 @@
       }
       .music-library-cover-play:focus-visible{outline:2px solid #17202b!important;outline-offset:2px!important}
       .music-library-continue-row>.music-library-play-control:not(.music-library-cover-play),
-      .music-library-compact-track>.music-library-play-control:not(.music-library-cover-play){display:none!important}
+      .music-library-compact-track>.music-library-play-control:not(.music-library-cover-play),
+      .music-library-new-row>.music-library-play-control:not(.music-library-cover-play){display:none!important}
     `;
     document.head.appendChild(style);
   };
@@ -82,6 +84,7 @@
   const normalizeTopSectionPlayControls = () => {
     dashboard.querySelectorAll('.music-library-continue-row').forEach(convertRowCoverToPlay);
     dashboard.querySelectorAll('.music-library-compact-track').forEach(convertRowCoverToPlay);
+    dashboard.querySelectorAll('.music-library-new-row').forEach(convertRowCoverToPlay);
   };
 
   const normalize = (value) => String(value || '').trim().toLocaleLowerCase();
