@@ -1,0 +1,29 @@
+/* North Mountain Media build: 20260801-public-follow-v66Q9 */
+body.public-follow-open{overflow:hidden}
+.public-follow-modal[hidden]{display:none!important}
+.public-follow-modal{position:fixed;inset:0;z-index:420;display:grid;place-items:center;padding:18px}
+.public-follow-backdrop{position:absolute;inset:0;border:0;background:rgba(13,20,30,.62);backdrop-filter:blur(10px)}
+.public-follow-dialog{position:relative;width:min(620px,100%);max-height:min(760px,calc(100dvh - 36px));padding:30px;border:1px solid rgba(255,255,255,.7);border-radius:22px;background:#fff;box-shadow:0 30px 100px rgba(13,24,36,.34);overflow:auto}
+.public-follow-close{position:absolute;top:14px;right:14px;display:grid;place-items:center;width:36px;height:36px;padding:0 0 2px;border:1px solid #dfe5ea;border-radius:50%;color:#596675;background:#f7f9fa;font-size:1.25rem;line-height:1;cursor:pointer}
+.public-follow-eyebrow{display:block;color:#607080;font-size:.65rem;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+.public-follow-dialog h2{margin:5px 42px 0 0;color:#17202b;font-size:1.55rem;line-height:1.15}
+.public-follow-intro{margin:11px 0 0;color:#657181;font-size:.82rem;line-height:1.6}
+.public-follow-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin-top:22px;padding:4px;border:1px solid #e1e6eb;border-radius:13px;background:#f4f6f8}
+.public-follow-tabs button{min-height:42px;padding:8px 12px;border:0;border-radius:10px;color:#687586;background:transparent;font:inherit;font-size:.76rem;font-weight:780;cursor:pointer}
+.public-follow-tabs button[aria-selected="true"]{color:#17202b;background:#fff;box-shadow:0 4px 14px rgba(29,42,57,.09)}
+.public-follow-panel{padding-top:22px}
+.public-follow-panel[hidden]{display:none}
+.public-follow-panel h3{margin:0;color:#1c2733;font-size:1rem}
+.public-follow-panel>p{margin:8px 0 0;color:#687586;font-size:.78rem;line-height:1.6}
+.public-follow-field{display:block;margin-top:18px}
+.public-follow-field>span{display:block;margin-bottom:7px;color:#566272;font-size:.65rem;font-weight:790}
+.public-follow-field input{width:100%;min-height:46px;padding:0 12px;border:1px solid #dce3e9;border-radius:11px;color:#273442;background:#f7f9fa;font:inherit;font-size:.75rem}
+.public-follow-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:13px}
+.public-follow-actions a,.public-follow-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 14px;border:1px solid #dce3e9;border-radius:10px;color:#455363;background:#fff;font:inherit;font-size:.72rem;font-weight:800;text-decoration:none;cursor:pointer}
+.public-follow-actions .primary,.public-follow-actions button.primary{color:#fff;border-color:#17202b;background:#17202b}
+.public-follow-note{padding:11px 12px;border:1px solid #e4e8ec;border-radius:11px;background:#f8fafb;font-size:.7rem!important}
+.public-follow-status{min-height:19px;margin:12px 0 0;color:#247345;font-size:.68rem}
+[data-follow-modal-open]{cursor:pointer}
+@media(max-width:620px){.public-follow-modal{padding:10px}.public-follow-dialog{padding:25px 18px 20px;border-radius:18px}.public-follow-tabs{grid-template-columns:1fr}.public-follow-tabs button{min-height:39px}.public-follow-actions{display:grid;grid-template-columns:1fr}.public-follow-actions a,.public-follow-actions button{width:100%}}
+@media(prefers-reduced-motion:reduce){.public-follow-dialog,.public-follow-backdrop{transition:none!important}}
+.public-follow-dialog button:focus-visible,.public-follow-dialog a:focus-visible,.public-follow-dialog input:focus-visible{outline:3px solid rgba(47,112,214,.35);outline-offset:2px}
