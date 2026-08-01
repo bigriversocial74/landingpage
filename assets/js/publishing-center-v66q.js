@@ -1,97 +1,142 @@
-/* North Mountain Media build: 20260731-footer-publishing-v66Q7 */
 (() => {
-  'use strict';
+  const modal = document.querySelector('[data-publishing-center]');
+  const dialog = modal?.querySelector('[data-publishing-dialog]');
+  const frame = modal?.querySelector('[data-publishing-frame]');
+  const empty = modal?.querySelector('[data-publishing-empty]');
+  const loading = modal?.querySelector('[data-publishing-loading]');
+  const portalShell = document.querySelector('.portal-shell');
+  const options = Array.from(
+    modal?.querySelectorAll('[data-publishing-option]') || []
+  );
 
-  const root = document.querySelector('[data-footer-publishing]');
-  if (!root) return;
+  let returnFocus = null;
 
-  const frame = root.querySelector('[data-footer-publishing-frame]');
-  const empty = root.querySelector('[data-footer-publishing-empty]');
-  const loading = root.querySelector('[data-footer-publishing-loading]');
-  const error = root.querySelector('[data-footer-publishing-error]');
-  const directOpen = root.querySelector('[data-footer-publishing-direct-open]');
-  const links = Array.from(root.querySelectorAll('a[data-publishing-direct]'));
-  let fallbackTimer = 0;
+  const setOptionState = (activeOption) => {
+    options.forEach((option) => {
+      const active = option === activeOption;
+      option.classList.toggle('is-active', active);
+      option.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  };
 
-  const currentOriginUrl = (raw) => {
+  const select = (key, forcedUrl = '') => {
+    if (!modal || !frame) return;
+
+    const option = options.find(
+      (item) => item.dataset.publishingOption === key
+    ) || options[0];
+    const rawUrl = forcedUrl || option?.dataset.publishingUrl || '';
+    if (!rawUrl) return;
+
+    let target;
     try {
-      const candidate = new URL(String(raw || ''), window.location.href);
-      if (!['http:', 'https:'].includes(candidate.protocol)) return null;
-      return new URL(
-        `${candidate.pathname}${candidate.search}${candidate.hash}`,
-        window.location.origin
-      );
+      target = new URL(rawUrl, window.location.href);
     } catch (error) {
-      return null;
+      return;
     }
-  };
+    if (target.origin !== window.location.origin) return;
 
-  const modalTarget = (directUrl) => {
-    const target = new URL(directUrl.href);
-    target.searchParams.set('modal', '1');
-    return target;
-  };
-
-  const resetStatus = () => {
-    window.clearTimeout(fallbackTimer);
-    fallbackTimer = 0;
-    if (loading) loading.hidden = true;
-    if (error) error.hidden = true;
-    frame?.removeAttribute('aria-busy');
-  };
-
-  const select = (link, overrideUrl = '') => {
-    const directUrl = currentOriginUrl(
-      overrideUrl || link?.href || link?.dataset.publishingUrl || ''
-    );
-    if (!directUrl || !frame) return false;
-
-    links.forEach((item) => item.classList.toggle('is-active', item === link));
-    resetStatus();
+    setOptionState(option);
+    frame.title = option?.querySelector('strong')?.textContent?.trim()
+      || 'Publishing form';
+    frame.setAttribute('aria-busy', 'true');
     if (empty) empty.hidden = true;
     if (loading) loading.hidden = false;
-    if (directOpen) {
-      directOpen.href = directUrl.href;
-      directOpen.hidden = false;
-    }
-
-    frame.title = link?.querySelector('strong')?.textContent?.trim()
-      || 'Publishing form';
     frame.hidden = true;
-    frame.setAttribute('aria-busy', 'true');
-    frame.src = modalTarget(directUrl).href;
+    frame.src = target.href;
 
-    fallbackTimer = window.setTimeout(() => {
-      if (loading) loading.hidden = true;
-      if (error) error.hidden = false;
-    }, 7000);
-    return true;
+    try {
+      localStorage.setItem(
+        'nmm.publishing.last',
+        option?.dataset.publishingOption || key
+      );
+    } catch (error) {
+    }
   };
 
-  links.forEach((link) => {
-    link.addEventListener('click', (event) => {
-      if (
-        event.defaultPrevented
-        || event.button !== 0
-        || event.metaKey
-        || event.ctrlKey
-        || event.shiftKey
-        || event.altKey
-      ) return;
-      if (select(link)) event.preventDefault();
-    });
+  const open = (key = '', url = '') => {
+    if (!modal) return;
+
+    returnFocus = document.activeElement;
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('publishing-center-open');
+    portalShell?.setAttribute('inert', '');
+
+    if (key || url) {
+      select(key, url);
+    } else {
+      setOptionState(null);
+      if (empty) empty.hidden = false;
+      if (frame) frame.hidden = true;
+      if (loading) loading.hidden = true;
+    }
+
+    dialog?.focus();
+  };
+
+  const close = (reload = false) => {
+    if (!modal) return;
+
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('publishing-center-open');
+    portalShell?.removeAttribute('inert');
+
+    if (frame) {
+      frame.src = 'about:blank';
+      frame.hidden = true;
+      frame.removeAttribute('aria-busy');
+    }
+    if (empty) empty.hidden = false;
+    if (loading) loading.hidden = true;
+    setOptionState(null);
+
+    if (reload) {
+      window.location.reload();
+    } else if (returnFocus instanceof HTMLElement) {
+      returnFocus.focus();
+    }
+  };
+
+  document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-publishing-open]');
+    if (trigger) {
+      event.preventDefault();
+      open(
+        trigger.dataset.publishingOpen || '',
+        trigger.dataset.publishingUrl || ''
+      );
+      return;
+    }
+
+    const option = event.target.closest('[data-publishing-option]');
+    if (option) {
+      select(
+        option.dataset.publishingOption || '',
+        option.dataset.publishingUrl || ''
+      );
+    }
+  });
+
+  modal?.querySelectorAll('[data-publishing-close]').forEach((button) => {
+    button.addEventListener('click', () => close());
   });
 
   frame?.addEventListener('load', () => {
-    let loaded = '';
-    try {
-      loaded = frame.contentWindow?.location?.href || '';
-    } catch (error) {
-      loaded = frame.src || '';
-    }
-    if (!loaded || loaded === 'about:blank') return;
-    resetStatus();
+    if (loading) loading.hidden = true;
     frame.hidden = false;
+    frame.removeAttribute('aria-busy');
+
+    try {
+      const url = new URL(frame.contentWindow.location.href);
+      const completed = url.searchParams.get('done') === '1';
+      const leftModalMode = url.origin === window.location.origin
+        && !url.searchParams.has('modal')
+        && url.href !== 'about:blank';
+      if (completed || leftModalMode) close(true);
+    } catch (error) {
+    }
   });
 
   window.addEventListener('message', (event) => {
@@ -99,46 +144,59 @@
       event.origin === window.location.origin
       && event.data?.type === 'nmm-publishing-complete'
     ) {
-      window.location.reload();
+      close(true);
     }
   });
 
-  const publishingKeyForTrigger = (trigger) => {
-    const explicit = String(trigger?.dataset?.publishingOpen || '').trim();
-    if (explicit) return explicit;
-    const target = currentOriginUrl(
-      trigger?.dataset?.publishingUrl || trigger?.href || ''
-    );
-    if (!target) return '';
-    if (target.pathname.endsWith('/portal/publish-story.php')) return 'story';
-    if (target.pathname.endsWith('/portal/publish-social-post.php')) return 'social-post';
-    return '';
-  };
+  modal?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
 
-  document.addEventListener('click', (event) => {
-    const trigger = event.target.closest(
-      '[data-publishing-open], '
-      + 'a[href*="/portal/publish-story.php"], '
-      + 'a[href*="/portal/publish-social-post.php"]'
-    );
-    if (!trigger || trigger.closest('[data-footer-publishing]')) return;
     if (
-      event.defaultPrevented
-      || event.button !== 0
-      || event.metaKey
-      || event.ctrlKey
-      || event.shiftKey
-      || event.altKey
-    ) return;
+      ['ArrowDown', 'ArrowUp'].includes(event.key)
+      && event.target.matches('[data-publishing-option]')
+    ) {
+      event.preventDefault();
+      const current = options.indexOf(event.target);
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      options[(current + direction + options.length) % options.length]?.focus();
+      return;
+    }
 
-    const key = publishingKeyForTrigger(trigger);
-    const option = links.find((link) => link.dataset.publishingDirect === key);
-    if (!option) return;
+    if (event.key !== 'Tab' || !dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll(
+      'button:not([disabled]), a[href], iframe:not([hidden]), '
+      + 'input:not([disabled]), select:not([disabled]), '
+      + 'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hidden);
+    if (!focusable.length) return;
 
-    const requestedUrl = trigger.dataset.publishingUrl || trigger.href || '';
-    event.preventDefault();
-    document.querySelector('[data-admin-quick-toggle]')?.click();
-    document.querySelector('[data-admin-launcher-tab="publishing"]')?.click();
-    window.requestAnimationFrame(() => select(option, requestedUrl));
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   });
+
+  const settings = document.querySelector('[data-feed-settings-dialog]');
+  document.querySelector('[data-feed-settings-open]')?.addEventListener(
+    'click',
+    () => settings?.showModal()
+  );
+  document.querySelectorAll('[data-feed-settings-close]').forEach((button) => {
+    button.addEventListener('click', () => settings?.close());
+  });
+
+  if (new URLSearchParams(window.location.search).get('create') === '1') {
+    window.requestAnimationFrame(() => {
+      document.querySelector('[data-crm-contact-open]')?.click();
+    });
+  }
 })();
