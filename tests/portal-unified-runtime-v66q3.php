@@ -62,9 +62,12 @@ if (!str_contains($styles, 'social-feed-toolbar')) {
 }
 if (!str_contains(
     $publishing,
-    '../assets/js/portal-unified-runtime-v66q3.js?v=20260731-v66Q3'
+    'portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'
 )) {
-    v66q3_fail('Publishing Center does not load the cache-busted v66Q.3 runtime.');
+    v66q3_fail('Publishing Center does not load the certified successor controller.');
+}
+if (str_contains($publishing, 'portal-unified-runtime-v66q3.js')) {
+    v66q3_fail('The superseded v66Q.3 controller remains loaded.');
 }
 if (str_contains($publishing, 'publishing-agent-runtime-v66q2.js')) {
     v66q3_fail('The superseded v66Q.2 runtime remains loaded.');

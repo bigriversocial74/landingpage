@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260731-publishing-center-v66Q */
+/* North Mountain Media build: 20260731-publishing-center-v66Q6 */
 
 function publishing_center_catalog(): array
 {
@@ -148,6 +148,9 @@ function publishing_center_catalog(): array
 function publishing_center_render_modal(): void
 {
     $user = current_user();
+    ?>
+<script src="<?=e(app_url('assets/js/portal-shell-v66q6.js?v=20260731-v66Q6'))?>"></script>
+<?php
     if (!$user || ($user['role'] ?? '') !== 'admin') return;
 
     $groups = [];
@@ -194,15 +197,15 @@ function publishing_center_render_modal(): void
                     <section>
                         <span><?=e($group)?></span>
                         <?php foreach ($items as $item): ?>
-                            <button
-                                type="button"
+                            <a
+                                href="<?=e(app_url($item['url']))?>"
                                 data-publishing-option="<?=e($item['key'])?>"
                                 data-publishing-url="<?=e(app_url($item['url']))?>"
                                 aria-pressed="false"
                             >
                                 <strong><?=e($item['label'])?></strong>
                                 <small><?=e($item['description'])?></small>
-                            </button>
+                            </a>
                         <?php endforeach; ?>
                     </section>
                 <?php endforeach; ?>
@@ -226,7 +229,6 @@ function publishing_center_render_modal(): void
         </div>
     </div>
 </section>
-<script src="../assets/js/portal-unified-runtime-v66q3.js?v=20260731-v66Q3"></script>
-<script src="../assets/js/portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5"></script>
+<script src="<?=e(app_url('assets/js/portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'))?>"></script>
 <?php
 }

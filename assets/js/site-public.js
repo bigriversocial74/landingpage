@@ -1,6 +1,16 @@
-/* North Mountain Media build: 20260727-visual-page-editor-v61.7 */
+/* North Mountain Media build: 20260731-public-user-menu-v66Q6 */
 (() => {
   'use strict';
+
+  const runtimeScript = document.currentScript;
+  if (!document.querySelector('script[src*="public-user-menu-v66q6.js"]')) {
+    const accountMenu = document.createElement('script');
+    accountMenu.src = runtimeScript?.src
+      ? new URL('public-user-menu-v66q6.js?v=20260731-v66Q6', runtimeScript.src).href
+      : new URL('assets/js/public-user-menu-v66q6.js?v=20260731-v66Q6', document.baseURI).href;
+    document.head.appendChild(accountMenu);
+  }
+
   const menuButton = document.querySelector('[data-site-menu-toggle]');
   const menu = document.querySelector('[data-site-menu]');
   const menuClose = [...document.querySelectorAll('[data-site-menu-close]')];

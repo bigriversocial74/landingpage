@@ -18,6 +18,7 @@ on:
       - 'tests/portal-unified-runtime-v66q3.php'
       - 'tests/agent-chat-workspace-v66q4.php'
       - 'tests/dashboard-publishing-navigation-v66q5.php'
+      - 'tests/portal-shell-user-menu-v66q6.php'
       - 'tests/social-posts-v66p.php'
       - '.github/workflows/publishing-center-quality.yml'
 
@@ -49,6 +50,7 @@ jobs:
           php -l tests/portal-unified-runtime-v66q3.php
           php -l tests/agent-chat-workspace-v66q4.php
           php -l tests/dashboard-publishing-navigation-v66q5.php
+          php -l tests/portal-shell-user-menu-v66q6.php
       - name: JavaScript syntax
         run: |
           node --check assets/js/portal.js
@@ -58,6 +60,10 @@ jobs:
           node --check assets/js/portal-unified-runtime-v66q3.js
           node --check assets/js/portal-agent-chat-v66q4.js
           node --check assets/js/portal-dashboard-publishing-v66q5.js
+          node --check assets/js/portal-shell-v66q6.js
+          node --check assets/js/public-user-menu-v66q6.js
+          node --check assets/js/landing-page.js
+          node --check assets/js/site-public.js
       - name: Publishing Center contract
         run: php tests/publishing-center-v66q.php
       - name: Publishing, Agent Chat, and My Feed repair contract
@@ -70,5 +76,7 @@ jobs:
         run: php tests/agent-chat-workspace-v66q4.php
       - name: Dashboard, navigation, and Publishing contract
         run: php tests/dashboard-publishing-navigation-v66q5.php
+      - name: Portal shell and user-menu contract
+        run: php tests/portal-shell-user-menu-v66q6.php
       - name: Retained Social Posts contract
         run: php tests/social-posts-v66p.php

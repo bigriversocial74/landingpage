@@ -7,6 +7,7 @@ $files = [
     'service' => 'portal/social-posts-service.php',
     'activitypub' => 'portal/activitypub-service.php',
     'admin' => 'portal/social-posts.php',
+    'composer' => 'portal/publish-social-post.php',
     'object' => 'activitypub-social-post.php',
     'single' => 'social-post.php',
     'feed' => 'social-feed.php',
@@ -55,10 +56,11 @@ $expect('service', 'blog_public_posts', 'Landing blog mode must reuse the existi
 $expect('service', 'blog-feed.php', 'Existing RSS must remain linked.');
 $expect('service', 'social_posts_render_landing', 'Landing content renderer is missing.');
 $expect('service', 'social_posts_render_portal_stream', 'Local posts must appear in the POD timeline workspace.');
-$expect('admin', 'Save draft', 'Draft publishing is required.');
-$expect('admin', 'Followers only', 'Follower-only publishing control is required.');
+$expect('composer', 'Save draft', 'Draft publishing is required.');
+$expect('composer', 'Followers only', 'Follower-only publishing control is required.');
 $expect('admin', 'Tabbed blog + social', 'Tabbed landing display control is required.');
-$expect('admin', 'Blog and RSS remain independent', 'Blog/RSS preservation disclosure is required.');
+$expect('admin', 'social-feed-stories', 'My Feed Stories section is required.');
+$expect('admin', 'social-feed-column', 'My Feed Social Feed section is required.');
 $expect('object', 'application/activity+json', 'ActivityPub object content type is missing.');
 $expect('object', "'visibility'] !== 'public'", 'Follower-only posts must not expose public object documents.');
 $expect('object', "'type' => 'Tombstone'", 'Public deleted objects must return Tombstones.');
