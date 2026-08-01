@@ -60,7 +60,10 @@ foreach (['margin-inline:-16px', 'margin-inline:-18px'] as $forbidden) {
 }
 
 music_mobile_assert(
-    str_contains($css, '.music-player-utility{\n    grid-area:utility;\n    display:flex!important'),
+    preg_match(
+        '/\.music-player-utility\s*\{[^}]*grid-area:utility;[^}]*display:flex!important/s',
+        $css
+    ) === 1,
     'Mobile queue access is not restored in the compact player.'
 );
 music_mobile_assert(
