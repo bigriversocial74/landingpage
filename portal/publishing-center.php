@@ -226,6 +226,6 @@ function publishing_center_render_modal(): void
         </div>
     </div>
 </section>
-<script src="<?=e(app_url('assets/js/publishing-agent-runtime-v66q2.js?v=20260731-v66Q2'))?>"></script>
+<script src="../assets/js/portal-unified-runtime-v66q3.js?v=20260731-v66Q3"></script>
 <?php
 }

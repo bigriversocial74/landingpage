@@ -1,0 +1,76 @@
+/* North Mountain Media build: 20260731-portal-unified-runtime-v66Q3 */
+
+.portal-body[data-portal-active="social-posts"] .social-feed-toolbar,
+.portal-body[data-portal-active="social-posts"] .social-feed-guidance {
+  display: none !important;
+}
+
+.portal-body[data-portal-active="social-posts"] .social-feed-admin {
+  padding-top: 0;
+}
+
+.portal-body[data-portal-active="agent"] .portal-content {
+  padding-bottom: 24px;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-loading {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  width: auto;
+  margin: 0 0 12px;
+  border: 1px solid #dfe7ea;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-chat,
+.portal-body[data-portal-active="agent"] .admin-assistant-chat-integrated {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  display: grid;
+  min-height: 360px;
+  max-height: none;
+  margin: 0 0 118px;
+  border: 1px solid #dfe7ea;
+  border-radius: 18px;
+  background: rgba(247, 250, 251, .98);
+  box-shadow: 0 18px 45px rgba(27, 45, 58, .08);
+  overflow: hidden;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-chat > header {
+  display: none;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-messages {
+  min-height: 360px;
+  max-height: calc(100vh - 300px);
+  padding-bottom: 44px;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-messages:empty::before {
+  content: "Ask the agent a question or choose a suggested prompt above.";
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  padding: 28px;
+  color: #71808c;
+  font-size: .86rem;
+  text-align: center;
+}
+
+.portal-body[data-portal-active="agent"].admin-assistant-active .portal-shell,
+.portal-body[data-portal-active="agent"].admin-assistant-querying .portal-shell {
+  filter: none;
+  pointer-events: auto;
+}
+
+@media (max-width: 780px) {
+  .portal-body[data-portal-active="agent"] .admin-assistant-chat,
+  .portal-body[data-portal-active="agent"] .admin-assistant-chat-integrated {
+    margin-bottom: 110px;
+    border-radius: 14px;
+  }
+}
