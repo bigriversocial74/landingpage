@@ -226,7 +226,7 @@ portal_header('Federated Timeline', 'federation', $user);
                         <strong><?=e($discovery['display_name'])?></strong>
                         <span><?=e($discovery['actor_uri'])?></span>
                         <p><?=e($discovery['summary'])?></p>
-                        <a href="<?=e($discovery['profile_url'])?>" target="_blank" rel="noopener noreferrer">Open remote profile</a>
+                        <a href="<?=e($discovery['profile_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Open remote profile</a>
                     </div>
                     <form method="post">
                         <?=csrf_field()?>
@@ -286,7 +286,7 @@ portal_header('Federated Timeline', 'federation', $user);
                         <div>
                             <span class="ft-type"><?=e(status_label((string)$post['entry_type']))?></span>
                             <h2><?=e($displayName)?></h2>
-                            <a href="<?=e($post['profile_url'] ?: $post['actor_uri'])?>" target="_blank" rel="noopener noreferrer"><?=e($post['actor_uri'])?></a>
+                            <a href="<?=e($post['profile_url'] ?: $post['actor_uri'])?>" target="_blank" rel="noopener noreferrer nofollow"><?=e($post['actor_uri'])?></a>
                         </div>
                         <time><?=e(format_datetime((string)($post['source_published_at'] ?: $post['created_at'])))?></time>
                     </header>
@@ -320,7 +320,7 @@ portal_header('Federated Timeline', 'federation', $user);
                             </form>
                         <?php endif; ?>
 
-                        <a class="ft-button secondary" href="<?=e($post['source_url'])?>" target="_blank" rel="noopener noreferrer">Open original</a>
+                        <a class="ft-button secondary" href="<?=e($post['source_url'])?>" target="_blank" rel="noopener noreferrer nofollow">Open original</a>
                     </div>
 
                     <form method="post" class="ft-reply">
