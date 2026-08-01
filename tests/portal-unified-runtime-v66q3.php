@@ -41,7 +41,7 @@ $requiredRuntimeContracts = [
     "document.body.dataset.portalActive !== 'agent'",
     "chat.classList.add('admin-assistant-chat-integrated')",
     "event.stopImmediatePropagation()",
-    "`${configured.pathname}${configured.search}${configured.hash}`",
+    '`${configured.pathname}${configured.search}${configured.hash}`',
     "window.location.origin",
 ];
 
