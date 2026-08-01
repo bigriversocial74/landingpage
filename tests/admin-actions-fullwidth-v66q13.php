@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function v66q13_fail(string $message): never
 {
-    fwrite(STDERR, "v66Q.13 Administrator Actions failure: {$message}\n");
+    fwrite(STDERR, "v66Q.14 Administrator Actions failure: {$message}\n");
     exit(1);
 }
 
@@ -63,8 +63,13 @@ foreach ([
     "publishingPanel.removeAttribute('data-admin-launcher-panel')",
     'actionsPanel.insertBefore(catalog',
     'document.body.append(backdrop, modal)',
-    "modal.dataset.adminFullwidth = 'v66Q.13'",
+    "modal.dataset.adminFullwidth = 'v66Q.14'",
     'actionsTab?.click()',
+    'installStylesheet()',
+    "'../css/admin-actions-fullwidth-v66q13.css?v=20260801-v66Q14'",
+    "element.style.setProperty(property, value, 'important')",
+    "'z-index': '2147483001'",
+    'forceViewport(modal, backdrop)',
 ] as $contract) {
     $require($runtime, $contract, 'Full-viewport modal runtime');
 }
@@ -89,4 +94,4 @@ foreach (['CREATE TABLE', 'ALTER TABLE', 'DROP TABLE'] as $forbidden) {
     $forbid($publishing . $runtime, $forbidden, 'Runtime schema mutation');
 }
 
-echo "v66Q.13 full-width Administrator Tools and enabled direct Actions contract passed.\n";
+echo "v66Q.14 full-viewport Administrator Tools and enabled direct Actions contract passed.\n";
