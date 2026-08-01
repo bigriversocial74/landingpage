@@ -1,0 +1,115 @@
+North Mountain Media Portal
+Section 66M — Incident Response, Runbooks & Recovery Center
+Validation record
+
+Base
+----
+main@580d5d1efe6233ce4e315dbaa5be47a4757d335c
+
+Certified implementation candidate
+----------------------------------
+0c74f39d5dd3dace834824e61c3b00907bcb885a
+
+Permanent implementation
+------------------------
+- fixed nine-runbook allowlist
+- immutable runbook definitions and versions
+- deterministic incident recommendations
+- deterministic current-version simulations and hashes
+- approval binding to incident, runbook version, simulation, requester, resolver, and expiration
+- idempotent executions and steps
+- cooldown and concurrency controls
+- opaque execution and step leases
+- restart recovery and bounded retry exhaustion
+- dry-run-only evidence mode
+- live bounded handlers for retained subsystem workers and queue recovery
+- extended Section 66L post-repair health verification
+- immutable action and verification receipts
+- Notification Delivery escalation for unresolved and exhausted failures
+- administrator Recovery Center and Operations Analytics entry
+- CLI-only recovery worker
+- additive repeat-safe schema
+- complete fresh-install entrypoint through v66M
+- deployment, acceptance, worker, and rollback guide
+
+Permanent authority boundary
+----------------------------
+Recovery cannot accept or execute:
+- arbitrary shell commands
+- arbitrary SQL
+- PHP expressions or executable payloads
+- caller-provided remote URLs
+- destructive source deletion
+- autonomous publishing or messaging
+- purchasing, payments, refunds, or financial actions
+- software preparation, installation, unattended installation, or rollback
+- credential, private-key, entitlement-payload, or manifest access
+- HomeServer tool execution
+
+Privacy boundary
+----------------
+Recovery evidence may retain identifiers, hashes, bounded counts, status codes,
+reason codes, aggregate verification results, and bounded errors. It does not copy
+message bodies, email bodies, CRM notes, transcripts, private feed content,
+private federated content, credentials, keys, manifests, entitlement payloads,
+or HomeServer knowledge.
+
+Dedicated gate
+--------------
+Incident Response Runbooks Quality #29 passed on the implementation candidate:
+- PHP syntax
+- source, privacy, and authority regression
+- permanent cleanup contract
+- complete fresh install through v66M
+- repeat-safe additive migration imports
+- MySQL 8.4 live integration
+- MariaDB 11.4 live integration
+
+Live database behavior proven on both engines
+---------------------------------------------
+- real administrator audit identities
+- repeat-safe catalog synchronization
+- immutable current versions
+- deterministic incident recommendation
+- deterministic repeat simulation
+- stable simulation hash
+- private-source-error exclusion
+- expiring approval request
+- approved request hash, expiration, and requester immutability
+- dry-run non-mutation
+- simulated step and receipt evidence
+- execution idempotency after simulation consumption
+- live Feed Reader source requeue
+- execution and step lease recovery
+- extended Operations Analytics verification
+- incident recovery and healthy execution result
+- bounded retry requeue
+- permanent failure after attempt exhaustion
+- real escalation path through Notification Delivery
+- emergency disable
+
+Retained workflow certification
+-------------------------------
+Passed on the implementation candidate:
+- North Mountain Media Portal Quality #601
+- Operations Analytics Quality #48
+- VP3 License Settings Quality #412
+- VP3 POD Managed Update v65 #414
+
+Repository cleanup
+------------------
+No temporary builder, integration, hardening, repair, payload, or self-modifying
+workflow remains in the permanent PR diff. The permanent v66M workflow uses
+read-only repository permission.
+
+Deployment status
+-----------------
+No production SQL was imported.
+No production server configuration was changed.
+No cron schedule was installed.
+No Recovery Center execution was enabled on a live server.
+
+Merge gate
+----------
+The exact final documentation head must pass every applicable workflow above.
+PR #47 must remain draft and unmerged until David Evans explicitly approves it.

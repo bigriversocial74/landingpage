@@ -1,0 +1,133 @@
+name: Incident Response Runbooks Quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/incident-response-quality.yml'
+      - 'portal/incident-response.php'
+      - 'portal/operations-analytics-extensions.php'
+      - 'portal/recovery-center.php'
+      - 'assets/css/recovery-center.css'
+      - 'cron/process-recovery.php'
+      - 'database/incident_response_runbooks_v66m.sql'
+      - 'database/north_mountain_portal_v66m.sql'
+      - 'tests/incident-response-v66m.php'
+      - 'tests/incident-response-db-v66m.php'
+      - 'INCIDENT-RESPONSE-RUNBOOKS-SPEC-v66M.md'
+      - 'INCIDENT-RESPONSE-RUNBOOKS-SETUP-v66M.md'
+      - 'V66M-SCORECARD.md'
+      - 'V66M-VALIDATION.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mbstring
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          php -l portal/incident-response.php
+          php -l portal/operations-analytics-extensions.php
+          php -l portal/recovery-center.php
+          php -l cron/process-recovery.php
+          php -l tests/incident-response-v66m.php
+          php -l tests/incident-response-db-v66m.php
+      - name: Source, privacy, and authority regression
+        run: php tests/incident-response-v66m.php
+      - name: Permanent cleanup contract
+        run: |
+          set -euo pipefail
+          for path in \
+            tools/harden-incident-response-v66m.py \
+            tools/link-recovery-center-v66m.py \
+            tools/repair-v66m-certification.py \
+            tools/repair-incident-response-v66m.py \
+            tools/finalize-incident-response-v66m.py \
+            .github/workflows/harden-incident-response-v66m.yml \
+            .github/workflows/link-recovery-center-v66m.yml \
+            .github/workflows/repair-v66m-certification.yml \
+            .github/workflows/repair-incident-response-v66m.yml \
+            .github/workflows/finalize-incident-response-v66m.yml; do
+              test ! -e "$path"
+          done
+          grep -F "PHP_SAPI !== 'cli'" cron/process-recovery.php >/dev/null
+          grep -F "require_role('admin')" portal/recovery-center.php >/dev/null
+          grep -F 'operations_analytics_run_extended' portal/incident-response.php >/dev/null
+          grep -F 'status=IF(attempt_count<max_attempts,"queued","failed")' portal/incident-response.php >/dev/null
+          grep -F 'data-recovery-center-nav' portal/recovery-center.php >/dev/null
+          grep -F 'data-recovery-center-entry' portal/operations-analytics-extensions.php >/dev/null
+          if grep -E 'permissions:[[:space:]]*write|contents:[[:space:]]*write' .github/workflows/incident-response-quality.yml; then exit 1; fi
+
+  mysql-8-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP database extensions
+        run: sudo apt-get update && sudo apt-get install -y php-mysql php-mbstring
+      - name: Import complete v66M fresh schema and repeat-safe migration
+        run: |
+          set -euo pipefail
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/north_mountain_portal_v66m.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/incident_response_runbooks_v66m.sql
+          mysql -h 127.0.0.1 -uroot -proot nmm < database/incident_response_runbooks_v66m.sql
+      - name: Live Incident Response Runbooks integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/incident-response-db-v66m.php
+
+  mariadb-integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MariaDB client and PHP extensions
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client php-mysql php-mbstring
+      - name: Import complete v66M fresh schema and repeat-safe migration
+        run: |
+          set -euo pipefail
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/north_mountain_portal_v66m.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/incident_response_runbooks_v66m.sql
+          mariadb -h 127.0.0.1 -P 3307 -uroot -proot nmm < database/incident_response_runbooks_v66m.sql
+      - name: Live Incident Response Runbooks integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: nmm
+          DB_USER: root
+          DB_PASS: root
+        run: php tests/incident-response-db-v66m.php
