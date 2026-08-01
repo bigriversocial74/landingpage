@@ -34,7 +34,7 @@ $sidebar = $read('portal/sidebar.php');
 $navigation = $read('portal/navigation.php');
 $account = $read('portal/account-menu.php');
 $publishing = $read('portal/publishing-center.php');
-$publishingJs = $read('assets/js/publishing-center-v66q.js');
+$adminActionsJs = $read('assets/js/admin-actions-fullwidth-v66q13.js');
 $myFeed = $read('portal/social-posts.php');
 $myFeedRuntime = $read('portal/my-feed-runtime.php');
 $feedCss = $read('assets/css/social-feed-v66q7.css');
@@ -85,20 +85,29 @@ foreach (['publishing-center-trigger', '>Publishing +<', 'portal-top-action'] as
     $forbid($shell, $needle, 'Portal topbar');
 }
 
-foreach (['data-admin-quick-toggle', 'data-admin-launcher-tab="publishing"', 'publishing_center_render_footer_links'] as $contract) {
-    $require($shell, $contract, 'Footer publishing launcher');
+foreach (['data-admin-quick-toggle', 'data-admin-launcher-tab="actions"', 'publishing_center_render_footer_links'] as $contract) {
+    $require($shell, $contract, 'Administrator Tools launcher');
 }
 foreach ([
-    'nmm_module_enabled((string)$module)',
-    'data-publishing-direct',
-    'data-footer-publishing',
-    'data-footer-publishing-frame',
-    'assets/js/publishing-center-v66q.js',
+    'function publishing_center_enabled_actions',
+    'nmm_module_enabled($module)',
+    'data-admin-create-action-catalog',
+    'data-admin-create-direct',
+    'admin-actions-fullwidth-v66q13.css',
+    'admin-actions-fullwidth-v66q13.js',
 ] as $contract) {
-    $require($publishing, $contract, 'Footer Publishing workspace');
+    $require($publishing, $contract, 'Direct Administrator Actions');
 }
-foreach (['window.location.origin', "searchParams.set('modal', '1')", 'overrideUrl'] as $contract) {
-    $require($publishingJs, $contract, 'Authoritative Publishing controller');
+foreach (['data-footer-publishing-frame', '<iframe', 'publishing-center-v66q.js'] as $needle) {
+    $forbid($publishing, $needle, 'Removed embedded Publishing workspace');
+}
+foreach ([
+    'publishingTab?.remove()',
+    'actionsPanel.insertBefore(catalog',
+    'document.body.append(backdrop, modal)',
+    'actionsTab?.click()',
+] as $contract) {
+    $require($adminActionsJs, $contract, 'Administrator Actions controller');
 }
 
 $storiesPosition = strpos($myFeed, 'Recent stories');
@@ -168,4 +177,4 @@ foreach (['setup-dashboard', 'position:fixed', 'results-panel'] as $needle) {
     $forbid($agentChat, $needle, 'Agent Chat workspace');
 }
 
-echo "Retained v66Q.7 portal runtime contracts passed under v66Q.9.\n";
+echo "Retained v66Q.7 portal runtime contracts passed under v66Q.13.\n";
