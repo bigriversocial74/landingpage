@@ -1,4 +1,4 @@
-name: Publishing Center Quality
+name: Portal Repair Quality
 
 on:
   pull_request:
@@ -6,20 +6,13 @@ on:
       - 'portal/**'
       - 'assets/js/**'
       - 'assets/css/**'
+      - 'landing-page.php'
       - 'social-feed.php'
-      - 'blog-feed.php'
-      - 'blog-atom.php'
-      - 'blog-json-feed.php'
-      - 'blog-feeds.php'
-      - 'podcast-feed.php'
-      - 'tests/publishing-center-v66q.php'
-      - 'tests/publishing-agent-repair-v66q1.php'
-      - 'tests/publishing-agent-runtime-v66q2.php'
-      - 'tests/portal-unified-runtime-v66q3.php'
+      - 'tests/portal-repair-v66q7.php'
       - 'tests/agent-chat-workspace-v66q4.php'
-      - 'tests/dashboard-publishing-navigation-v66q5.php'
-      - 'tests/portal-shell-user-menu-v66q6.php'
-      - 'tests/social-posts-v66p.php'
+      - 'tests/federated-timeline-v66h.php'
+      - 'tests/federated-messaging-v66i.php'
+      - 'tests/stories-v66o.php'
       - '.github/workflows/publishing-center-quality.yml'
 
 permissions:
@@ -39,44 +32,18 @@ jobs:
           php-version: ${{ matrix.php-version }}
       - name: PHP syntax
         run: |
-          find portal -name '*.php' -print0 | xargs -0 -n1 php -l
+          find portal tests -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l landing-page.php
           php -l social-feed.php
-          php -l blog-feed.php
-          php -l blog-atom.php
-          php -l blog-json-feed.php
-          php -l blog-feeds.php
-          php -l podcast-feed.php
-          php -l tests/publishing-agent-runtime-v66q2.php
-          php -l tests/portal-unified-runtime-v66q3.php
-          php -l tests/agent-chat-workspace-v66q4.php
-          php -l tests/dashboard-publishing-navigation-v66q5.php
-          php -l tests/portal-shell-user-menu-v66q6.php
       - name: JavaScript syntax
-        run: |
-          node --check assets/js/portal.js
-          node --check assets/js/publishing-center-v66q.js
-          node --check assets/js/publishing-complete-v66q.js
-          node --check assets/js/publishing-agent-runtime-v66q2.js
-          node --check assets/js/portal-unified-runtime-v66q3.js
-          node --check assets/js/portal-agent-chat-v66q4.js
-          node --check assets/js/portal-dashboard-publishing-v66q5.js
-          node --check assets/js/portal-shell-v66q6.js
-          node --check assets/js/public-user-menu-v66q6.js
-          node --check assets/js/landing-page.js
-          node --check assets/js/site-public.js
-      - name: Publishing Center contract
-        run: php tests/publishing-center-v66q.php
-      - name: Publishing, Agent Chat, and My Feed repair contract
-        run: php tests/publishing-agent-repair-v66q1.php
-      - name: Publishing and Agent runtime contract
-        run: php tests/publishing-agent-runtime-v66q2.php
-      - name: Unified portal runtime contract
-        run: php tests/portal-unified-runtime-v66q3.php
-      - name: Agent Chat workspace contract
+        run: find assets/js -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: v66Q.7 portal repair contract
+        run: php tests/portal-repair-v66q7.php
+      - name: Retained Agent Chat workspace contract
         run: php tests/agent-chat-workspace-v66q4.php
-      - name: Dashboard, navigation, and Publishing contract
-        run: php tests/dashboard-publishing-navigation-v66q5.php
-      - name: Portal shell and user-menu contract
-        run: php tests/portal-shell-user-menu-v66q6.php
-      - name: Retained Social Posts contract
-        run: php tests/social-posts-v66p.php
+      - name: Retained Federated Timeline contract
+        run: php tests/federated-timeline-v66h.php
+      - name: Retained Federated Messaging contract
+        run: php tests/federated-messaging-v66i.php
+      - name: Retained Stories contract
+        run: php tests/stories-v66o.php
