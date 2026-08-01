@@ -7,14 +7,6 @@ function publishing_center_catalog(): array
 {
     $items = [
         [
-            'key' => 'social-post',
-            'group' => 'Social',
-            'label' => 'Social post',
-            'description' => 'Publish a permanent public or follower-only ActivityPub Note.',
-            'module' => 'social_feed',
-            'url' => 'portal/publish-social-post.php',
-        ],
-        [
             'key' => 'story',
             'group' => 'Social',
             'label' => 'Story',
@@ -23,9 +15,17 @@ function publishing_center_catalog(): array
             'url' => 'portal/publish-story.php',
         ],
         [
+            'key' => 'social-post',
+            'group' => 'Social',
+            'label' => 'Social post',
+            'description' => 'Publish a permanent public or follower-only ActivityPub Note.',
+            'module' => 'social_feed',
+            'url' => 'portal/publish-social-post.php',
+        ],
+        [
             'key' => 'blog',
             'group' => 'Publishing',
-            'label' => 'Blog post',
+            'label' => 'Blog / article',
             'description' => 'Write and publish a full article.',
             'module' => 'blog',
             'url' => 'portal/admin.php?view=blog&edit=new',
@@ -72,7 +72,7 @@ function publishing_center_catalog(): array
         ],
         [
             'key' => 'music-track',
-            'group' => 'Media',
+            'group' => 'Music',
             'label' => 'Song',
             'description' => 'Connect protected audio, metadata, artwork, and publishing state.',
             'module' => 'music_library',
@@ -80,7 +80,7 @@ function publishing_center_catalog(): array
         ],
         [
             'key' => 'music-album',
-            'group' => 'Media',
+            'group' => 'Music',
             'label' => 'Album',
             'description' => 'Create an album and organize its published songs.',
             'module' => 'music_library',
@@ -88,7 +88,7 @@ function publishing_center_catalog(): array
         ],
         [
             'key' => 'music-playlist',
-            'group' => 'Media',
+            'group' => 'Music',
             'label' => 'Playlist',
             'description' => 'Build an ordered public or private song collection.',
             'module' => 'music_library',
@@ -106,13 +106,13 @@ function publishing_center_catalog(): array
             'key' => 'lead',
             'group' => 'Relationships',
             'label' => 'Lead / CRM contact',
-            'description' => 'Create a new relationship record and follow-up.',
+            'description' => 'Create a relationship record and follow-up.',
             'module' => 'leads',
             'url' => 'portal/admin.php?view=crm&create=1',
         ],
         [
             'key' => 'proposal',
-            'group' => 'Work',
+            'group' => 'Client work',
             'label' => 'Proposal',
             'description' => 'Build a proposal or estimate.',
             'module' => 'project_intake',
@@ -120,27 +120,27 @@ function publishing_center_catalog(): array
         ],
         [
             'key' => 'project',
-            'group' => 'Work',
+            'group' => 'Client work',
             'label' => 'Client project',
             'description' => 'Start a protected client project.',
             'module' => 'clients',
             'url' => 'portal/admin.php?view=projects&edit=new',
         ],
         [
-            'key' => 'knowledge',
-            'group' => 'Work',
-            'label' => 'Knowledge asset',
-            'description' => 'Add text, documents, audio, video, or images for the agent.',
-            'module' => null,
-            'url' => 'portal/admin.php?view=knowledge&section=add',
-        ],
-        [
             'key' => 'file',
-            'group' => 'Work',
+            'group' => 'Client work',
             'label' => 'Protected file',
             'description' => 'Upload a file for a client or project.',
             'module' => 'clients',
             'url' => 'portal/admin.php?view=files',
+        ],
+        [
+            'key' => 'knowledge',
+            'group' => 'Agent knowledge',
+            'label' => 'Knowledge asset',
+            'description' => 'Add approved text, documents, audio, video, or images.',
+            'module' => null,
+            'url' => 'portal/admin.php?view=knowledge&section=add',
         ],
     ];
 
@@ -162,6 +162,21 @@ function publishing_center_catalog_groups(): array
     return $groups;
 }
 
+function publishing_center_modal_url(string $path): string
+{
+    $parts = parse_url($path);
+    if (!is_array($parts)) return $path;
+
+    $query = [];
+    parse_str((string)($parts['query'] ?? ''), $query);
+    $query['modal'] = '1';
+
+    $rebuilt = (string)($parts['path'] ?? '');
+    if ($query) $rebuilt .= '?' . http_build_query($query);
+    if (isset($parts['fragment'])) $rebuilt .= '#' . $parts['fragment'];
+    return $rebuilt;
+}
+
 function publishing_center_render_footer_links(): void
 {
     foreach (publishing_center_catalog_groups() as $group => $items) {
@@ -169,10 +184,14 @@ function publishing_center_render_footer_links(): void
         <section class="admin-assistant-publishing-group">
             <span><?=e($group)?></span>
             <div class="admin-assistant-action-grid">
-                <?php foreach ($items as $item): ?>
+                <?php foreach ($items as $item):
+                    $directUrl = app_url((string)$item['url']);
+                    $modalUrl = app_url(publishing_center_modal_url((string)$item['url']));
+                ?>
                     <a
-                        href="<?=e(app_url((string)$item['url']))?>"
-                        data-publishing-direct="<?=e((string)$item['key'])?>"
+                        href="<?=e($directUrl)?>"
+                        data-publishing-option="<?=e((string)$item['key'])?>"
+                        data-publishing-url="<?=e($modalUrl)?>"
                     >
                         <span>Create</span>
                         <strong><?=e((string)$item['label'])?></strong>
@@ -185,7 +204,34 @@ function publishing_center_render_footer_links(): void
     }
 }
 
+function publishing_center_render_footer_stage(): void
+{
+    ?>
+    <section class="admin-assistant-publishing-stage" data-publishing-stage hidden>
+        <header>
+            <div>
+                <span>Create and publish</span>
+                <strong data-publishing-stage-title>Publishing form</strong>
+            </div>
+            <div>
+                <a href="<?=e(app_url('portal/admin.php'))?>" data-publishing-direct-open hidden>Open directly</a>
+                <button type="button" data-publishing-stage-close aria-label="Close publishing form">×</button>
+            </div>
+        </header>
+        <div class="admin-assistant-publishing-status" data-publishing-status role="status" aria-live="polite">
+            Loading publishing form…
+        </div>
+        <iframe
+            title="Publishing form"
+            data-publishing-frame
+            loading="eager"
+            hidden
+        ></iframe>
+    </section>
+    <?php
+}
+
 function publishing_center_render_modal(): void
 {
-    // v66Q.7 uses the existing footer chat-bar launcher as the only publishing menu.
+    // v66Q.7 intentionally has no second Publishing modal. The footer + launcher owns it.
 }
