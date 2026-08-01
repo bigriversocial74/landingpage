@@ -31,12 +31,15 @@ foreach ([
     '--music-touch-target:44px',
     '--music-mobile-player-height:176px',
     'grid-template-areas:',
-    '"cover identity utility"',
-    '"center center center"',
+    '"cover identity play utility"',
+    '"timeline timeline timeline timeline"',
+    '.music-player-center{display:contents}',
     '.music-player-queue-panel',
     '.music-dashboard-song-row',
     '.music-dashboard-all-songs article',
     '.music-collection-track-title>img',
+    'overscroll-behavior-inline:contain',
+    'scroll-snap-type:x mandatory',
     'env(safe-area-inset-bottom)',
     '@media(max-width:820px)',
     '@media(max-width:560px)',
@@ -49,9 +52,20 @@ foreach ([
     );
 }
 
+foreach (['margin-inline:-16px', 'margin-inline:-18px'] as $forbidden) {
+    music_mobile_assert(
+        !str_contains($css, $forbidden),
+        'The mobile rail can still expand the page width: ' . $forbidden
+    );
+}
+
 music_mobile_assert(
-    !str_contains($css, '.music-player-utility{display:none'),
-    'Mobile queue access was removed with the utility controls.'
+    str_contains($css, '.music-player-utility{\n    grid-area:utility;\n    display:flex!important'),
+    'Mobile queue access is not restored in the compact player.'
+);
+music_mobile_assert(
+    str_contains($css, '.music-player-center .music-player-controls button[data-music-toggle]'),
+    'The Play control is not preserved in the top-row player area.'
 );
 
-fwrite(STDOUT, "Music Library mobile v66N regression passed.\n");
+fwrite(STDOUT, "Music Library mobile v66Q.8 regression passed.\n");
