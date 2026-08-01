@@ -99,7 +99,7 @@ function music_collection_track_count(array $collection): int
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="North Mountain Media streaming music library.">
-<meta name="build-version" content="20260801-music-library-v66Q17">
+<meta name="build-version" content="20260801-music-library-v66Q18">
 <title>Music Library — North Mountain Media</title>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60'))?>">
@@ -107,6 +107,29 @@ function music_collection_track_count(array $collection): int
 <link rel="stylesheet" href="<?=e(app_url('assets/css/music-dashboard.css?v=20260727-site-controls-landing-v60'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/music-mobile-upgrade-v66n.css?v=20260801-professional-player-v66Q9'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/music-library-dashboard-v66q10.css?v=20260801-v66Q10'))?>">
+<style>
+.music-library-summary-grid{--music-summary-cover-size:52px}
+.music-library-continue-row{grid-template-columns:var(--music-summary-cover-size) minmax(0,1fr)!important;min-height:64px!important}
+.music-library-compact-track{grid-template-columns:18px var(--music-summary-cover-size) minmax(0,1fr) 38px 24px!important;min-height:64px!important}
+.music-library-new-row{grid-template-columns:var(--music-summary-cover-size) minmax(0,1fr)!important;min-height:64px!important}
+.music-library-summary-grid .music-library-continue-row>img,
+.music-library-summary-grid .music-library-compact-track>img,
+.music-library-summary-grid .music-library-new-row>img{
+  display:block!important;width:var(--music-summary-cover-size)!important;
+  min-width:var(--music-summary-cover-size)!important;max-width:var(--music-summary-cover-size)!important;
+  height:var(--music-summary-cover-size)!important;min-height:var(--music-summary-cover-size)!important;
+  max-height:var(--music-summary-cover-size)!important;aspect-ratio:1/1!important;
+  border-radius:9px!important;object-fit:cover!important;transform:none!important
+}
+.music-library-summary-grid button[data-music-summary-cover-hit]{
+  position:absolute!important;z-index:4!important;margin:0!important;padding:0!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  color:transparent!important;font-size:0!important;line-height:0!important;
+  opacity:0!important;overflow:hidden!important;appearance:none!important;-webkit-appearance:none!important
+}
+.music-library-summary-grid button[data-music-summary-cover-hit]::before,
+.music-library-summary-grid button[data-music-summary-cover-hit]::after{content:none!important;display:none!important}
+</style>
 </head>
 <body class="music-dashboard-body music-library-redesign-body">
 <div class="music-public-shell">
@@ -395,7 +418,7 @@ function music_collection_track_count(array $collection): int
 <script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260727-site-controls-landing-v60'))?>"></script>
 <script src="<?=e(app_url('assets/js/music-player.js?v=20260801-professional-player-v66Q9'))?>"></script>
 <script src="<?=e(app_url('assets/js/music-dashboard.js?v=20260801-v66Q10'))?>"></script>
-<script src="<?=e(app_url('assets/js/music-library-dashboard-v66q10.js?v=20260801-v66Q17'))?>"></script>
+<script src="<?=e(app_url('assets/js/music-library-dashboard-v66q10.js?v=20260801-v66Q18'))?>"></script>
 <script>
 window.NMMVisitorActivity?.track(
   'music_library_view',
