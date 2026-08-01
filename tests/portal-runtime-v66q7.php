@@ -34,6 +34,7 @@ $sidebar = $read('portal/sidebar.php');
 $navigation = $read('portal/navigation.php');
 $account = $read('portal/account-menu.php');
 $publishing = $read('portal/publishing-center.php');
+$publishingJs = $read('assets/js/portal-publishing-v66q7.js');
 $myFeed = $read('portal/social-posts.php');
 $feedCss = $read('assets/css/social-feed-v66q7.css');
 $federatedFeed = $read('portal/federated-feed.php');
@@ -103,18 +104,30 @@ foreach ([
         v66q7_fail('Publishing catalog missing: ' . $key);
     }
 }
-foreach (['nmm_module_enabled((string)$module)', 'data-publishing-direct', 'data-publishing-option'] as $contract) {
-    $require($publishing, $contract, 'Direct publishing catalog');
+foreach ([
+    'nmm_module_enabled((string)$module)',
+    'data-publishing-direct',
+    'data-publishing-option',
+    'data-footer-publishing',
+    'data-footer-publishing-frame',
+    'data-footer-publishing-direct-open',
+    '<iframe',
+    'portal-publishing-v66q7.js',
+] as $contract) {
+    $require($publishing, $contract, 'Embedded footer Publishing');
 }
 foreach ([
-    '<iframe','data-footer-publishing','data-footer-publishing-frame',
-    'data-footer-publishing-direct-open','publishing-center-v66q.js','?modal=1',
-    'searchParams.set','addEventListener',
-] as $needle) {
-    $forbid($publishing, $needle, 'Direct publishing catalog');
+    'window.location.origin',
+    "searchParams.set('modal', '1')",
+    'data-footer-publishing-frame',
+    'data-footer-publishing-direct-open',
+    'publish-story.php',
+    'publish-social-post.php',
+] as $contract) {
+    $require($publishingJs, $contract, 'Footer Publishing controller');
 }
-foreach (['portal-dashboard-publishing-v66q5.js','portal-shell-v66q6.js','portal-unified-runtime-v66q3.js'] as $needle) {
-    $forbid($shell, $needle, 'Live portal shell');
+foreach (['stopImmediatePropagation', 'portal-dashboard-publishing-v66q5.js', 'portal-shell-v66q6.js', 'portal-unified-runtime-v66q3.js'] as $needle) {
+    $forbid($shell . $publishing . $publishingJs, $needle, 'Live Publishing path');
 }
 
 $storiesPosition = strpos($myFeed, 'Recent stories');
@@ -181,4 +194,4 @@ foreach (['setup-dashboard','position:fixed','results-panel'] as $needle) {
     $forbid($agentChat, $needle, 'Agent Chat workspace');
 }
 
-echo "v66Q.7 direct-link publishing, feed, navigation, federation, and account-menu contract passed.\n";
+echo "v66Q.7 embedded footer Publishing, feed, navigation, federation, and account-menu contract passed.\n";
