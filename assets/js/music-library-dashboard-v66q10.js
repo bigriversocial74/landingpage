@@ -126,6 +126,13 @@
     if (imageRect.width <= 0 || imageRect.height <= 0) return;
 
     forceInvisibleHitTarget(button);
+
+    button.style.left = `${imageRect.left - rowRect.left}px`;
+    button.style.top = `${imageRect.top - rowRect.top}px`;
+    button.style.width = `${imageRect.width}px`;
+    button.style.height = `${imageRect.height}px`;
+    button.style.borderRadius = window.getComputedStyle(image).borderRadius;
+
     button.style.setProperty('left', `${imageRect.left - rowRect.left}px`, 'important');
     button.style.setProperty('top', `${imageRect.top - rowRect.top}px`, 'important');
     button.style.setProperty('width', `${imageRect.width}px`, 'important');
