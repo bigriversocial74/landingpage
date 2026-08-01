@@ -227,5 +227,6 @@ function publishing_center_render_modal(): void
     </div>
 </section>
 <script src="../assets/js/portal-unified-runtime-v66q3.js?v=20260731-v66Q3"></script>
+<script src="../assets/js/portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5"></script>
 <?php
 }
