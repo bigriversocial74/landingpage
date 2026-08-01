@@ -38,7 +38,7 @@ if ($successorLoaded) {
     foreach ([
         'window.location.origin',
         'configured.pathname',
-        'data-publishing-url',
+        'dataset.publishingUrl',
         "window.addEventListener('click'",
         'event.stopImmediatePropagation()',
         'elements.frame.hidden = false',
