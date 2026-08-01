@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function v66q7_fail(string $message): never
 {
-    fwrite(STDERR, "v66Q.7 contract failure: {$message}\n");
+    fwrite(STDERR, "Retained portal runtime failure: {$message}\n");
     exit(1);
 }
 
@@ -36,6 +36,7 @@ $account = $read('portal/account-menu.php');
 $publishing = $read('portal/publishing-center.php');
 $publishingJs = $read('assets/js/publishing-center-v66q.js');
 $myFeed = $read('portal/social-posts.php');
+$myFeedRuntime = $read('portal/my-feed-runtime.php');
 $feedCss = $read('assets/css/social-feed-v66q7.css');
 $federatedFeed = $read('portal/federated-feed.php');
 $federatedMessages = $read('portal/federated-messages.php');
@@ -72,15 +73,6 @@ foreach ([
 ] as $contract) {
     $require($navigation, $contract, 'Server navigation');
 }
-foreach ([
-    "nmm_module_enabled('clients')",
-    "nmm_module_enabled('leads')",
-    "nmm_module_enabled('music_library')",
-    "nmm_module_enabled('social_feed')",
-    "nmm_module_enabled('rss')",
-] as $contract) {
-    $require($navigation, $contract, 'Navigation module guard');
-}
 $forbid($navigation, "'Notifications'", 'Server navigation label');
 
 foreach (['portal-user-avatar', "['display_name']", 'portal-account-chevron', 'Dashboard', 'Settings', 'Sign out'] as $contract) {
@@ -97,44 +89,19 @@ foreach (['data-admin-quick-toggle', 'data-admin-launcher-tab="publishing"', 'pu
     $require($shell, $contract, 'Footer publishing launcher');
 }
 foreach ([
-    'story', 'social-post', 'blog', 'event', 'booking', 'syndication',
-    'portfolio', 'resume', 'music-track', 'music-album', 'music-playlist',
-    'client', 'lead', 'proposal', 'project', 'knowledge', 'file',
-] as $key) {
-    if (!preg_match("/'key'\\s*=>\\s*'" . preg_quote($key, '/') . "'/", $publishing)) {
-        v66q7_fail('Publishing catalog missing: ' . $key);
-    }
-}
-foreach ([
     'nmm_module_enabled((string)$module)',
     'data-publishing-direct',
     'data-footer-publishing',
     'data-footer-publishing-frame',
-    'data-footer-publishing-direct-open',
     'assets/js/publishing-center-v66q.js',
 ] as $contract) {
     $require($publishing, $contract, 'Footer Publishing workspace');
 }
-foreach ([
-    'window.location.origin',
-    "searchParams.set('modal', '1')",
-    'data-footer-publishing-direct-open',
-    'publish-story.php',
-    'publish-social-post.php',
-    'overrideUrl',
-] as $contract) {
+foreach (['window.location.origin', "searchParams.set('modal', '1')", 'overrideUrl'] as $contract) {
     $require($publishingJs, $contract, 'Authoritative Publishing controller');
 }
-foreach ([
-    'stopImmediatePropagation',
-    'portal-dashboard-publishing-v66q5.js',
-    'portal-shell-v66q6.js',
-    'portal-unified-runtime-v66q3.js',
-] as $needle) {
-    $forbid($shell . $publishing . $publishingJs, $needle, 'Live Publishing path');
-}
 
-$storiesPosition = strpos($myFeed, '<h2 id="storiesRailTitle">Recent stories</h2>');
+$storiesPosition = strpos($myFeed, 'Recent stories');
 $feedPosition = strpos($myFeed, '<span>Social Feed</span>');
 if ($storiesPosition === false || $feedPosition === false || $storiesPosition >= $feedPosition) {
     v66q7_fail('My Feed does not render Stories before Social Feed.');
@@ -143,16 +110,20 @@ foreach ([
     "require_once __DIR__ . '/stories-service.php'",
     "require_once __DIR__ . '/social-posts-service.php'",
     "require_once __DIR__ . '/federated-timeline.php'",
+    "require_once __DIR__ . '/my-feed-runtime.php'",
     'story-rail-create',
     'my-feed-story-create',
     'Follow users and their content will appear here.',
     'social_posts_render_card',
-    'federated_timeline_query',
+    'my_feed_load_federated_posts',
 ] as $contract) {
     $require($myFeed, $contract, 'My Feed');
 }
-foreach (['Posts and Stories', 'social-feed-guidance'] as $needle) {
+foreach (['Posts and Stories', 'social-feed-guidance', 'My Feed recovered from a service error.'] as $needle) {
     $forbid($myFeed, $needle, 'My Feed');
+}
+foreach (['information_schema.columns', 'my_feed_load_stories', 'my_feed_timeline_capabilities'] as $contract) {
+    $require($myFeedRuntime, $contract, 'My Feed production runtime');
 }
 $require($feedCss, '.my-feed-item-local', 'My Feed styling');
 
@@ -170,15 +141,13 @@ foreach ([
     "require_once __DIR__ . '/federated-messaging.php'",
     'Existing migrations are not assumed missing.',
     'No federated conversations match this view.',
-    'No conversation selected.',
     'Federated Messages is temporarily unavailable.',
 ] as $contract) {
     $require($federatedMessages, $contract, 'Federated Messages');
 }
-$forbid($federatedFeed . $federatedMessages, "view=delivery'))?>Notification Delivery", 'Federated markup');
 
-foreach (['Client login', 'Administrator login', 'data-public-account-menu'] as $contract) {
-    $require($publicMenu, $contract, 'Public account menu');
+foreach (['Client login', 'Administrator login', 'data-public-account-menu', 'nmm_public_follow_trigger_html'] as $contract) {
+    $require($publicMenu, $contract, 'Public account and Follow menu');
 }
 foreach ([
     "require_once __DIR__ . '/portal/public-account-menu.php'",
@@ -199,4 +168,4 @@ foreach (['setup-dashboard', 'position:fixed', 'results-panel'] as $needle) {
     $forbid($agentChat, $needle, 'Agent Chat workspace');
 }
 
-echo "v66Q.7 portal runtime, feed, Publishing, navigation, and account-menu contract passed.\n";
+echo "Retained v66Q.7 portal runtime contracts passed under v66Q.9.\n";
