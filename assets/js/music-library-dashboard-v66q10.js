@@ -34,8 +34,8 @@
         transform:scale(1.04)!important;opacity:.86!important;
       }
       .music-library-cover-play:focus-visible{outline:2px solid #17202b!important;outline-offset:2px!important}
-      .music-library-continue-row>:scope.music-library-play-control:not(.music-library-cover-play),
-      .music-library-compact-track>:scope.music-library-play-control:not(.music-library-cover-play){display:none!important}
+      .music-library-continue-row>.music-library-play-control:not(.music-library-cover-play),
+      .music-library-compact-track>.music-library-play-control:not(.music-library-cover-play){display:none!important}
     `;
     document.head.appendChild(style);
   };
