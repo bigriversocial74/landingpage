@@ -1,0 +1,132 @@
+/* North Mountain Media build: 20260801-fixed-sidebar-accordion-v66Q11 */
+.portal-sidebar.portal-sidebar-shared{
+  overflow:hidden!important;
+}
+.portal-sidebar-shared .portal-nav-authenticated{
+  display:block!important;
+  flex:1 1 auto!important;
+  min-height:0!important;
+  padding:10px 0 8px!important;
+  overflow:hidden!important;
+}
+.portal-sidebar-shared .portal-nav-group{
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+}
+.portal-sidebar-shared .portal-nav-group-heading{
+  margin:0!important;
+  padding:0!important;
+  font:inherit!important;
+}
+.portal-sidebar-shared .portal-nav-group-toggle{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  width:100%!important;
+  min-height:30px!important;
+  margin:0!important;
+  padding:5px 2px!important;
+  border:0!important;
+  border-radius:0!important;
+  color:#263241!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-align:left!important;
+  font:inherit!important;
+  font-size:13px!important;
+  font-weight:600!important;
+  line-height:1.15!important;
+}
+.portal-sidebar-shared .portal-nav-group-toggle:hover,
+.portal-sidebar-shared .portal-nav-group-toggle:focus-visible{
+  color:#111923!important;
+  background:transparent!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+  outline:none!important;
+}
+.portal-sidebar-shared .portal-nav-group-chevron{
+  display:inline-block!important;
+  color:#7b8794!important;
+  font-size:15px!important;
+  font-weight:500!important;
+  line-height:1!important;
+  transform:rotate(-90deg);
+  transition:transform .16s ease;
+}
+.portal-sidebar-shared .portal-nav-group.is-open .portal-nav-group-chevron{
+  transform:rotate(0deg);
+}
+.portal-sidebar-shared .portal-nav-group-links{
+  display:block!important;
+  padding:0 0 5px 10px!important;
+}
+.portal-sidebar-shared .portal-nav-group-links[hidden]{
+  display:none!important;
+}
+.portal-sidebar-shared .portal-nav-group-links a,
+.portal-sidebar-shared .portal-nav-group-links a.active,
+.portal-sidebar-shared .portal-nav-group-links a:hover,
+.portal-sidebar-shared .portal-nav-group-links a:focus-visible{
+  display:block!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:3px 0!important;
+  border:0!important;
+  border-radius:0!important;
+  color:#536171!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-decoration:none!important;
+  font-size:13px!important;
+  font-weight:500!important;
+  line-height:1.2!important;
+  outline:none!important;
+}
+.portal-sidebar-shared .portal-nav-group-links a:hover,
+.portal-sidebar-shared .portal-nav-group-links a:focus-visible{
+  color:#17202d!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+.portal-sidebar-shared .portal-nav-group-links a.active{
+  color:#17202d!important;
+  font-weight:750!important;
+}
+.portal-sidebar-shared .portal-sidebar-foot{
+  flex:0 0 auto!important;
+  gap:0!important;
+  margin-top:auto!important;
+  padding-top:8px!important;
+}
+.portal-sidebar-shared .portal-sidebar-foot a,
+.portal-sidebar-shared .portal-sidebar-foot a:hover,
+.portal-sidebar-shared .portal-sidebar-foot a:focus-visible{
+  min-height:0!important;
+  padding:4px 2px!important;
+  border:0!important;
+  border-radius:0!important;
+  color:#536171!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  font-size:13px!important;
+  font-weight:500!important;
+  line-height:1.2!important;
+  outline:none!important;
+}
+.portal-sidebar-shared .portal-sidebar-foot a:hover,
+.portal-sidebar-shared .portal-sidebar-foot a:focus-visible{
+  color:#17202d!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+@media(max-width:760px){
+  .portal-sidebar-shared .portal-nav-authenticated{padding:8px 0 6px!important}
+  .portal-sidebar-shared .portal-nav-group-toggle{min-height:32px!important;font-size:14px!important}
+  .portal-sidebar-shared .portal-nav-group-links{padding-left:9px!important}
+  .portal-sidebar-shared .portal-nav-group-links a{padding:4px 0!important;font-size:14px!important;line-height:1.18!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .portal-sidebar-shared .portal-nav-group-chevron{transition:none!important}
+}
