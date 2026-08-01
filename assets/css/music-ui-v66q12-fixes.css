@@ -1,0 +1,14 @@
+/* North Mountain Media build: 20260801-music-ui-v66Q12-fixes */
+.music-track-actions>.music-track-primary.music-library-play-control{
+  display:inline-flex!important;
+  width:auto!important;
+  height:46px!important;
+  min-width:120px!important;
+  min-height:46px!important;
+  margin:0!important;
+  padding:0 18px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+}
+.music-track-actions>.music-track-primary.music-library-play-control.is-playing::before{content:none!important}
+.music-track-actions>.music-track-primary.music-library-play-control.is-playing{font-size:12px!important}
