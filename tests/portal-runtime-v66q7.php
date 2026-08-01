@@ -134,8 +134,8 @@ foreach ([
     $forbid($shell . $publishing . $publishingJs, $needle, 'Live Publishing path');
 }
 
-$storiesPosition = strpos($myFeed, 'Recent stories');
-$feedPosition = strpos($myFeed, 'Social Feed');
+$storiesPosition = strpos($myFeed, '<h2 id="storiesRailTitle">Recent stories</h2>');
+$feedPosition = strpos($myFeed, '<span>Social Feed</span>');
 if ($storiesPosition === false || $feedPosition === false || $storiesPosition >= $feedPosition) {
     v66q7_fail('My Feed does not render Stories before Social Feed.');
 }
