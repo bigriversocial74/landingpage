@@ -162,21 +162,6 @@ function publishing_center_catalog_groups(): array
     return $groups;
 }
 
-function publishing_center_modal_url(string $path): string
-{
-    $parts = parse_url($path);
-    if (!is_array($parts)) return $path;
-
-    $query = [];
-    parse_str((string)($parts['query'] ?? ''), $query);
-    $query['modal'] = '1';
-
-    $rebuilt = (string)($parts['path'] ?? '');
-    if ($query) $rebuilt .= '?' . http_build_query($query);
-    if (isset($parts['fragment'])) $rebuilt .= '#' . $parts['fragment'];
-    return $rebuilt;
-}
-
 function publishing_center_render_footer_links(): void
 {
     foreach (publishing_center_catalog_groups() as $group => $items) {
@@ -184,14 +169,11 @@ function publishing_center_render_footer_links(): void
         <section class="admin-assistant-publishing-group">
             <span><?=e($group)?></span>
             <div class="admin-assistant-action-grid">
-                <?php foreach ($items as $item):
-                    $directUrl = app_url((string)$item['url']);
-                    $modalUrl = app_url(publishing_center_modal_url((string)$item['url']));
-                ?>
+                <?php foreach ($items as $item): ?>
                     <a
-                        href="<?=e($directUrl)?>"
+                        href="<?=e(app_url((string)$item['url']))?>"
+                        data-publishing-direct="<?=e((string)$item['key'])?>"
                         data-publishing-option="<?=e((string)$item['key'])?>"
-                        data-publishing-url="<?=e($modalUrl)?>"
                     >
                         <span>Create</span>
                         <strong><?=e((string)$item['label'])?></strong>
@@ -202,33 +184,6 @@ function publishing_center_render_footer_links(): void
         </section>
         <?php
     }
-}
-
-function publishing_center_render_footer_stage(): void
-{
-    ?>
-    <section class="admin-assistant-publishing-stage" data-publishing-stage hidden>
-        <header>
-            <div>
-                <span>Create and publish</span>
-                <strong data-publishing-stage-title>Publishing form</strong>
-            </div>
-            <div>
-                <a href="<?=e(app_url('portal/admin.php'))?>" data-publishing-direct-open hidden>Open directly</a>
-                <button type="button" data-publishing-stage-close aria-label="Close publishing form">×</button>
-            </div>
-        </header>
-        <div class="admin-assistant-publishing-status" data-publishing-status role="status" aria-live="polite">
-            Loading publishing form…
-        </div>
-        <iframe
-            title="Publishing form"
-            data-publishing-frame
-            loading="eager"
-            hidden
-        ></iframe>
-    </section>
-    <?php
 }
 
 function publishing_center_render_modal(): void
