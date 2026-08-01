@@ -40,7 +40,7 @@ $checks = [
     'verified listening panel' => ['Verified listening', $source['analytics']],
     'recent playback sessions' => ['Recent listening activity', $source['analytics']],
     'shared first navigation style' => ['.portal-nav-group:first-child', $source['css']],
-    'shared navigation group class' => ['class="portal-nav-group"', $source['sidebar']],
+    'shared navigation group class' => ['class="portal-nav-group ', $source['sidebar']],
     'portal asset cache key' => ['20260728-content-controls-v62.1', $source['shell']],
     'CRM lifecycle detail' => ["str_starts_with(\n                        (string)\$visitorEvent['event_type'],\n                        'music_track_'", $source['admin']],
 ];
@@ -62,6 +62,11 @@ if (str_contains($source['api'], "'recorded' => true,\n    'demo'")) {
 }
 if (str_contains($source['sidebar'], "portal-nav-group <?= \$groupActive ? 'is-current'")) {
     fwrite(STDERR, "Top/active navigation still receives a special layout class.\n");
+    exit(1);
+}
+
+if (!preg_match('/class="portal-nav-group(?:\s|\")/', $source['sidebar'])) {
+    fwrite(STDERR, "Shared navigation group class is not present structurally.\n");
     exit(1);
 }
 
