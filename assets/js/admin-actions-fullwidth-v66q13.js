@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-admin-actions-fullwidth-v66Q13 */
+/* North Mountain Media build: 20260801-admin-actions-fullviewport-v66Q14 */
 (() => {
   'use strict';
 
@@ -7,6 +7,62 @@
   const publishingTab = document.querySelector('[data-admin-launcher-tab="publishing"]');
   const publishingPanel = script?.closest('[data-admin-launcher-panel="publishing"]')
     || document.querySelector('[data-admin-launcher-panel="publishing"]');
+
+  const installStylesheet = () => {
+    if (!script?.src || document.querySelector('[data-admin-fullviewport-styles]')) return;
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.dataset.adminFullviewportStyles = 'v66Q.14';
+    stylesheet.href = new URL(
+      '../css/admin-actions-fullwidth-v66q13.css?v=20260801-v66Q14',
+      script.src
+    ).href;
+    document.head.appendChild(stylesheet);
+  };
+
+  const setImportant = (element, declarations) => {
+    if (!element) return;
+    Object.entries(declarations).forEach(([property, value]) => {
+      element.style.setProperty(property, value, 'important');
+    });
+  };
+
+  const forceViewport = (modal, backdrop) => {
+    setImportant(backdrop, {
+      position: 'fixed',
+      inset: '0',
+      left: '0',
+      top: '0',
+      right: '0',
+      bottom: '0',
+      width: '100vw',
+      height: '100dvh',
+      margin: '0',
+      transform: 'none',
+      'z-index': '2147483000',
+    });
+
+    setImportant(modal, {
+      position: 'fixed',
+      inset: '0',
+      left: '0',
+      top: '0',
+      right: '0',
+      bottom: '0',
+      width: '100vw',
+      'max-width': 'none',
+      height: '100dvh',
+      'max-height': 'none',
+      margin: '0',
+      padding: '0',
+      transform: 'none',
+      'border-radius': '0',
+      overflow: 'hidden',
+      'z-index': '2147483001',
+    });
+  };
+
+  installStylesheet();
 
   // Remove Publishing from the tab controller before portal.js builds its tab list.
   publishingTab?.remove();
@@ -44,13 +100,18 @@
 
     if (!modal || !backdrop) return;
 
-    // Detach the overlay from the sticky footer so fixed positioning uses the viewport.
+    // Body-level placement plus inline-important geometry prevents any portal column,
+    // sticky footer, transform, or cached stylesheet from constraining the overlay.
     document.body.append(backdrop, modal);
-    modal.dataset.adminFullwidth = 'v66Q.13';
+    modal.dataset.adminFullwidth = 'v66Q.14';
+    forceViewport(modal, backdrop);
 
     quickToggle?.addEventListener('click', () => {
+      forceViewport(modal, backdrop);
       window.requestAnimationFrame(() => actionsTab?.click());
     });
+
+    window.addEventListener('resize', () => forceViewport(modal, backdrop));
 
     tabList?.addEventListener('keydown', (event) => {
       if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
