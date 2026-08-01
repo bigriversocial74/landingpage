@@ -48,9 +48,7 @@
       }
       .music-library-cover-play-row{position:relative!important}
       .music-library-cover-play{
-        position:absolute!important;
-        z-index:4!important;
-        display:block!important;
+        position:absolute!important;z-index:4!important;display:block!important;
         margin:0!important;
         padding:0!important;
         border:0!important;
