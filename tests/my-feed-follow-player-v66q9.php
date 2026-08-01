@@ -86,11 +86,13 @@ foreach ([
     'follow-pod.php',
     'blog-feed.php',
     'The POD does not receive your password',
+    'data-follow-modal-open',
 ] as $contract) {
     $require($follow, $contract, 'Unified Follow modal');
 }
 foreach ([
-    'data-follow-modal-open',
+    "require_once __DIR__ . '/public-follow.php'",
+    'nmm_public_follow_trigger_html',
     'public-sidebar-follow-link',
     'nmm_render_public_follow_modal',
 ] as $contract) {
