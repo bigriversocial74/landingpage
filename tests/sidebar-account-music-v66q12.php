@@ -77,7 +77,7 @@ foreach ([
     "const unfinishedKey = 'nmm_music_unfinished_v2'",
     'unfinished.slice(0, 5)',
     'unfinished.length <= 5',
-    'data.continueLoadMore',
+    'loadMore.dataset.continueLoadMore',
     "audio.addEventListener('timeupdate'",
     "audio.addEventListener('pause'",
     "audio.addEventListener('seeked'",
