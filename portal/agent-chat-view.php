@@ -6,6 +6,10 @@ declare(strict_types=1);
 function agent_chat_render(array $user): void
 {
     ?>
+<link
+    rel="stylesheet"
+    href="<?=e(app_url('assets/css/portal-agent-chat-v66q4.css?v=20260731-v66Q4'))?>"
+>
 <section
     class="agent-chat-page"
     data-agent-chat-page
@@ -20,5 +24,6 @@ function agent_chat_render(array $user): void
         </p>
     </div>
 </section>
+<script src="<?=e(app_url('assets/js/portal-agent-chat-v66q4.js?v=20260731-v66Q4'))?>"></script>
 <?php
 }
