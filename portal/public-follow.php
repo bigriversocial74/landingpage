@@ -4,6 +4,8 @@ declare(strict_types=1);
 /* North Mountain Media build: 20260801-public-follow-v66Q14 */
 
 require_once __DIR__ . '/activitypub-service.php';
+require_once __DIR__ . '/publishing.php';
+require_once __DIR__ . '/publishing-workflow.php';
 
 function nmm_public_follow_context(): array
 {
