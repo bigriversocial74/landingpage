@@ -58,7 +58,7 @@ foreach ([
     "nmm_module_enabled('music_library')",
     "nmm_module_enabled('clients')",
 ] as $needle) {
-    if (!str_contains($navigation . $publishing . $service, $needle)) {
+    if (!str_contains($navigation . $publishing . $service . $social, $needle)) {
         throw new RuntimeException('Module-gated surface missing ' . $needle);
     }
 }
