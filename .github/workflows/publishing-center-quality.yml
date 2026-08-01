@@ -16,6 +16,7 @@ on:
       - 'tests/publishing-agent-repair-v66q1.php'
       - 'tests/publishing-agent-runtime-v66q2.php'
       - 'tests/portal-unified-runtime-v66q3.php'
+      - 'tests/agent-chat-workspace-v66q4.php'
       - 'tests/social-posts-v66p.php'
       - '.github/workflows/publishing-center-quality.yml'
 
@@ -45,6 +46,7 @@ jobs:
           php -l podcast-feed.php
           php -l tests/publishing-agent-runtime-v66q2.php
           php -l tests/portal-unified-runtime-v66q3.php
+          php -l tests/agent-chat-workspace-v66q4.php
       - name: JavaScript syntax
         run: |
           node --check assets/js/portal.js
@@ -52,6 +54,7 @@ jobs:
           node --check assets/js/publishing-complete-v66q.js
           node --check assets/js/publishing-agent-runtime-v66q2.js
           node --check assets/js/portal-unified-runtime-v66q3.js
+          node --check assets/js/portal-agent-chat-v66q4.js
       - name: Publishing Center contract
         run: php tests/publishing-center-v66q.php
       - name: Publishing, Agent Chat, and My Feed repair contract
@@ -60,5 +63,7 @@ jobs:
         run: php tests/publishing-agent-runtime-v66q2.php
       - name: Unified portal runtime contract
         run: php tests/portal-unified-runtime-v66q3.php
+      - name: Agent Chat workspace contract
+        run: php tests/agent-chat-workspace-v66q4.php
       - name: Retained Social Posts contract
         run: php tests/social-posts-v66p.php
