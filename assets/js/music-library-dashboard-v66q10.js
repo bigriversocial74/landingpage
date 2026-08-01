@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-music-library-cover-play-v66Q15 */
+/* North Mountain Media build: 20260801-music-library-cover-position-v66Q16 */
 (() => {
   'use strict';
 
@@ -10,81 +10,103 @@
   const loadMore = dashboard.querySelector('[data-music-library-load-more]');
   const rows = [...dashboard.querySelectorAll('[data-music-song-row]')];
   let expanded = false;
+  let geometryFrame = 0;
 
   const installCoverPlayStyles = () => {
     if (document.querySelector('[data-music-cover-play-styles]')) return;
+
     const style = document.createElement('style');
-    style.dataset.musicCoverPlayStyles = 'v66Q.15';
+    style.dataset.musicCoverPlayStyles = 'v66Q.16';
     style.textContent = `
       .music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}
       .music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}
       .music-library-new-row{grid-template-columns:52px minmax(0,1fr)!important}
+      .music-library-cover-play-row{position:relative!important}
       .music-library-cover-play{
-        display:block!important;width:52px!important;height:52px!important;padding:0!important;
-        border:0!important;border-radius:9px!important;background:transparent!important;
-        box-shadow:none!important;overflow:hidden!important;cursor:pointer!important;
+        position:absolute!important;z-index:4!important;display:block!important;
+        margin:0!important;padding:0!important;border:0!important;
+        background:transparent!important;box-shadow:none!important;
+        color:transparent!important;font-size:0!important;line-height:0!important;
+        cursor:pointer!important;overflow:visible!important;
       }
-      .music-library-compact-track>.music-library-cover-play{
-        width:40px!important;height:40px!important;border-radius:7px!important;
+      .music-library-cover-play:focus-visible{
+        outline:2px solid #17202b!important;outline-offset:2px!important;
       }
-      .music-library-cover-play img{
-        display:block!important;width:100%!important;height:100%!important;
-        border-radius:inherit!important;object-fit:cover!important;transition:transform .16s ease,opacity .16s ease!important;
-      }
-      .music-library-cover-play:hover img,.music-library-cover-play:focus-visible img{
+      .music-library-cover-play-row.is-cover-play-hover>img,
+      .music-library-cover-play-row.is-cover-play-focus>img{
         transform:scale(1.04)!important;opacity:.86!important;
       }
-      .music-library-cover-play:focus-visible{outline:2px solid #17202b!important;outline-offset:2px!important}
-      .music-library-continue-row>.music-library-play-control:not(.music-library-cover-play),
-      .music-library-compact-track>.music-library-play-control:not(.music-library-cover-play),
-      .music-library-new-row>.music-library-play-control:not(.music-library-cover-play){display:none!important}
+      .music-library-cover-play-row>img{
+        transition:transform .16s ease,opacity .16s ease!important;
+      }
     `;
     document.head.appendChild(style);
   };
 
-  const copyTrackData = (source, target) => {
-    [...source.attributes].forEach((attribute) => {
-      if (attribute.name.startsWith('data-track-') || attribute.name === 'data-music-play') {
-        target.setAttribute(attribute.name, attribute.value);
-      }
-    });
-    target.dataset.musicPlay = '';
+  const summaryRows = () => [
+    ...dashboard.querySelectorAll('.music-library-continue-row'),
+    ...dashboard.querySelectorAll('.music-library-compact-track'),
+    ...dashboard.querySelectorAll('.music-library-new-row'),
+  ];
+
+  const findCoverPlayElements = (row) => {
+    const image = row?.querySelector('img') || null;
+    const button = row
+      ? [...row.querySelectorAll('[data-music-play]')]
+        .find((candidate) => candidate instanceof HTMLButtonElement)
+      : null;
+
+    return { image, button };
   };
 
-  const convertRowCoverToPlay = (row) => {
-    if (!row || row.dataset.coverPlayReady === '1') return;
+  const syncCoverPlayGeometry = (row) => {
+    const { image, button } = findCoverPlayElements(row);
+    if (!image || !button || !row.isConnected) return;
 
-    const explicitPlay = [...row.querySelectorAll('[data-music-play]')]
-      .find((button) => !button.classList.contains('music-library-cover-play'));
-    const image = row.querySelector('img');
-    if (!explicitPlay || !image) return;
+    const rowRect = row.getBoundingClientRect();
+    const imageRect = image.getBoundingClientRect();
+    if (imageRect.width <= 0 || imageRect.height <= 0) return;
 
-    const coverButton = document.createElement('button');
-    coverButton.type = 'button';
-    coverButton.className = 'music-library-cover-play';
-    copyTrackData(explicitPlay, coverButton);
-    coverButton.setAttribute(
-      'aria-label',
-      explicitPlay.getAttribute('aria-label') || `Play ${explicitPlay.dataset.trackTitle || 'track'}`
-    );
+    button.style.left = `${imageRect.left - rowRect.left}px`;
+    button.style.top = `${imageRect.top - rowRect.top}px`;
+    button.style.width = `${imageRect.width}px`;
+    button.style.height = `${imageRect.height}px`;
+    button.style.borderRadius = window.getComputedStyle(image).borderRadius;
+  };
 
-    const imageContainer = image.parentElement;
-    if (imageContainer instanceof HTMLAnchorElement) {
-      imageContainer.replaceWith(coverButton);
-      coverButton.appendChild(image);
-    } else {
-      image.replaceWith(coverButton);
-      coverButton.appendChild(image);
+  const scheduleCoverPlayGeometry = () => {
+    window.cancelAnimationFrame(geometryFrame);
+    geometryFrame = window.requestAnimationFrame(() => {
+      summaryRows().forEach(syncCoverPlayGeometry);
+    });
+  };
+
+  const preserveCoverPositionAndOverlayPlay = (row) => {
+    if (!row) return;
+
+    const { image, button } = findCoverPlayElements(row);
+    if (!image || !button) return;
+
+    row.classList.add('music-library-cover-play-row');
+    button.classList.add('music-library-cover-play');
+    button.dataset.coverPlayOverlay = '1';
+    button.textContent = '';
+
+    if (row.dataset.coverPlayReady !== '1') {
+      button.addEventListener('pointerenter', () => row.classList.add('is-cover-play-hover'));
+      button.addEventListener('pointerleave', () => row.classList.remove('is-cover-play-hover'));
+      button.addEventListener('focus', () => row.classList.add('is-cover-play-focus'));
+      button.addEventListener('blur', () => row.classList.remove('is-cover-play-focus'));
+      image.addEventListener('load', scheduleCoverPlayGeometry, { once: true });
+      row.dataset.coverPlayReady = '1';
     }
 
-    explicitPlay.remove();
-    row.dataset.coverPlayReady = '1';
+    syncCoverPlayGeometry(row);
   };
 
   const normalizeTopSectionPlayControls = () => {
-    dashboard.querySelectorAll('.music-library-continue-row').forEach(convertRowCoverToPlay);
-    dashboard.querySelectorAll('.music-library-compact-track').forEach(convertRowCoverToPlay);
-    dashboard.querySelectorAll('.music-library-new-row').forEach(convertRowCoverToPlay);
+    summaryRows().forEach(preserveCoverPositionAndOverlayPlay);
+    scheduleCoverPlayGeometry();
   };
 
   const normalize = (value) => String(value || '').trim().toLocaleLowerCase();
@@ -137,5 +159,13 @@
     observer.observe(summaryGrid, { childList: true, subtree: true });
   }
 
+  if ('ResizeObserver' in window) {
+    const resizeObserver = new ResizeObserver(scheduleCoverPlayGeometry);
+    resizeObserver.observe(dashboard);
+  } else {
+    window.addEventListener('resize', scheduleCoverPlayGeometry, { passive: true });
+  }
+
+  window.addEventListener('load', scheduleCoverPlayGeometry, { once: true });
   renderRows();
 })();
