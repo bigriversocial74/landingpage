@@ -137,7 +137,7 @@ function nmm_public_follow_modal_html(): string
                     data-follow-panel="pod"
                 >
                     <h3>Sign in to your POD to follow</h3>
-                    <p>After authentication, your POD sends a signed ActivityPub Follow and returns you here. This site never receives your POD password.</p>
+                    <p>After authentication, your POD sends a signed ActivityPub Follow and returns you here. The POD does not receive your password, and this site never receives your POD credentials.</p>
 
                     <form class="public-follow-pod-form" data-follow-pod-form>
                         <label class="public-follow-field">
