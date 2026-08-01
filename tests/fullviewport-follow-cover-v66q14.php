@@ -39,9 +39,9 @@ foreach ([
     'document.head.appendChild(stylesheet)',
     'document.body.append(backdrop, modal)',
     "element.style.setProperty(property, value, 'important')",
-    "'left': '0'",
-    "'width': '100vw'",
-    "'height': '100dvh'",
+    "left: '0'",
+    "width: '100vw'",
+    "height: '100dvh'",
     "'max-width': 'none'",
     "'z-index': '2147483001'",
 ] as $contract) {
