@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-music-summary-no-icons-v66Q17 */
+/* North Mountain Media build: 20260801-uniform-summary-covers-v66Q18 */
 (() => {
   'use strict';
 
@@ -13,32 +13,74 @@
   let geometryFrame = 0;
 
   const installCoverPlayStyles = () => {
-    if (document.querySelector('[data-music-cover-play-styles]')) return;
+    document.querySelector('[data-music-cover-play-styles]')?.remove();
 
     const style = document.createElement('style');
-    style.dataset.musicCoverPlayStyles = 'v66Q.17';
+    style.dataset.musicCoverPlayStyles = 'v66Q.18';
     style.textContent = `
-      .music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}
-      .music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}
-      .music-library-new-row{grid-template-columns:52px minmax(0,1fr)!important}
+      .music-library-summary-grid{--music-summary-cover-size:52px}
+      .music-library-continue-row{
+        grid-template-columns:var(--music-summary-cover-size) minmax(0,1fr)!important;
+        min-height:64px!important;
+      }
+      .music-library-compact-track{
+        grid-template-columns:18px var(--music-summary-cover-size) minmax(0,1fr) 38px 24px!important;
+        min-height:64px!important;
+      }
+      .music-library-new-row{
+        grid-template-columns:var(--music-summary-cover-size) minmax(0,1fr)!important;
+        min-height:64px!important;
+      }
+      .music-library-summary-grid .music-library-continue-row>img,
+      .music-library-summary-grid .music-library-compact-track>img,
+      .music-library-summary-grid .music-library-new-row>img{
+        display:block!important;
+        width:var(--music-summary-cover-size)!important;
+        min-width:var(--music-summary-cover-size)!important;
+        max-width:var(--music-summary-cover-size)!important;
+        height:var(--music-summary-cover-size)!important;
+        min-height:var(--music-summary-cover-size)!important;
+        max-height:var(--music-summary-cover-size)!important;
+        aspect-ratio:1/1!important;
+        border-radius:9px!important;
+        object-fit:cover!important;
+        transform:none!important;
+      }
       .music-library-cover-play-row{position:relative!important}
       .music-library-cover-play{
-        position:absolute!important;z-index:4!important;display:block!important;
-        margin:0!important;padding:0!important;border:0!important;
-        background:transparent!important;box-shadow:none!important;
-        color:transparent!important;font-size:0!important;line-height:0!important;
-        opacity:0!important;cursor:pointer!important;overflow:hidden!important;
-        appearance:none!important;-webkit-appearance:none!important;
+        position:absolute!important;
+        z-index:4!important;
+        display:block!important;
+        margin:0!important;
+        padding:0!important;
+        border:0!important;
+        border-radius:9px!important;
+        background:transparent!important;
+        box-shadow:none!important;
+        color:transparent!important;
+        font-size:0!important;
+        line-height:0!important;
+        opacity:0!important;
+        cursor:pointer!important;
+        overflow:hidden!important;
+        appearance:none!important;
+        -webkit-appearance:none!important;
       }
+      .music-library-cover-play::before,
+      .music-library-cover-play::after{content:none!important;display:none!important}
       .music-library-cover-play:focus-visible{
-        outline:2px solid #17202b!important;outline-offset:2px!important;
+        opacity:1!important;
+        outline:2px solid #17202b!important;
+        outline-offset:2px!important;
+        background:transparent!important;
       }
       .music-library-cover-play-row.is-cover-play-hover>img,
       .music-library-cover-play-row.is-cover-play-focus>img{
-        transform:scale(1.04)!important;opacity:.86!important;
+        transform:none!important;
+        opacity:.9!important;
       }
       .music-library-cover-play-row>img{
-        transition:transform .16s ease,opacity .16s ease!important;
+        transition:opacity .16s ease!important;
       }
     `;
     document.head.appendChild(style);
@@ -51,12 +93,28 @@
   ];
 
   const findCoverPlayElements = (row) => {
-    const image = row?.querySelector('img') || null;
+    const image = row?.querySelector(':scope > img') || row?.querySelector('img') || null;
     const button = row?.querySelector(
       'button[data-music-summary-cover-hit][data-music-play]'
     ) || null;
 
     return { image, button };
+  };
+
+  const forceInvisibleHitTarget = (button) => {
+    if (!button) return;
+
+    if (button.childNodes.length > 0) button.replaceChildren();
+    button.textContent = '';
+    button.setAttribute('aria-hidden', 'false');
+    button.style.setProperty('opacity', '0', 'important');
+    button.style.setProperty('color', 'transparent', 'important');
+    button.style.setProperty('background', 'transparent', 'important');
+    button.style.setProperty('border', '0', 'important');
+    button.style.setProperty('box-shadow', 'none', 'important');
+    button.style.setProperty('font-size', '0', 'important');
+    button.style.setProperty('line-height', '0', 'important');
+    button.style.setProperty('appearance', 'none', 'important');
   };
 
   const syncCoverPlayGeometry = (row) => {
@@ -67,12 +125,17 @@
     const imageRect = image.getBoundingClientRect();
     if (imageRect.width <= 0 || imageRect.height <= 0) return;
 
-    button.style.left = `${imageRect.left - rowRect.left}px`;
-    button.style.top = `${imageRect.top - rowRect.top}px`;
-    button.style.width = `${imageRect.width}px`;
-    button.style.height = `${imageRect.height}px`;
-    button.style.borderRadius = window.getComputedStyle(image).borderRadius;
-    button.style.pointerEvents = 'auto';
+    forceInvisibleHitTarget(button);
+    button.style.setProperty('left', `${imageRect.left - rowRect.left}px`, 'important');
+    button.style.setProperty('top', `${imageRect.top - rowRect.top}px`, 'important');
+    button.style.setProperty('width', `${imageRect.width}px`, 'important');
+    button.style.setProperty('height', `${imageRect.height}px`, 'important');
+    button.style.setProperty(
+      'border-radius',
+      window.getComputedStyle(image).borderRadius,
+      'important'
+    );
+    button.style.setProperty('pointer-events', 'auto', 'important');
   };
 
   const scheduleCoverPlayGeometry = () => {
@@ -91,14 +154,7 @@
     row.classList.add('music-library-cover-play-row');
     button.classList.add('music-library-cover-play');
     button.dataset.coverPlayOverlay = '1';
-    button.replaceChildren();
-    button.textContent = '';
-    button.style.opacity = '0';
-    button.style.color = 'transparent';
-    button.style.background = 'transparent';
-    button.style.border = '0';
-    button.style.fontSize = '0';
-    button.style.lineHeight = '0';
+    forceInvisibleHitTarget(button);
 
     if (row.dataset.coverPlayReady !== '1') {
       button.addEventListener('pointerenter', () => row.classList.add('is-cover-play-hover'));
