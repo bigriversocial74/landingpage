@@ -34,7 +34,6 @@ $sidebar = $read('portal/sidebar.php');
 $navigation = $read('portal/navigation.php');
 $account = $read('portal/account-menu.php');
 $publishing = $read('portal/publishing-center.php');
-$publishingJs = $read('assets/js/publishing-center-v66q.js');
 $myFeed = $read('portal/social-posts.php');
 $feedCss = $read('assets/css/social-feed-v66q7.css');
 $federatedFeed = $read('portal/federated-feed.php');
@@ -65,10 +64,9 @@ foreach (['$portalSidebarGroups', 'data-portal-sidebar', 'data-portal-navigation
     $require($sidebar, $contract, 'Canonical sidebar');
 }
 foreach ([
-    'Operations', 'Relationships', 'Work', 'System', 'Agent Chat', 'Dashboard',
-    'My Feed', 'Music Library', 'Unified Inbox', 'Call Center', 'CRM',
-    'Administrators', 'Action Center', 'Operations', 'Settings', 'Account',
-    'Visitor Intelligence', 'Site Analytics',
+    'Operations','Relationships','Work','System','Agent Chat','Dashboard','My Feed',
+    'Music Library','Unified Inbox','Call Center','CRM','Administrators','Action Center',
+    'Settings','Account','Visitor Intelligence','Site Analytics',
 ] as $contract) {
     $require($navigation, $contract, 'Server navigation');
 }
@@ -81,7 +79,7 @@ foreach ([
 ] as $contract) {
     $require($navigation, $contract, 'Navigation module guard');
 }
-$forbid($navigation, "'Notifications'", 'Server navigation label');
+$forbid($navigation, "'Notifications'", 'Server navigation');
 
 foreach (['portal-user-avatar', "['display_name']", 'portal-account-chevron', 'Dashboard', 'Settings', 'Sign out'] as $contract) {
     $require($account, $contract, 'Authenticated account menu');
@@ -97,39 +95,26 @@ foreach (['data-admin-quick-toggle', 'data-admin-launcher-tab="publishing"', 'pu
     $require($shell, $contract, 'Footer publishing launcher');
 }
 foreach ([
-    'story', 'social-post', 'blog', 'event', 'booking', 'syndication',
-    'portfolio', 'resume', 'music-track', 'music-album', 'music-playlist',
-    'client', 'lead', 'proposal', 'project', 'knowledge', 'file',
+    'story','social-post','blog','event','booking','syndication','portfolio','resume',
+    'music-track','music-album','music-playlist','client','lead','proposal','project',
+    'knowledge','file',
 ] as $key) {
-    $require($publishing, "'key' => '{$key}'", 'Publishing catalog');
+    if (!preg_match("/'key'\\s*=>\\s*'" . preg_quote($key, '/') . "'/", $publishing)) {
+        v66q7_fail('Publishing catalog missing: ' . $key);
+    }
+}
+foreach (['nmm_module_enabled((string)$module)', 'data-publishing-direct', 'data-publishing-option'] as $contract) {
+    $require($publishing, $contract, 'Direct publishing catalog');
 }
 foreach ([
-    'nmm_module_enabled((string)$module)',
-    'data-publishing-direct',
-    'data-footer-publishing',
-    'data-footer-publishing-frame',
-    'data-footer-publishing-direct-open',
-    'assets/js/publishing-center-v66q.js',
-] as $contract) {
-    $require($publishing, $contract, 'Footer Publishing workspace');
-}
-foreach ([
-    'window.location.origin',
-    "searchParams.set('modal', '1')",
-    'data-footer-publishing-direct-open',
-    'publish-story.php',
-    'publish-social-post.php',
-    'overrideUrl',
-] as $contract) {
-    $require($publishingJs, $contract, 'Authoritative Publishing controller');
-}
-foreach ([
-    'stopImmediatePropagation',
-    'portal-dashboard-publishing-v66q5.js',
-    'portal-shell-v66q6.js',
-    'portal-unified-runtime-v66q3.js',
+    '<iframe','data-footer-publishing','data-footer-publishing-frame',
+    'data-footer-publishing-direct-open','publishing-center-v66q.js','?modal=1',
+    'searchParams.set','addEventListener',
 ] as $needle) {
-    $forbid($shell . $publishing . $publishingJs, $needle, 'Live Publishing path');
+    $forbid($publishing, $needle, 'Direct publishing catalog');
+}
+foreach (['portal-dashboard-publishing-v66q5.js','portal-shell-v66q6.js','portal-unified-runtime-v66q3.js'] as $needle) {
+    $forbid($shell, $needle, 'Live portal shell');
 }
 
 $storiesPosition = strpos($myFeed, 'Recent stories');
@@ -141,20 +126,19 @@ foreach ([
     "require_once __DIR__ . '/stories-service.php'",
     "require_once __DIR__ . '/social-posts-service.php'",
     "require_once __DIR__ . '/federated-timeline.php'",
-    'story-rail-create',
-    'my-feed-story-create',
-    'Follow users and their content will appear here.',
-    'social_posts_render_card',
-    'federated_timeline_query',
+    'story-rail-create','my-feed-story-create','portal/publish-story.php',
+    'portal/publish-social-post.php','Follow users and their content will appear here.',
+    'social_posts_render_card','federated_timeline_query',
 ] as $contract) {
     $require($myFeed, $contract, 'My Feed');
 }
-foreach (['Posts and Stories', 'social-feed-guidance'] as $needle) {
+foreach (['Posts and Stories','social-feed-guidance','?modal=1'] as $needle) {
     $forbid($myFeed, $needle, 'My Feed');
 }
-$require($feedCss, '.my-feed-item-local', 'My Feed styling');
+$require($feedCss, '.my-feed-item-local .pod-social-card>header>div>span{display:none}', 'My Feed account-handle suppression');
 
 foreach ([
+    "require_once __DIR__ . '/publishing.php'",
     "require_once __DIR__ . '/stories-service.php'",
     "require_once __DIR__ . '/social-posts-service.php'",
     "require_once __DIR__ . '/federated-timeline.php'",
@@ -170,18 +154,18 @@ foreach ([
     'No federated conversations match this view.',
     'No conversation selected.',
     'Federated Messages is temporarily unavailable.',
+    'The failure was contained so the portal did not return HTTP 500.',
 ] as $contract) {
     $require($federatedMessages, $contract, 'Federated Messages');
 }
 $forbid($federatedFeed . $federatedMessages, "view=delivery'))?>Notification Delivery", 'Federated markup');
 
-foreach (['Client login', 'Administrator login', 'data-public-account-menu'] as $contract) {
+foreach (['Client login','Administrator login','data-public-account-menu'] as $contract) {
     $require($publicMenu, $contract, 'Public account menu');
 }
 foreach ([
     "require_once __DIR__ . '/portal/public-account-menu.php'",
-    'nmm_inject_public_account_menu',
-    'nmm_render_public_account_menu',
+    'nmm_inject_public_account_menu','nmm_render_public_account_menu',
     'public-account-menu-v66q7.css',
 ] as $contract) {
     $require($landing, $contract, 'Public header integration');
@@ -190,11 +174,11 @@ foreach ([$landingJs, $sitePublicJs] as $loader) {
     $forbid($loader, 'public-user-menu-v66q6.js', 'Public account menu');
 }
 
-foreach (['data-agent-chat-page', 'data-agent-chat-empty', 'portal-agent-chat-v66q4.js'] as $contract) {
+foreach (['data-agent-chat-page','data-agent-chat-empty','portal-agent-chat-v66q4.js'] as $contract) {
     $require($agentChat, $contract, 'Agent Chat workspace');
 }
-foreach (['setup-dashboard', 'position:fixed', 'results-panel'] as $needle) {
+foreach (['setup-dashboard','position:fixed','results-panel'] as $needle) {
     $forbid($agentChat, $needle, 'Agent Chat workspace');
 }
 
-echo "v66Q.7 portal runtime, feed, Publishing, navigation, and account-menu contract passed.\n";
+echo "v66Q.7 direct-link publishing, feed, navigation, federation, and account-menu contract passed.\n";
