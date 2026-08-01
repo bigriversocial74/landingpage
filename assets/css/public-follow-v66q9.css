@@ -1,4 +1,62 @@
 /* North Mountain Media build: 20260801-public-follow-v66Q9 */
+.workspace-sidebar .sidebar-actions,
+.workspace-sidebar .sidebar-custom-menu,
+.workspace-sidebar .portfolio-sidebar-links{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  list-style:none!important;
+}
+.workspace-sidebar .sidebar-custom-menu li{
+  margin:0!important;
+  padding:0!important;
+  list-style:none!important;
+}
+.workspace-sidebar .sidebar-actions>a,
+.workspace-sidebar .sidebar-actions>button,
+.workspace-sidebar .sidebar-custom-menu a,
+.workspace-sidebar .portfolio-sidebar-links button{
+  display:block!important;
+  width:100%!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:5px 0!important;
+  border:0!important;
+  border-radius:0!important;
+  color:#566170!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-align:left!important;
+  text-decoration:none!important;
+  font:inherit!important;
+  font-size:13px!important;
+  font-weight:500!important;
+  line-height:1.35!important;
+}
+.workspace-sidebar .sidebar-actions>a:hover,
+.workspace-sidebar .sidebar-actions>button:hover,
+.workspace-sidebar .sidebar-custom-menu a:hover,
+.workspace-sidebar .portfolio-sidebar-links button:hover,
+.workspace-sidebar .sidebar-actions>a:focus-visible,
+.workspace-sidebar .sidebar-actions>button:focus-visible,
+.workspace-sidebar .sidebar-custom-menu a:focus-visible,
+.workspace-sidebar .portfolio-sidebar-links button:focus-visible{
+  color:#17202b!important;
+  background:transparent!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+  outline:none!important;
+}
+.workspace-sidebar .sidebar-custom-menu ul{
+  display:block!important;
+  margin:2px 0 5px 12px!important;
+  padding:0 0 0 10px!important;
+  border-left:1px solid #e0e5ea!important;
+  list-style:none!important;
+}
+.workspace-sidebar .sidebar-custom-menu ul a{font-size:12px!important}
+.public-sidebar-follow-link{font-weight:750!important;color:#17202b!important}
+
 body.public-follow-open{overflow:hidden}
 .public-follow-modal[hidden]{display:none!important}
 .public-follow-modal{position:fixed;inset:0;z-index:420;display:grid;place-items:center;padding:18px}
@@ -24,6 +82,17 @@ body.public-follow-open{overflow:hidden}
 .public-follow-note{padding:11px 12px;border:1px solid #e4e8ec;border-radius:11px;background:#f8fafb;font-size:.7rem!important}
 .public-follow-status{min-height:19px;margin:12px 0 0;color:#247345;font-size:.68rem}
 [data-follow-modal-open]{cursor:pointer}
-@media(max-width:620px){.public-follow-modal{padding:10px}.public-follow-dialog{padding:25px 18px 20px;border-radius:18px}.public-follow-tabs{grid-template-columns:1fr}.public-follow-tabs button{min-height:39px}.public-follow-actions{display:grid;grid-template-columns:1fr}.public-follow-actions a,.public-follow-actions button{width:100%}}
+@media(max-width:620px){
+  .public-follow-modal{padding:10px}
+  .public-follow-dialog{padding:25px 18px 20px;border-radius:18px}
+  .public-follow-tabs{grid-template-columns:1fr}
+  .public-follow-tabs button{min-height:39px}
+  .public-follow-actions{display:grid;grid-template-columns:1fr}
+  .public-follow-actions a,.public-follow-actions button{width:100%}
+  .workspace-sidebar .sidebar-actions>a,
+  .workspace-sidebar .sidebar-actions>button,
+  .workspace-sidebar .sidebar-custom-menu a,
+  .workspace-sidebar .portfolio-sidebar-links button{font-size:14px!important;padding:6px 0!important}
+}
 @media(prefers-reduced-motion:reduce){.public-follow-dialog,.public-follow-backdrop{transition:none!important}}
 .public-follow-dialog button:focus-visible,.public-follow-dialog a:focus-visible,.public-follow-dialog input:focus-visible{outline:3px solid rgba(47,112,214,.35);outline-offset:2px}
