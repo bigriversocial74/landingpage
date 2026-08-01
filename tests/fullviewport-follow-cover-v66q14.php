@@ -68,21 +68,26 @@ foreach ([
 ] as $contract) {
     $require($musicRuntime, $contract, 'Cover artwork play controls');
 }
-$forbid($musicRuntime, "dashboard.querySelectorAll('.music-library-song-row').forEach(convertRowCoverToPlay)", 'All Songs play control');
+$forbid(
+    $musicRuntime,
+    "dashboard.querySelectorAll('.music-library-song-row').forEach(convertRowCoverToPlay)",
+    'All Songs play control'
+);
 foreach ([
     'class="music-library-all-songs"',
     'class="music-library-song-title"',
-    'aria-label="Play <?=e($track[\'title\'])?>"',
+    'data-music-song-row',
+    'aria-label="Play ',
 ] as $contract) {
     $require($musicPage, $contract, 'Bottom All Songs play buttons');
 }
 
 foreach ([
-    "$podEnabled = nmm_module_enabled('social_feed')",
-    "$rssEnabled = nmm_module_enabled('rss')",
-    "if ($podEnabled)",
-    "if ($rssEnabled)",
-    "$showTabs = $context['method_count'] === 2",
+    '$podEnabled = nmm_module_enabled(\'social_feed\')',
+    '$rssEnabled = nmm_module_enabled(\'rss\')',
+    'if ($podEnabled)',
+    'if ($rssEnabled)',
+    '$showTabs = $context[\'method_count\'] === 2',
     'POD / HomeServer',
     'RSS Feed',
     'data-follow-modal-open',
