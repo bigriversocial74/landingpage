@@ -1,34 +1,76 @@
-/* North Mountain Media build: 20260801-plain-shared-sidebar-v66Q9 */
+/* North Mountain Media build: 20260801-fixed-sidebar-accordion-v66Q11 */
 
+.portal-sidebar-shared{
+  overflow:hidden;
+}
 .portal-nav-authenticated{
   display:block;
-  padding:14px 0 20px;
-  overflow:auto;
+  flex:1 1 auto;
+  min-height:0;
+  padding:10px 0 8px;
+  overflow:hidden;
 }
 .portal-nav-group{
-  margin:0 0 18px;
+  margin:0;
   padding:0;
   border:0;
 }
-.portal-nav-group:last-child{margin-bottom:0}
-.portal-nav-group-label{
-  margin:0 0 6px;
-  padding:0 10px;
-  color:#8a94a1;
-  font-size:10px;
-  font-weight:750;
-  line-height:1.2;
-  letter-spacing:.08em;
-  text-transform:uppercase;
+.portal-nav-group-heading{
+  margin:0;
+  padding:0;
+  font:inherit;
+}
+.portal-nav-group-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  min-height:30px;
+  margin:0;
+  padding:5px 2px;
+  border:0;
+  border-radius:0;
+  color:#263241;
+  background:transparent;
+  box-shadow:none;
+  text-align:left;
+  font:inherit;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.15;
+}
+.portal-nav-group-toggle:hover,
+.portal-nav-group-toggle:focus-visible{
+  color:#111923;
+  background:transparent;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  outline:none;
+}
+.portal-nav-group-chevron{
+  display:inline-block;
+  color:#7b8794;
+  font-size:15px;
+  font-weight:500;
+  line-height:1;
+  transform:rotate(-90deg);
+  transition:transform .16s ease;
+}
+.portal-nav-group.is-open .portal-nav-group-chevron{
+  transform:rotate(0deg);
 }
 .portal-nav-group-links{
   display:block;
+  padding:0 0 5px 10px;
+}
+.portal-nav-group-links[hidden]{
+  display:none!important;
 }
 .portal-nav-group-links a{
   display:block;
   min-height:0;
   margin:0;
-  padding:5px 10px;
+  padding:3px 0;
   border:0;
   border-radius:0;
   color:#536171;
@@ -37,7 +79,7 @@
   text-decoration:none;
   font-size:13px;
   font-weight:500;
-  line-height:1.35;
+  line-height:1.2;
 }
 .portal-nav-group-links a:hover,
 .portal-nav-group-links a:focus-visible{
@@ -53,18 +95,31 @@
   box-shadow:none;
   font-weight:750;
 }
+.portal-sidebar-foot{
+  flex:0 0 auto;
+  gap:0!important;
+  margin-top:auto;
+  padding-top:8px!important;
+}
 .portal-sidebar-foot a{
+  min-height:0!important;
+  padding:4px 2px!important;
+  border:0!important;
   border-radius:0!important;
+  color:#536171!important;
   background:transparent!important;
   box-shadow:none!important;
   font-size:13px!important;
   font-weight:500!important;
-  line-height:1.35!important;
+  line-height:1.2!important;
 }
 .portal-sidebar-foot a:hover,
 .portal-sidebar-foot a:focus-visible{
+  color:#17202d!important;
+  background:transparent!important;
   text-decoration:underline;
   text-underline-offset:3px;
+  outline:none;
 }
 
 .portal-account-menu{position:relative}
@@ -113,10 +168,13 @@
   .portal-account-menu>nav{right:-6px}
   .admin-assistant-launcher-tabs{grid-template-columns:1fr}
   .admin-assistant-launcher-tabs button{min-height:40px}
-  .portal-nav-authenticated{padding:12px 0 16px}
-  .portal-nav-group{margin-bottom:15px}
-  .portal-nav-group-label{font-size:10px}
-  .portal-nav-group-links a{padding:6px 10px;font-size:14px}
+  .portal-nav-authenticated{padding:8px 0 6px}
+  .portal-nav-group-toggle{min-height:32px;font-size:14px}
+  .portal-nav-group-links{padding-left:9px}
+  .portal-nav-group-links a{padding:4px 0;font-size:14px;line-height:1.18}
   .footer-publishing-layout{gap:12px}
   .footer-publishing-stage iframe{min-height:520px}
+}
+@media(prefers-reduced-motion:reduce){
+  .portal-nav-group-chevron{transition:none}
 }
