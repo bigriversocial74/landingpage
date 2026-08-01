@@ -100,13 +100,13 @@ $checks = [
     ['durable mark unread', 'federated_messaging_mark_unread', $source['core'] . $source['page']],
     ['local report evidence', "'thread_reported'", $source['core']],
     ['owner local deletion', "'delete_local'", $source['core'] . $source['page']],
-    ['summary prefill boundary', "['draft','translate']", $source['page']],
+    ['summary prefill boundary', "['draft', 'translate']", $source['page']],
     ['explicit wrapper authority', "'wrapper' => 'rss-pod'", $source['core']],
     ['resource authority', "'resource_type' => 'federated_message_thread'", $source['core']],
     ['proposal-only handoff', "'proposal_only' => true", $source['core']],
     ['send denied to HomeServer', "'send_allowed' => false", $source['core']],
     ['HomeServer capability request', 'homeserver_request($capability, $payload)', $source['core']],
-    ['owner send action', 'Review complete — send reply', $source['page']],
+    ['owner send action', 'Send signed message', $source['page']],
 ];
 foreach ($checks as [$label, $needle, $haystack]) {
     if (!str_contains($haystack, $needle)) $fail('Missing ' . $label . ': ' . $needle);

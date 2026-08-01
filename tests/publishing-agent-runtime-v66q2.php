@@ -2,118 +2,37 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-$legacyRuntime = (string)file_get_contents(
-    $root . '/assets/js/publishing-agent-runtime-v66q2.js'
-);
-$unifiedRuntimePath = $root . '/assets/js/portal-unified-runtime-v66q3.js';
-$unifiedRuntime = is_file($unifiedRuntimePath)
-    ? (string)file_get_contents($unifiedRuntimePath)
-    : '';
-$publishingRuntime = (string)file_get_contents(
-    $root . '/assets/js/portal-dashboard-publishing-v66q5.js'
-);
-$agentRuntime = (string)file_get_contents(
-    $root . '/assets/js/portal-agent-chat-v66q4.js'
-);
-$publishing = (string)file_get_contents(
-    $root . '/portal/publishing-center.php'
-);
-$portal = (string)file_get_contents(
-    $root . '/assets/js/portal.js'
-);
+$read = static function (string $path) use ($root): string {
+    $content = @file_get_contents($root . '/' . $path);
+    if (!is_string($content) || $content === '') throw new RuntimeException('Missing ' . $path);
+    return $content;
+};
 
-$successorLoaded = str_contains(
-    $publishing,
-    'portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'
-) && str_contains(
-    $publishing,
-    'portal-shell-v66q6.js?v=20260731-v66Q6'
-);
-$unifiedLoaded = str_contains(
-    $publishing,
-    'portal-unified-runtime-v66q3.js?v=20260731-v66Q3'
-);
+$shell = $read('portal/bootstrap-shell.php');
+$publishing = $read('portal/publishing-center.php');
+$portal = $read('assets/js/portal.js');
+$agent = $read('portal/agent-chat-view.php');
+$agentRuntime = $read('assets/js/portal-agent-chat-v66q4.js');
 
-if ($successorLoaded) {
-    foreach ([
-        'window.location.origin',
-        'configured.pathname',
-        'dataset.publishingUrl',
-        "window.addEventListener('click'",
-        'event.stopImmediatePropagation()',
-        'elements.frame.hidden = false',
-    ] as $needle) {
-        if (!str_contains($publishingRuntime, $needle)) {
-            throw new RuntimeException(
-                'Successor Publishing runtime is missing retained v66Q.2 protection: '
-                . $needle
-            );
-        }
-    }
-
-    foreach ([
-        "dataset.portalActive !== 'agent'",
-        'integrateAgentWorkspace',
-        'agent-chat-conversation',
-        'admin-assistant-active',
-        'messages.childElementCount > 0',
-        'MutationObserver',
-    ] as $needle) {
-        if (!str_contains($agentRuntime, $needle)) {
-            throw new RuntimeException(
-                'Successor Agent runtime is missing retained v66Q.2 protection: '
-                . $needle
-            );
-        }
-    }
-} elseif ($unifiedLoaded) {
-    foreach ([
-        'window.location.origin',
-        'configured.pathname',
-        'data-publishing-url',
-        'integrateAgentChat',
-        "dataset.portalActive !== 'agent'",
-        'admin-assistant-chat-integrated',
-        'MutationObserver',
-    ] as $needle) {
-        if (!str_contains($unifiedRuntime, $needle)) {
-            throw new RuntimeException(
-                'Unified runtime is missing retained v66Q.2 protection: '
-                . $needle
-            );
-        }
-    }
-} else {
-    foreach ([
-        'window.location.origin',
-        'configured.pathname',
-        'data-publishing-url',
-        'closeEmptyAgentOverlay',
-        "dataset.portalActive !== 'agent'",
-        'messages.children.length > 0',
-    ] as $needle) {
-        if (!str_contains($legacyRuntime, $needle)) {
-            throw new RuntimeException(
-                'Runtime repair is missing: ' . $needle
-            );
-        }
-    }
-
-    if (!str_contains(
-        $publishing,
-        'publishing-agent-runtime-v66q2.js?v=20260731-v66Q2'
-    )) {
-        throw new RuntimeException(
-            'Publishing Center does not load a certified Agent runtime.'
-        );
+foreach (['portal-unified-runtime-v66q3.js', 'portal-dashboard-publishing-v66q5.js', 'portal-shell-v66q6.js', 'publishing-agent-runtime-v66q2.js'] as $obsolete) {
+    if (str_contains($shell . $publishing, $obsolete)) {
+        throw new RuntimeException('Obsolete runtime remains live: ' . $obsolete);
     }
 }
-
-if (!str_contains($portal, 'addAdminUserMessage(query);')
-    || !str_contains($portal, 'openAdminChat();')) {
-    throw new RuntimeException(
-        'Submitted Agent queries no longer open the chat interface.'
-    );
+foreach (['data-publishing-direct', 'data-publishing-option'] as $needle) {
+    if (!str_contains($publishing, $needle)) throw new RuntimeException('Publishing link contract missing ' . $needle);
+}
+foreach (['<iframe', '?modal=1', 'event.stopImmediatePropagation()'] as $forbidden) {
+    if (str_contains($publishing, $forbidden)) throw new RuntimeException('Publishing interception remains: ' . $forbidden);
+}
+foreach (['addAdminUserMessage(query);', 'openAdminChat();'] as $needle) {
+    if (!str_contains($portal, $needle)) throw new RuntimeException('Submitted Agent query no longer opens chat: ' . $needle);
+}
+foreach (['data-agent-chat-page', 'data-agent-chat-empty'] as $needle) {
+    if (!str_contains($agent, $needle)) throw new RuntimeException('Agent workspace missing ' . $needle);
+}
+foreach (['integrateAgentWorkspace', 'agent-chat-conversation', 'MutationObserver'] as $needle) {
+    if (!str_contains($agentRuntime, $needle)) throw new RuntimeException('Agent runtime missing ' . $needle);
 }
 
 echo "Publishing and Agent runtime v66Q.2 retained regression passed\n";

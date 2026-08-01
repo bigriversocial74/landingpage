@@ -15,7 +15,7 @@ $files = [
     'landing' => 'landing-page.php',
     'builder' => 'portal/site-builder-core.php',
     'timeline' => 'portal/federated-feed.php',
-    'bootstrap' => 'portal/bootstrap.php',
+    'navigation' => 'portal/navigation.php',
     'css' => 'assets/css/social-posts-v66p.css',
     'js' => 'assets/js/social-posts-v66p.js',
     'sql' => 'database/social_posts_v66p.sql',
@@ -51,16 +51,18 @@ $expect('activitypub', 'AND payload_json LIKE :public_marker', 'Public outbox mu
 $expect('service', "'https://www.w3.org/ns/activitystreams#Public'", 'Public ActivityStreams audience is missing.');
 $expect('service', "'to' => [activitypub_followers_url()]", 'Follower-only audience is missing.');
 $expect('service', 'social_posts_same_origin_url', 'Protected same-origin media validation is required.');
-$expect('service', "External post links must use HTTPS.", 'External links must require HTTPS.');
+$expect('service', 'External post links must use HTTPS.', 'External links must require HTTPS.');
 $expect('service', 'blog_public_posts', 'Landing blog mode must reuse the existing blog publisher.');
 $expect('service', 'blog-feed.php', 'Existing RSS must remain linked.');
 $expect('service', 'social_posts_render_landing', 'Landing content renderer is missing.');
 $expect('service', 'social_posts_render_portal_stream', 'Local posts must appear in the POD timeline workspace.');
 $expect('composer', 'Save draft', 'Draft publishing is required.');
 $expect('composer', 'Followers only', 'Follower-only publishing control is required.');
-$expect('admin', 'Tabbed blog + social', 'Tabbed landing display control is required.');
-$expect('admin', 'social-feed-stories', 'My Feed Stories section is required.');
-$expect('admin', 'social-feed-column', 'My Feed Social Feed section is required.');
+$expect('admin', 'my-feed-stories', 'My Feed Stories section is required.');
+$expect('admin', 'Recent stories', 'Traditional Stories rail is required.');
+$expect('admin', 'my-feed-stream', 'My Feed Social Feed section is required.');
+$expect('admin', 'Social Feed', 'My Feed Social Feed title is required.');
+$expect('admin', 'Follow users and their content will appear here.', 'My Feed follow onboarding is required.');
 $expect('object', 'application/activity+json', 'ActivityPub object content type is missing.');
 $expect('object', "'visibility'] !== 'public'", 'Follower-only posts must not expose public object documents.');
 $expect('object', "'type' => 'Tombstone'", 'Public deleted objects must return Tombstones.');
@@ -75,10 +77,10 @@ $expect('landing', 'social_posts_render_landing', 'Default landing page content 
 $expect('builder', "require_once __DIR__.'/social-posts-service.php';", 'Visual builder service integration is missing.');
 $expect('builder', "(string)(\$page['slug']??'')==='home'", 'Visual builder must limit automatic content to the home page.');
 $expect('timeline', 'social_posts_render_portal_stream', 'Federated timeline local publishing section is missing.');
-$expect('bootstrap', "'social-posts' => 'My Feed'", 'Administrator My Feed navigation entry is missing.');
-$expect('bootstrap', "app_url('portal/social-posts.php')", 'Administrator navigation route is missing.');
-$expect('js', "ArrowLeft", 'Keyboard-accessible tabs are required.');
-$expect('js', "navigator.clipboard.writeText", 'Copyable Fediverse identity is required.');
+$expect('navigation', "'My Feed'", 'Administrator My Feed navigation entry is missing.');
+$expect('navigation', "app_url('portal/social-posts.php')", 'Administrator navigation route is missing.');
+$expect('js', 'ArrowLeft', 'Keyboard-accessible tabs are required.');
+$expect('js', 'navigator.clipboard.writeText', 'Copyable Fediverse identity is required.');
 $expect('css', '@media (max-width:720px)', 'Mobile social publishing layout is required.');
 $expect('css', '@media (prefers-reduced-motion:reduce)', 'Reduced-motion support is required.');
 $expect('fresh', 'SOURCE database/north_mountain_portal_v66o.sql;', 'Fresh schema must retain v66O.');

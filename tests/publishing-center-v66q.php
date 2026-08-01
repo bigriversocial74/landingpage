@@ -2,84 +2,79 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-$checks = [
-    'portal/publishing-center.php' => [
-        'publishing_center_catalog',
-        'data-publishing-option',
-        'portal/publish-story.php',
-        "'key' => 'music-track'",
-        "'key' => 'music-album'",
-        "'key' => 'music-playlist'",
-        'aria-describedby="publishingCenterDescription"',
-    ],
-    'portal/bootstrap.php' => [
-        'Publishing +',
-        'data-portal-active',
-        'moduleNavigationMap',
-        "['Work','projects']",
-        "'project_intake' =>",
-        "'call_us' =>",
-        'publishing_center_render_modal',
-    ],
-    'portal/admin.php' => [
-        "??'agent'",
-        'agent_chat_render',
-    ],
-    'portal/social-posts.php' => [
-        'social-feed-stories',
-        'social-feed-column',
-        'stories_render_rail',
-        'data-publishing-open="social-post"',
-        "nmm_module_enabled('stories')",
-        'portal/publish-story.php?modal=1',
-        'portal/publish-social-post.php?modal=1',
-    ],
-    'portal/social-posts-service.php' => [
-        "nmm_module_enabled('social_feed')",
-        "nmm_module_enabled('rss')",
-    ],
-    'social-feed.php' => [
-        "nmm_require_public_module('social_feed')",
-    ],
-    'portal/public-syndication.php' => [
-        "nmm_module_enabled('rss')",
-    ],
-    'blog-feed.php' => ["nmm_require_public_module('rss')"],
-    'blog-atom.php' => ["nmm_require_public_module('rss')"],
-    'blog-json-feed.php' => ["nmm_require_public_module('rss')"],
-    'podcast-feed.php' => ["nmm_require_public_module('rss')"],
-    'blog-feeds.php' => ["nmm_require_public_module('rss')"],
-    'assets/js/portal.js' => [
-        'nmm.portal.navigation.',
-        'dataset.portalActive',
-    ],
-    'assets/js/publishing-center-v66q.js' => [
-        "portalShell?.setAttribute('inert', '')",
-        "event.key !== 'Tab'",
-        "['ArrowDown', 'ArrowUp']",
-        'target.origin !== window.location.origin',
-    ],
-    'portal/site-settings.php' => [
-        "'clients' =>",
-        "'leads' =>",
-        "'rss' =>",
-        "'social_feed' =>",
-        "'stories' =>",
-    ],
-];
-
-foreach ($checks as $file => $needles) {
-    $content = file_get_contents($root . '/' . $file);
-    if ($content === false) {
-        throw new RuntimeException('Missing ' . $file);
+$read = static function (string $path) use ($root): string {
+    $content = @file_get_contents($root . '/' . $path);
+    if (!is_string($content) || $content === '') {
+        throw new RuntimeException('Missing ' . $path);
     }
-    foreach ($needles as $needle) {
-        if (!str_contains($content, $needle)) {
-            throw new RuntimeException($file . ' missing ' . $needle);
-        }
+    return $content;
+};
+
+$publishing = $read('portal/publishing-center.php');
+$shell = $read('portal/bootstrap-shell.php');
+$shellCss = $read('assets/css/portal-shell-v66q7.css');
+$navigation = $read('portal/navigation.php');
+$social = $read('portal/social-posts.php');
+$settings = $read('portal/site-settings.php');
+$service = $read('portal/social-posts-service.php');
+
+foreach ([
+    'story','social-post','blog','event','booking','syndication','portfolio','resume',
+    'music-track','music-album','music-playlist','client','lead','proposal','project',
+    'file','knowledge',
+] as $key) {
+    if (!preg_match("/'key'\\s*=>\\s*'" . preg_quote($key, '/') . "'/", $publishing)) {
+        throw new RuntimeException('Publishing catalog missing ' . $key);
     }
 }
-
+foreach (['nmm_module_enabled((string)$module)', 'data-publishing-direct', 'data-publishing-option'] as $needle) {
+    if (!str_contains($publishing, $needle)) {
+        throw new RuntimeException('Publishing Center missing ' . $needle);
+    }
+}
+foreach (['<iframe', '?modal=1', 'publishing-center-v66q.js', 'data-footer-publishing-frame'] as $forbidden) {
+    if (str_contains($publishing, $forbidden)) {
+        throw new RuntimeException('Publishing Center retains forbidden container behavior: ' . $forbidden);
+    }
+}
+foreach (['footer-publishing-stage', 'footer-publishing-layout', 'data-footer-publishing-frame', 'publishing-center-trigger', 'iframe'] as $forbidden) {
+    if (str_contains($shellCss, $forbidden)) {
+        throw new RuntimeException('Portal shell CSS retains obsolete Publishing behavior: ' . $forbidden);
+    }
+}
+foreach (['data-admin-quick-toggle', 'data-admin-launcher-tab="publishing"', 'publishing_center_render_footer_links'] as $needle) {
+    if (!str_contains($shell, $needle)) {
+        throw new RuntimeException('Footer Publishing launcher missing ' . $needle);
+    }
+}
+foreach (['Publishing +', 'portal-dashboard-publishing-v66q5.js', 'portal-shell-v66q6.js', 'portal-unified-runtime-v66q3.js'] as $forbidden) {
+    if (str_contains($shell, $forbidden)) {
+        throw new RuntimeException('Live shell retains obsolete Publishing behavior: ' . $forbidden);
+    }
+}
+foreach (['Recent stories', 'Social Feed', 'portal/publish-story.php', 'portal/publish-social-post.php'] as $needle) {
+    if (!str_contains($social, $needle)) {
+        throw new RuntimeException('My Feed missing ' . $needle);
+    }
+}
+foreach ([
+    "nmm_module_enabled('social_feed')",
+    "nmm_module_enabled('stories')",
+    "nmm_module_enabled('rss')",
+    "nmm_module_enabled('music_library')",
+    "nmm_module_enabled('clients')",
+] as $needle) {
+    if (!str_contains($navigation . $publishing . $service . $social, $needle)) {
+        throw new RuntimeException('Module-gated surface missing ' . $needle);
+    }
+}
+foreach ([
+    "'clients' =>", "'leads' =>", "'rss' =>", "'social_feed' =>", "'stories' =>",
+] as $needle) {
+    if (!str_contains($settings, $needle)) {
+        throw new RuntimeException('Site Settings missing module definition ' . $needle);
+    }
+}
 foreach ([
     '.github/workflows/build-publishing-center-v66q.yml',
     '.github/workflows/run-publishing-builder-v66q.yml',
@@ -92,4 +87,4 @@ foreach ([
     }
 }
 
-echo "Publishing Center v66Q source, module, and accessibility contract passed\n";
+echo "Publishing Center v66Q direct-link, module, and source contract passed\n";

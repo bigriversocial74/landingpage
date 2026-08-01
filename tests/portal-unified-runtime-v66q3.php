@@ -7,76 +7,34 @@ function v66q3_fail(string $message): never
     exit(1);
 }
 
-$runtime = file_get_contents(
-    __DIR__ . '/../assets/js/portal-unified-runtime-v66q3.js'
-);
-$styles = file_get_contents(
-    __DIR__ . '/../assets/css/portal-unified-runtime-v66q3.css'
-);
-$publishing = file_get_contents(
-    __DIR__ . '/../portal/publishing-center.php'
-);
-$social = file_get_contents(
-    __DIR__ . '/../portal/social-posts.php'
-);
+$root = dirname(__DIR__);
+$navigation = (string)file_get_contents($root . '/portal/navigation.php');
+$sidebar = (string)file_get_contents($root . '/portal/sidebar.php');
+$shell = (string)file_get_contents($root . '/portal/bootstrap-shell.php');
+$social = (string)file_get_contents($root . '/portal/social-posts.php');
 
-foreach ([
-    'runtime' => $runtime,
-    'styles' => $styles,
-    'publishing' => $publishing,
-    'social' => $social,
-] as $name => $source) {
-    if (!is_string($source) || $source === '') {
-        v66q3_fail("Unable to read {$name} source.");
-    }
+foreach ([$navigation, $sidebar, $shell, $social] as $source) {
+    if ($source === '') v66q3_fail('Unable to read retained portal source.');
 }
-
-$requiredRuntimeContracts = [
-    "move('Unified Inbox', 'Relationships')",
-    "move('Visitor Intelligence', 'System')",
-    "move('Site Analytics', 'System')",
-    "document.querySelectorAll('.portal-nav')",
-    "findNavigationLink(nav, 'Notifications')?.remove()",
-    "nav.querySelector('a[href*=\"view=clients\"]')",
-    "a[href*=\"view=projects\"], a[href*=\"view=files\"]",
-    'removeCommunicationsSurface',
-    "document.body.dataset.portalActive !== 'social-posts'",
-    "document.body.dataset.portalActive !== 'agent'",
-    "chat.classList.add('admin-assistant-chat-integrated')",
-    "event.stopImmediatePropagation()",
-    '`${configured.pathname}${configured.search}${configured.hash}`',
-    "window.location.origin",
-];
-
-foreach ($requiredRuntimeContracts as $contract) {
-    if (!str_contains($runtime, $contract)) {
-        v66q3_fail("Missing runtime contract: {$contract}");
-    }
+foreach (['Operations', 'Relationships', 'Work', 'System', 'Unified Inbox', 'Visitor Intelligence', 'Site Analytics'] as $needle) {
+    if (!str_contains($navigation, $needle)) v66q3_fail('Server navigation missing ' . $needle);
+}
+foreach (["nmm_module_enabled('clients')", "nmm_module_enabled('social_feed')", "nmm_module_enabled('music_library')"] as $needle) {
+    if (!str_contains($navigation, $needle)) v66q3_fail('Navigation module guard missing ' . $needle);
+}
+foreach (['$isAdmin', 'nmm_module_enabled(', "['role']"] as $forbidden) {
+    if (str_contains($sidebar, $forbidden)) v66q3_fail('Canonical sidebar contains variations: ' . $forbidden);
+}
+foreach (['portal-unified-runtime-v66q3.js', 'portal-dashboard-publishing-v66q5.js', 'portal-shell-v66q6.js'] as $obsolete) {
+    if (str_contains($shell, $obsolete)) v66q3_fail('Obsolete runtime remains in live shell: ' . $obsolete);
+}
+$stories = strpos($social, 'Recent stories');
+$feed = strpos($social, 'Social Feed');
+if ($stories === false || $feed === false || $stories >= $feed) {
+    v66q3_fail('Stories do not render before Social Feed.');
+}
+foreach (['social-feed-toolbar', 'social-feed-guidance', 'Posts and Stories'] as $forbidden) {
+    if (str_contains($social, $forbidden)) v66q3_fail('Removed My Feed surface remains: ' . $forbidden);
 }
 
-if (!str_contains($styles, 'admin-assistant-chat-integrated')) {
-    v66q3_fail('Integrated Agent Chat styles are missing.');
-}
-if (!str_contains($styles, 'social-feed-toolbar')) {
-    v66q3_fail('My Feed top-toolbar suppression is missing.');
-}
-if (!str_contains(
-    $publishing,
-    'portal-dashboard-publishing-v66q5.js?v=20260731-v66Q5'
-)) {
-    v66q3_fail('Publishing Center does not load the certified successor controller.');
-}
-if (str_contains($publishing, 'portal-unified-runtime-v66q3.js')) {
-    v66q3_fail('The superseded v66Q.3 controller remains loaded.');
-}
-if (str_contains($publishing, 'publishing-agent-runtime-v66q2.js')) {
-    v66q3_fail('The superseded v66Q.2 runtime remains loaded.');
-}
-if (!str_contains($social, 'social-feed-stories')) {
-    v66q3_fail('The Stories section is missing from My Feed.');
-}
-if (!str_contains($social, 'social-feed-column')) {
-    v66q3_fail('The Social Feed column is missing from My Feed.');
-}
-
-echo "v66Q.3 unified portal runtime contract passed.\n";
+echo "v66Q.3 server-rendered portal runtime contract passed.\n";
