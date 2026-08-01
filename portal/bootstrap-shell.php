@@ -234,7 +234,7 @@ function portal_footer(): void
                         >
                             <div class="admin-assistant-launcher-intro">
                                 <strong>Create and publish</strong>
-                                <span>Only post types enabled in Settings appear here. Every option opens its full publishing page directly.</span>
+                                <span>Only post types enabled in Settings appear here. Select one to load its form here; each option remains a direct link if enhancement is unavailable.</span>
                             </div>
                             <?php publishing_center_render_footer_links(); ?>
                         </section>
