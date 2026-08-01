@@ -1,0 +1,257 @@
+/* North Mountain Media build: 20260731-agent-chat-workspace-v66Q4 */
+
+.portal-body[data-portal-active="agent"] {
+  overflow: hidden;
+}
+
+.portal-body[data-portal-active="agent"] .portal-content {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.portal-body[data-portal-active="agent"] .agent-chat-page {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100%;
+  height: calc(100vh - 78px);
+  min-height: 540px;
+  overflow: hidden;
+  background: #f7f9fb;
+}
+
+.portal-body[data-portal-active="agent"] .agent-chat-empty {
+  position: absolute;
+  inset: 0 0 96px;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  padding: 32px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.portal-body[data-portal-active="agent"] .agent-chat-empty[hidden] {
+  display: none !important;
+}
+
+.portal-body[data-portal-active="agent"] .agent-chat-mark {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 18px;
+  border: 1px solid #dbe3e9;
+  border-radius: 17px;
+  color: #fff;
+  background: #132333;
+  box-shadow: 0 14px 34px rgba(19, 35, 51, .14);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.portal-body[data-portal-active="agent"] .agent-chat-empty h2 {
+  margin: 0;
+  color: #182533;
+  font-size: clamp(1.55rem, 2.8vw, 2.15rem);
+  letter-spacing: -.035em;
+}
+
+.portal-body[data-portal-active="agent"] .agent-chat-empty p {
+  width: min(560px, 100%);
+  margin: 10px 0 0;
+  color: #6b7885;
+  font-size: .9rem;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-chat,
+.portal-body[data-portal-active="agent"] .agent-chat-conversation {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1;
+  grid-row: 1;
+  display: block !important;
+  width: 100%;
+  min-height: 0 !important;
+  height: 100%;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-chat > header {
+  display: none !important;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-messages {
+  display: flex !important;
+  flex-direction: column;
+  align-content: initial;
+  gap: 24px;
+  width: min(900px, 100%);
+  height: 100%;
+  min-height: 0;
+  max-height: none !important;
+  margin: 0 auto;
+  padding: 44px 28px 54px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-messages:empty::before {
+  content: none !important;
+  display: none !important;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message {
+  display: grid;
+  gap: 7px;
+  width: min(100%, 760px);
+  margin: 0;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-user {
+  align-self: flex-end;
+  width: auto;
+  max-width: min(76%, 640px);
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-assistant {
+  align-self: flex-start;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-label {
+  color: #73808d;
+  font-size: .6rem;
+  font-weight: 820;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-user .admin-assistant-message-label {
+  text-align: right;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-bubble {
+  min-width: 0;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-user .admin-assistant-message-bubble {
+  padding: 13px 16px;
+  border-radius: 18px 18px 5px 18px;
+  color: #fff;
+  background: #132333;
+  box-shadow: 0 10px 24px rgba(19, 35, 51, .12);
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-user p {
+  margin: 0;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-message-assistant .admin-assistant-message-bubble {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-result,
+.portal-body[data-portal-active="agent"] .admin-assistant-message-assistant .admin-assistant-message-bubble > div {
+  padding: 18px 20px;
+  border: 1px solid #dfe6eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(26, 42, 55, .06);
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-result h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-result > p {
+  margin: 0;
+  color: #657382;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-loading {
+  position: absolute !important;
+  inset: auto auto 18px 50% !important;
+  z-index: 4;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 9px 13px !important;
+  transform: translateX(-50%);
+  border: 1px solid #dfe6eb !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, .96) !important;
+  box-shadow: 0 10px 28px rgba(26, 42, 55, .08) !important;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-loading strong {
+  font-size: .7rem;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-loading small {
+  display: none;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-footer,
+.portal-body[data-portal-active="agent"] .agent-chat-composer-dock {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 10;
+  grid-row: 2;
+  width: 100%;
+  margin: 0 !important;
+  padding: 12px 24px 18px !important;
+  border: 0 !important;
+  background: linear-gradient(to top, #f7f9fb 70%, rgba(247, 249, 251, 0));
+  box-shadow: none !important;
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-composer {
+  width: min(860px, 100%);
+  margin: 0 auto;
+  border: 1px solid #d8e0e6;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(26, 42, 55, .1);
+}
+
+.portal-body[data-portal-active="agent"] .admin-assistant-footer > small {
+  display: none;
+}
+
+.portal-body[data-portal-active="agent"].admin-assistant-active .portal-shell,
+.portal-body[data-portal-active="agent"].admin-assistant-querying .portal-shell {
+  filter: none !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 800px) {
+  .portal-body[data-portal-active="agent"] .agent-chat-page {
+    height: calc(100vh - 65px);
+    min-height: 500px;
+  }
+
+  .portal-body[data-portal-active="agent"] .admin-assistant-messages {
+    padding: 30px 16px 42px;
+  }
+
+  .portal-body[data-portal-active="agent"] .admin-assistant-message-user {
+    max-width: 88%;
+  }
+
+  .portal-body[data-portal-active="agent"] .admin-assistant-footer,
+  .portal-body[data-portal-active="agent"] .agent-chat-composer-dock {
+    padding: 10px 12px 12px !important;
+  }
+}
