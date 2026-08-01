@@ -52,13 +52,7 @@ function music_render_public_sidebar(
 
 function music_render_public_header(array $context): void
 {
-    // The account control is rendered by the shared PHP template for every
-    // public media, blog, portfolio, and related workspace page.
     ?>
-<link
-    rel="stylesheet"
-    href="<?=e(app_url('assets/css/public-account-menu-v66q7.css?v=20260731-v66Q7'))?>"
->
 <header class="workspace-header">
     <button
         aria-controls="workspaceSidebar"
