@@ -59,12 +59,15 @@ foreach ([
 foreach ([
     "dashboard.querySelectorAll('.music-library-continue-row')",
     "dashboard.querySelectorAll('.music-library-compact-track')",
+    "dashboard.querySelectorAll('.music-library-new-row')",
     "coverButton.className = 'music-library-cover-play'",
     "target.dataset.musicPlay = ''",
     'explicitPlay.remove()',
     'new MutationObserver(normalizeTopSectionPlayControls)',
     '.music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}',
     '.music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}',
+    '.music-library-new-row{grid-template-columns:52px minmax(0,1fr)!important}',
+    '.music-library-new-row>.music-library-play-control:not(.music-library-cover-play){display:none!important}',
 ] as $contract) {
     $require($musicRuntime, $contract, 'Cover artwork play controls');
 }
@@ -110,4 +113,4 @@ foreach (['CREATE TABLE', 'ALTER TABLE', 'DROP TABLE'] as $forbidden) {
     $forbid($adminRuntime . $musicRuntime . $follow, $forbidden, 'Runtime schema mutation');
 }
 
-echo "v66Q.14 full-viewport modal, cover-play controls, and dual-method Follow contract passed.\n";
+echo "v66Q.15 full-viewport modal, all summary cover-play controls, and dual-method Follow contract passed.\n";
