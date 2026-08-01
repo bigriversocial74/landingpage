@@ -28,6 +28,7 @@ $forbid = static function (string $source, string $needle, string $label): void 
 
 $sidebar = $read('portal/sidebar.php');
 $accordion = $read('assets/js/portal-sidebar-accordion-v66q11.js');
+$sidebarCss = $read('assets/css/portal-sidebar-accordion-v66q11.css');
 $shellCss = $read('assets/css/portal-shell-v66q7.css');
 $baseCss = $read('assets/css/portal.css');
 $publicSidebar = $read('portal/public-sidebar.php');
@@ -39,7 +40,8 @@ foreach ([
     'data-nav-group-panel',
     'aria-expanded=',
     'aria-controls=',
-    'portal-sidebar-accordion-v66q11.js',
+    'portal-sidebar-accordion-v66q11.css?v=20260801-v66Q11',
+    'portal-sidebar-accordion-v66q11.js?v=20260801-v66Q11',
 ] as $contract) {
     $require($sidebar, $contract, 'Accordion sidebar markup');
 }
@@ -57,20 +59,26 @@ foreach ([
 }
 
 $require($baseCss, '.portal-sidebar{position:fixed', 'Fixed sidebar base');
-$require($shellCss, '.portal-sidebar-shared{', 'Fixed sidebar override');
-$require($shellCss, 'overflow:hidden', 'Non-scrolling sidebar');
-$require($shellCss, '.portal-nav-authenticated{', 'Portal navigation override');
-$require($shellCss, 'line-height:1.2', 'Compact link line height');
-$require($shellCss, 'background:transparent', 'Plain text navigation');
-$require($shellCss, 'border-radius:0', 'Plain text navigation');
+foreach ([
+    '.portal-sidebar.portal-sidebar-shared',
+    'overflow:hidden!important',
+    '.portal-sidebar-shared .portal-nav-authenticated',
+    'line-height:1.2!important',
+    'background:transparent!important',
+    'border-radius:0!important',
+    '.portal-nav-group-links[hidden]',
+] as $contract) {
+    $require($sidebarCss, $contract, 'Cache-safe fixed sidebar styling');
+}
+$require($shellCss, '.portal-sidebar-shared{', 'Retained sidebar override');
 
-if (preg_match('/\.portal-nav-authenticated\s*\{[^}]*overflow\s*:\s*auto/s', $shellCss) === 1) {
+if (preg_match('/\.portal-sidebar-shared \.portal-nav-authenticated\s*\{[^}]*overflow\s*:\s*auto/s', $sidebarCss) === 1) {
     sidebar_v66q11_fail('Authenticated sidebar navigation still scrolls.');
 }
-if (preg_match('/\.portal-nav-group-links a\.active\s*\{[^}]*background\s*:\s*(?!transparent)/s', $shellCss) === 1) {
+if (preg_match('/\.portal-sidebar-shared \.portal-nav-group-links a\.active[^\{]*\{[^}]*background\s*:\s*(?!transparent)/s', $sidebarCss) === 1) {
     sidebar_v66q11_fail('Active navigation link still has a decorative background.');
 }
-if (preg_match('/\.portal-nav-group-links a\s*\{[^}]*border-radius\s*:\s*(?!0)/s', $shellCss) === 1) {
+if (preg_match('/\.portal-sidebar-shared \.portal-nav-group-links a[^\{]*\{[^}]*border-radius\s*:\s*(?!0)/s', $sidebarCss) === 1) {
     sidebar_v66q11_fail('Navigation links still use pill or card styling.');
 }
 
