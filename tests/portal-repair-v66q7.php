@@ -11,5 +11,6 @@ require __DIR__ . '/sidebar-account-music-v66q12.php';
 require __DIR__ . '/admin-actions-fullwidth-v66q13.php';
 require __DIR__ . '/fullviewport-follow-cover-v66q14.php';
 require __DIR__ . '/pod-one-click-follow-v66q15.php';
+require __DIR__ . '/music-summary-no-icons-v66q17.php';
 
-echo "v66Q.15 consolidated portal repair contract passed.\n";
+echo "v66Q.17 consolidated portal repair contract passed.\n";

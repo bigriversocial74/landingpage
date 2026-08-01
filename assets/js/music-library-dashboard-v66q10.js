@@ -1,4 +1,4 @@
-/* North Mountain Media build: 20260801-music-library-cover-position-v66Q16 */
+/* North Mountain Media build: 20260801-music-summary-no-icons-v66Q17 */
 (() => {
   'use strict';
 
@@ -16,7 +16,7 @@
     if (document.querySelector('[data-music-cover-play-styles]')) return;
 
     const style = document.createElement('style');
-    style.dataset.musicCoverPlayStyles = 'v66Q.16';
+    style.dataset.musicCoverPlayStyles = 'v66Q.17';
     style.textContent = `
       .music-library-continue-row{grid-template-columns:52px minmax(0,1fr)!important}
       .music-library-compact-track{grid-template-columns:18px 40px minmax(0,1fr) 38px 24px!important}
@@ -27,7 +27,8 @@
         margin:0!important;padding:0!important;border:0!important;
         background:transparent!important;box-shadow:none!important;
         color:transparent!important;font-size:0!important;line-height:0!important;
-        cursor:pointer!important;overflow:visible!important;
+        opacity:0!important;cursor:pointer!important;overflow:hidden!important;
+        appearance:none!important;-webkit-appearance:none!important;
       }
       .music-library-cover-play:focus-visible{
         outline:2px solid #17202b!important;outline-offset:2px!important;
@@ -51,10 +52,9 @@
 
   const findCoverPlayElements = (row) => {
     const image = row?.querySelector('img') || null;
-    const button = row
-      ? [...row.querySelectorAll('[data-music-play]')]
-        .find((candidate) => candidate instanceof HTMLButtonElement)
-      : null;
+    const button = row?.querySelector(
+      'button[data-music-summary-cover-hit][data-music-play]'
+    ) || null;
 
     return { image, button };
   };
@@ -72,6 +72,7 @@
     button.style.width = `${imageRect.width}px`;
     button.style.height = `${imageRect.height}px`;
     button.style.borderRadius = window.getComputedStyle(image).borderRadius;
+    button.style.pointerEvents = 'auto';
   };
 
   const scheduleCoverPlayGeometry = () => {
@@ -90,7 +91,14 @@
     row.classList.add('music-library-cover-play-row');
     button.classList.add('music-library-cover-play');
     button.dataset.coverPlayOverlay = '1';
+    button.replaceChildren();
     button.textContent = '';
+    button.style.opacity = '0';
+    button.style.color = 'transparent';
+    button.style.background = 'transparent';
+    button.style.border = '0';
+    button.style.fontSize = '0';
+    button.style.lineHeight = '0';
 
     if (row.dataset.coverPlayReady !== '1') {
       button.addEventListener('pointerenter', () => row.classList.add('is-cover-play-hover'));

@@ -99,7 +99,7 @@ function music_collection_track_count(array $collection): int
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="North Mountain Media streaming music library.">
-<meta name="build-version" content="20260801-music-library-v66Q10">
+<meta name="build-version" content="20260801-music-library-v66Q17">
 <title>Music Library — North Mountain Media</title>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-music-shell.css?v=20260727-site-controls-landing-v60'))?>">
 <link rel="stylesheet" href="<?=e(app_url('assets/css/public-sidebar.css?v=20260727-site-controls-landing-v60'))?>">
@@ -172,9 +172,11 @@ function music_collection_track_count(array $collection): int
                             </div>
                             <button
                                 type="button"
+                                data-music-summary-cover-hit
+                                style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0;margin:0;overflow:hidden;background:transparent;color:transparent;font-size:0;line-height:0"
                                 <?=music_dashboard_track_attributes($track)?>
                                 aria-label="Play <?=e($track['title'])?>"
-                            >▶</button>
+                            ></button>
                         </article>
                     <?php endforeach; ?>
                 </div>
@@ -192,9 +194,11 @@ function music_collection_track_count(array $collection): int
                             <img src="<?=e($track['cover_url'])?>" alt="" loading="lazy">
                             <button
                                 type="button"
+                                data-music-summary-cover-hit
+                                style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0;margin:0;overflow:hidden;background:transparent;color:transparent;font-size:0;line-height:0"
                                 <?=music_dashboard_track_attributes($track)?>
                                 aria-label="Play <?=e($track['title'])?>"
-                            >▶</button>
+                            ></button>
                             <div>
                                 <strong><?=e($track['title'])?></strong>
                                 <small><?=e($track['artist'])?></small>
@@ -217,9 +221,11 @@ function music_collection_track_count(array $collection): int
                             <img src="<?=e($track['cover_url'])?>" alt="" loading="lazy">
                             <button
                                 type="button"
+                                data-music-summary-cover-hit
+                                style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0;margin:0;overflow:hidden;background:transparent;color:transparent;font-size:0;line-height:0"
                                 <?=music_dashboard_track_attributes($track)?>
                                 aria-label="Play <?=e($track['title'])?>"
-                            >▶</button>
+                            ></button>
                             <div>
                                 <strong><?=e($track['title'])?></strong>
                                 <span><?=e($track['artist'])?></span>
@@ -389,7 +395,7 @@ function music_collection_track_count(array $collection): int
 <script src="<?=e(app_url('assets/js/visitor-activity.js?v=20260727-site-controls-landing-v60'))?>"></script>
 <script src="<?=e(app_url('assets/js/music-player.js?v=20260801-professional-player-v66Q9'))?>"></script>
 <script src="<?=e(app_url('assets/js/music-dashboard.js?v=20260801-v66Q10'))?>"></script>
-<script src="<?=e(app_url('assets/js/music-library-dashboard-v66q10.js?v=20260801-v66Q10'))?>"></script>
+<script src="<?=e(app_url('assets/js/music-library-dashboard-v66q10.js?v=20260801-v66Q17'))?>"></script>
 <script>
 window.NMMVisitorActivity?.track(
   'music_library_view',
