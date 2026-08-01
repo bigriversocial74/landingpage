@@ -12,6 +12,7 @@ $read = static function (string $path) use ($root): string {
 
 $publishing = $read('portal/publishing-center.php');
 $shell = $read('portal/bootstrap-shell.php');
+$shellCss = $read('assets/css/portal-shell-v66q7.css');
 $navigation = $read('portal/navigation.php');
 $social = $read('portal/social-posts.php');
 $settings = $read('portal/site-settings.php');
@@ -34,6 +35,11 @@ foreach (['nmm_module_enabled((string)$module)', 'data-publishing-direct', 'data
 foreach (['<iframe', '?modal=1', 'publishing-center-v66q.js', 'data-footer-publishing-frame'] as $forbidden) {
     if (str_contains($publishing, $forbidden)) {
         throw new RuntimeException('Publishing Center retains forbidden container behavior: ' . $forbidden);
+    }
+}
+foreach (['footer-publishing-stage', 'footer-publishing-layout', 'data-footer-publishing-frame', 'publishing-center-trigger', 'iframe'] as $forbidden) {
+    if (str_contains($shellCss, $forbidden)) {
+        throw new RuntimeException('Portal shell CSS retains obsolete Publishing behavior: ' . $forbidden);
     }
 }
 foreach (['data-admin-quick-toggle', 'data-admin-launcher-tab="publishing"', 'publishing_center_render_footer_links'] as $needle) {
