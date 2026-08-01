@@ -105,10 +105,26 @@
     }
   });
 
+  const publishingKeyForTrigger = (trigger) => {
+    const explicit = String(trigger?.dataset?.publishingOpen || '').trim();
+    if (explicit) return explicit;
+
+    const target = normalize(trigger?.href || trigger?.dataset?.publishingUrl || '');
+    if (!target) return '';
+    if (target.pathname.endsWith('/portal/publish-story.php')) return 'story';
+    if (target.pathname.endsWith('/portal/publish-social-post.php')) return 'social-post';
+    return '';
+  };
+
   document.addEventListener('click', (event) => {
-    const trigger = event.target.closest('[data-publishing-open]');
+    const trigger = event.target.closest(
+      '[data-publishing-open], '
+      + 'a[href*="/portal/publish-story.php"], '
+      + 'a[href*="/portal/publish-social-post.php"]'
+    );
     if (!trigger || trigger.closest('[data-footer-publishing]')) return;
-    const key = trigger.dataset.publishingOpen || '';
+
+    const key = publishingKeyForTrigger(trigger);
     const match = links.find((link) => link.dataset.publishingDirect === key);
     if (!match) return;
     if (
