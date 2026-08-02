@@ -28,6 +28,7 @@ $forbid = static function (string $source, string $needle, string $label): void 
 
 $bootstrap = $read('portal/bootstrap.php');
 $foundation = $read('portal/music-customer-accounts.php');
+$security = $read('portal/music-customer-security.php');
 $login = $read('portal/login.php');
 $register = $read('portal/customer-register.php');
 $customer = $read('portal/customer.php');
@@ -36,7 +37,12 @@ $publicAccount = $read('portal/public-account-menu.php');
 $migration = $read('database/music_customer_accounts_v66q20.sql');
 $css = $read('assets/css/music-customer-accounts-v66q20.css');
 
-$require($bootstrap, "require_once __DIR__ . '/music-customer-accounts.php'", 'Shared bootstrap');
+foreach ([
+    "require_once __DIR__ . '/music-customer-accounts.php'",
+    "require_once __DIR__ . '/music-customer-security.php'",
+] as $contract) {
+    $require($bootstrap, $contract, 'Shared bootstrap');
+}
 
 foreach ([
     "ENUM('admin','client','customer')",
@@ -71,6 +77,17 @@ foreach ([
 }
 
 foreach ([
+    'function music_customer_public_track_exists(',
+    'function music_customer_visible_playlist(',
+    'asset.status="published"',
+    'asset.is_public=1',
+    'track.published_at<=UTC_TIMESTAMP()',
+    'customer_user_id=:user_id',
+] as $contract) {
+    $require($security, $contract, 'Customer public-music boundary');
+}
+
+foreach ([
     "['admin', 'client', 'customer', 'pod']",
     "'customer' => 'Customer'",
     'music_customer_accounts_active()',
@@ -93,13 +110,16 @@ foreach ([
 
 foreach ([
     '$user = require_music_customer()',
+    '$mustChangePassword = (int)($user[\'must_change_password\'] ?? 0) === 1',
     "['playlists', 'library', 'account']",
     'if ($action === \'create_playlist\')',
     'if ($action === \'add_track\')',
     'if ($action === \'remove_track\')',
     'if ($action === \'change_password\')',
-    'music_public_tracks()',
-    'music_customer_playlist(',
+    "hash_equals('DELETE', input('delete_confirmation'))",
+    'music_customer_public_track_exists($trackId)',
+    'music_customer_visible_playlist($selectedId',
+    "array_map('music_track_payload', music_public_tracks())",
 ] as $contract) {
     $require($customer, $contract, 'Customer workspace');
 }
@@ -123,6 +143,7 @@ foreach ([
     'music_customer_accounts_active()',
     'Create listener account',
     'portal/login.php?role=customer',
+    'public-account-menu-v66q12.js?v=20260801-v66Q12',
 ] as $contract) {
     $require($publicAccount, $contract, 'Public customer account menu');
 }
@@ -137,4 +158,4 @@ foreach ([
     $require($css, $contract, 'Customer interface styles');
 }
 
-echo "v66Q.20 opt-in customer accounts, private playlists, and role isolation contract passed.\n";
+echo "v66Q.20 opt-in customer accounts, private playlists, public-track isolation, and role separation contract passed.\n";
