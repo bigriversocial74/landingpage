@@ -66,7 +66,7 @@ foreach ([
     $require($authorize, $contract, 'Authenticated home POD authorization');
 }
 foreach ([
-    "['admin', 'client', 'pod']",
+    "['admin', 'client', 'customer', 'pod']",
     'function attempt_pod_account_login',
     'pod_follow_safe_login_return',
     "attempt_pod_account_login(input('email')",
@@ -126,4 +126,4 @@ $forbid($handoff . $intent . $authorize . $login . $follow . $followJs, 'CREATE 
 $forbid($handoff . $intent . $authorize . $login . $follow . $followJs, 'ALTER TABLE', 'Runtime schema mutation');
 $forbid($handoff . $intent . $authorize . $login . $follow . $followJs, 'DROP TABLE', 'Runtime schema mutation');
 
-echo "v66Q.15 signed one-click POD follow and login resume contract passed.\n";
+echo "v66Q.20 signed one-click POD follow and customer-capable login resume contract passed.\n";
