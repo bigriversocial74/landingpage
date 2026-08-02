@@ -34,7 +34,7 @@ if (is_post()) {
             throw new RuntimeException('Too many account requests were submitted. Try again later.');
         }
 
-        $result = music_customer_register_v21(
+        $result = music_customer_register_final(
             input('display_name'),
             input('email'),
             (string)($_POST['password'] ?? ''),
