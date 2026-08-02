@@ -94,10 +94,10 @@ foreach ([
 foreach ([
     '$user = require_music_customer()',
     "['playlists', 'library', 'account']",
-    "if ($action === 'create_playlist')",
-    "if ($action === 'add_track')",
-    "if ($action === 'remove_track')",
-    "if ($action === 'change_password')",
+    'if ($action === \'create_playlist\')',
+    'if ($action === \'add_track\')',
+    'if ($action === \'remove_track\')',
+    'if ($action === \'change_password\')',
     'music_public_tracks()',
     'music_customer_playlist(',
 ] as $contract) {
