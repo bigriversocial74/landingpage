@@ -7,8 +7,11 @@ if ($signedIn = current_user()) {
     redirect(music_customer_home_for_role((string)$signedIn['role']));
 }
 
-$featureReady = music_customer_accounts_active();
+$featureEnabled = music_customer_accounts_active();
+$lifecycleReady = music_customer_lifecycle_ready();
 $error = '';
+$submitted = false;
+$verificationRequired = $lifecycleReady && music_customer_email_verification_required();
 
 if (is_post()) {
     verify_csrf();
@@ -18,60 +21,34 @@ if (is_post()) {
     }
 
     try {
-        if (!$featureReady) {
+        if (!$featureEnabled) {
             throw new RuntimeException('Customer accounts are not currently available.');
         }
+        if (!$lifecycleReady) {
+            throw new RuntimeException('Customer account security is not installed. Contact the site owner.');
+        }
         if (input('website') !== '') {
-            throw new RuntimeException('The account could not be created.');
+            throw new RuntimeException('The account request could not be accepted.');
         }
-        if (
-            function_exists('rate_limit_exceeded')
-            && rate_limit_exceeded('music_customer_register', request_ip(), 5, 3600)
-        ) {
-            throw new RuntimeException('Too many account attempts were submitted. Try again later.');
+        if (rate_limit_exceeded('music_customer_register_ip', request_ip(), 5, 3600)) {
+            throw new RuntimeException('Too many account requests were submitted. Try again later.');
         }
 
-        $name = trim(input('display_name'));
-        $email = strtolower(trim(input('email')));
-        $password = (string)($_POST['password'] ?? '');
-        $confirm = (string)($_POST['confirm_password'] ?? '');
-
-        if ($name === '' || mb_strlen($name) > 160) {
-            throw new RuntimeException('Enter your name.');
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) {
-            throw new RuntimeException('Enter a valid email address.');
-        }
-        $passwordErrors = password_policy_errors($password, $email);
-        if ($passwordErrors) {
-            throw new RuntimeException(implode(' ', $passwordErrors));
-        }
-        if (!hash_equals($password, $confirm)) {
-            throw new RuntimeException('The passwords do not match.');
-        }
-
-        $duplicate = db()->prepare('SELECT id FROM users WHERE email=:email LIMIT 1');
-        $duplicate->execute(['email' => $email]);
-        if ($duplicate->fetchColumn()) {
-            throw new RuntimeException('An account already uses that email address.');
-        }
-
-        $statement = db()->prepare(
-            'INSERT INTO users
-                (role,email,password_hash,display_name,status,must_change_password)
-             VALUES
-                ("customer",:email,:password_hash,:display_name,"active",0)'
+        $result = music_customer_register_v21(
+            input('display_name'),
+            input('email'),
+            (string)($_POST['password'] ?? ''),
+            (string)($_POST['confirm_password'] ?? '')
         );
-        $statement->execute([
-            'email' => $email,
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-            'display_name' => $name,
-        ]);
-        $userId = (int)db()->lastInsertId();
-        music_customer_start_session($userId);
-        log_activity('music_customer_registered', 'user', $userId);
-        flash('success', 'Your listener account is ready. Create your first playlist.');
-        redirect('portal/customer.php?view=playlists&new=1');
+        $verificationRequired = (bool)$result['verification_required'];
+
+        if ($result['created'] && !$verificationRequired) {
+            music_customer_start_secure_session((int)$result['user_id']);
+            flash('success', 'Your listener account is ready. Create your first playlist.');
+            redirect('portal/customer.php?view=playlists&new=1');
+        }
+
+        $submitted = true;
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
     }
@@ -85,25 +62,50 @@ if (is_post()) {
 <meta name="robots" content="noindex,follow">
 <title>Create Customer Account — North Mountain Media</title>
 <link rel="stylesheet" href="<?=e(app_url('assets/css/music-customer-accounts-v66q20.css?v=20260802-v66Q20'))?>">
+<link rel="stylesheet" href="<?=e(app_url('assets/css/music-customer-accounts-v66q21.css?v=20260802-v66Q21'))?>">
 </head>
 <body class="music-customer-body">
-<main class="music-customer-register-shell">
+<a class="music-customer-skip-link" href="#customer-registration">Skip to account registration</a>
+<main class="music-customer-register-shell" id="customer-registration">
     <section class="music-customer-register-card">
         <a href="<?=e(app_url('music-library.php'))?>">
             <img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>">
         </a>
-        <?php if (!$featureReady): ?>
+
+        <?php if (!$featureEnabled): ?>
             <h1>Customer accounts are unavailable</h1>
             <p>The site owner has not enabled listener accounts and private playlists.</p>
             <div class="music-customer-register-links">
                 <a href="<?=e(app_url('music-library.php'))?>">Return to Music Library</a>
                 <a href="<?=e(app_url('portal/login.php?role=client'))?>">Client login</a>
             </div>
+        <?php elseif (!$lifecycleReady): ?>
+            <h1>Account setup is incomplete</h1>
+            <p>The customer lifecycle migration must be installed before new listener accounts can be created.</p>
+            <div class="music-customer-register-links">
+                <a href="<?=e(app_url('music-library.php'))?>">Return to Music Library</a>
+                <a href="<?=e(app_url('portal/login.php?role=customer'))?>">Customer login</a>
+            </div>
+        <?php elseif ($submitted): ?>
+            <span class="music-customer-eyebrow">Account request received</span>
+            <h1>Check your email</h1>
+            <div class="music-customer-alert music-customer-alert-success" role="status">
+                If this address can be used for a listener account, the next step has been sent. Existing accounts are not disclosed.
+            </div>
+            <p>Verification links are one-time, expire after one hour, and do not contain your password.</p>
+            <div class="music-customer-register-links">
+                <a href="<?=e(app_url('portal/customer-verify.php?pending=1'))?>">Resend verification</a>
+                <a href="<?=e(app_url('portal/login.php?role=customer'))?>">Customer sign in</a>
+            </div>
         <?php else: ?>
+            <span class="music-customer-eyebrow">Private playlists</span>
             <h1>Create your listener account</h1>
-            <p>Save private playlists and organize the tracks you want to hear again. Customer accounts do not include client-project or administrator access.</p>
+            <p>Save private playlists and organize the tracks you want to hear again. Customer accounts never include client-project or administrator access.</p>
+            <?php if ($verificationRequired): ?>
+                <div class="music-customer-notice">Email verification is required. A one-time activation link will be sent after registration.</div>
+            <?php endif; ?>
             <?php if ($error !== ''): ?>
-                <div class="music-customer-alert music-customer-alert-error"><?=e($error)?></div>
+                <div class="music-customer-alert music-customer-alert-error" role="alert"><?=e($error)?></div>
             <?php endif; ?>
             <form method="post" class="music-customer-form" autocomplete="on">
                 <?=csrf_field()?>
@@ -121,7 +123,8 @@ if (is_post()) {
                 </label>
                 <label class="music-customer-field">
                     <span>Password</span>
-                    <input type="password" name="password" maxlength="256" autocomplete="new-password" required>
+                    <input type="password" name="password" maxlength="256" autocomplete="new-password" aria-describedby="customer-password-help" required>
+                    <small id="customer-password-help">Use at least 12 characters and at least three of: lowercase, uppercase, numbers, and symbols.</small>
                 </label>
                 <label class="music-customer-field">
                     <span>Confirm password</span>
@@ -129,8 +132,9 @@ if (is_post()) {
                 </label>
                 <button class="music-customer-button" type="submit">Create customer account</button>
             </form>
-            <div class="music-customer-register-links">
+            <div class="music-customer-auth-actions">
                 <a href="<?=e(app_url('portal/login.php?role=customer'))?>">Already have an account?</a>
+                <a href="<?=e(app_url('portal/customer-password.php'))?>">Forgot password?</a>
                 <a href="<?=e(app_url('music-library.php'))?>">Return to Music Library</a>
             </div>
         <?php endif; ?>
