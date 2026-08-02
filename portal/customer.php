@@ -5,8 +5,10 @@ require __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/music-library.php';
 
 $user = require_music_customer();
+$mustChangePassword = (int)($user['must_change_password'] ?? 0) === 1;
 $view = (string)($_GET['view'] ?? 'playlists');
 if (!in_array($view, ['playlists', 'library', 'account'], true)) $view = 'playlists';
+if ($mustChangePassword) $view = 'account';
 
 if (is_post()) {
     verify_csrf();
@@ -18,6 +20,9 @@ if (is_post()) {
     $action = input('action');
 
     try {
+        if ($mustChangePassword && $action !== 'change_password') {
+            throw new RuntimeException('Change your temporary password before using the music account.');
+        }
         if ($action === 'create_playlist') {
             $playlistId = music_customer_create_playlist((int)$user['id'], input('title'), input('description'));
             flash('success', 'Playlist created.');
@@ -30,13 +35,20 @@ if (is_post()) {
             redirect('portal/customer.php?view=playlists&id=' . $playlistId);
         }
         if ($action === 'delete_playlist') {
+            if (!hash_equals('DELETE', input('delete_confirmation'))) {
+                throw new RuntimeException('Type DELETE to confirm playlist deletion.');
+            }
             music_customer_delete_playlist(int_input('playlist_id'), (int)$user['id']);
             flash('success', 'Playlist deleted.');
             redirect('portal/customer.php?view=playlists');
         }
         if ($action === 'add_track') {
             $playlistId = int_input('playlist_id');
-            music_customer_add_track($playlistId, int_input('track_id'), (int)$user['id']);
+            $trackId = int_input('track_id');
+            if (!music_customer_public_track_exists($trackId)) {
+                throw new RuntimeException('That track is not available in the public Music Library.');
+            }
+            music_customer_add_track($playlistId, $trackId, (int)$user['id']);
             flash('success', 'Track added to your playlist.');
             redirect($view === 'library'
                 ? 'portal/customer.php?view=library'
@@ -99,7 +111,7 @@ $playlists = music_customer_playlists((int)$user['id']);
 $selectedId = query_int('id');
 if ($selectedId <= 0 && $playlists) $selectedId = (int)$playlists[0]['id'];
 $selectedPlaylist = $selectedId > 0
-    ? music_customer_playlist($selectedId, (int)$user['id'])
+    ? music_customer_visible_playlist($selectedId, (int)$user['id'])
     : null;
 $tracks = array_map('music_track_payload', music_public_tracks());
 $flashes = pull_flashes();
@@ -123,9 +135,11 @@ $title = match ($view) {
 <header class="music-customer-header">
     <a class="music-customer-brand" href="<?=e(app_url('music-library.php'))?>"><img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>"></a>
     <nav aria-label="Customer account">
-        <a class="<?=$view === 'playlists' ? 'is-active' : ''?>" href="<?=e(app_url('portal/customer.php?view=playlists'))?>">My Playlists</a>
-        <a class="<?=$view === 'library' ? 'is-active' : ''?>" href="<?=e(app_url('portal/customer.php?view=library'))?>">Add Music</a>
-        <a href="<?=e(app_url('music-library.php'))?>">Music Library</a>
+        <?php if (!$mustChangePassword): ?>
+            <a class="<?=$view === 'playlists' ? 'is-active' : ''?>" href="<?=e(app_url('portal/customer.php?view=playlists'))?>">My Playlists</a>
+            <a class="<?=$view === 'library' ? 'is-active' : ''?>" href="<?=e(app_url('portal/customer.php?view=library'))?>">Add Music</a>
+            <a href="<?=e(app_url('music-library.php'))?>">Music Library</a>
+        <?php endif; ?>
         <a class="<?=$view === 'account' ? 'is-active' : ''?>" href="<?=e(app_url('portal/customer.php?view=account'))?>"><?=e($user['display_name'])?></a>
         <a class="music-customer-logout" href="<?=e(app_url('portal/logout.php'))?>">Sign out</a>
     </nav>
@@ -136,18 +150,23 @@ $title = match ($view) {
         <div>
             <span>Customer music account</span>
             <h1><?=e($title)?></h1>
-            <p><?= $view === 'library'
-                ? 'Add published tracks to any of your private playlists.'
-                : ($view === 'account'
-                    ? 'Manage your listener profile and password.'
-                    : 'Create private playlists and organize your favorite North Mountain Media tracks.') ?></p>
+            <p><?= $mustChangePassword
+                ? 'Change the temporary password before using playlists or browsing your account library.'
+                : ($view === 'library'
+                    ? 'Add published tracks to any of your private playlists.'
+                    : ($view === 'account'
+                        ? 'Manage your listener profile and password.'
+                        : 'Create private playlists and organize your favorite North Mountain Media tracks.')) ?></p>
         </div>
-        <?php if ($view !== 'library'): ?><a href="<?=e(app_url('portal/customer.php?view=library'))?>">Browse tracks</a><?php endif; ?>
+        <?php if (!$mustChangePassword && $view !== 'library'): ?><a href="<?=e(app_url('portal/customer.php?view=library'))?>">Browse tracks</a><?php endif; ?>
     </section>
 
     <?php foreach ($flashes as $flash): ?>
         <div class="music-customer-alert music-customer-alert-<?=e($flash['type'])?>"><?=e($flash['message'])?></div>
     <?php endforeach; ?>
+    <?php if ($mustChangePassword): ?>
+        <div class="music-customer-alert music-customer-alert-error">Your password was reset by an administrator. Choose a new password to continue.</div>
+    <?php endif; ?>
 
     <?php if ($view === 'playlists'): ?>
         <div class="music-customer-grid">
@@ -260,20 +279,22 @@ $title = match ($view) {
 
     <?php if ($view === 'account'): ?>
         <div class="music-customer-account-grid">
-            <section class="music-customer-card">
-                <header><h2>Listener profile</h2><span>Customer</span></header>
-                <div class="music-customer-card-body">
-                    <form method="post" enctype="multipart/form-data" class="music-customer-form">
-                        <?=csrf_field()?>
-                        <input type="hidden" name="action" value="save_account_profile">
-                        <label class="music-customer-field"><span>Name</span><input name="display_name" maxlength="160" value="<?=e($user['display_name'])?>" required></label>
-                        <label class="music-customer-field"><span>Email</span><input type="email" name="email" maxlength="190" value="<?=e($user['email'])?>" required></label>
-                        <label class="music-customer-field"><span>Profile photo</span><input type="file" name="profile_image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
-                        <?php if (!empty($user['profile_image_stored_name'])): ?><label class="music-customer-field"><span><input type="checkbox" name="remove_profile_image" value="1"> Remove current photo</span></label><?php endif; ?>
-                        <button class="music-customer-button" type="submit">Save profile</button>
-                    </form>
-                </div>
-            </section>
+            <?php if (!$mustChangePassword): ?>
+                <section class="music-customer-card">
+                    <header><h2>Listener profile</h2><span>Customer</span></header>
+                    <div class="music-customer-card-body">
+                        <form method="post" enctype="multipart/form-data" class="music-customer-form">
+                            <?=csrf_field()?>
+                            <input type="hidden" name="action" value="save_account_profile">
+                            <label class="music-customer-field"><span>Name</span><input name="display_name" maxlength="160" value="<?=e($user['display_name'])?>" required></label>
+                            <label class="music-customer-field"><span>Email</span><input type="email" name="email" maxlength="190" value="<?=e($user['email'])?>" required></label>
+                            <label class="music-customer-field"><span>Profile photo</span><input type="file" name="profile_image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+                            <?php if (!empty($user['profile_image_stored_name'])): ?><label class="music-customer-field"><span><input type="checkbox" name="remove_profile_image" value="1"> Remove current photo</span></label><?php endif; ?>
+                            <button class="music-customer-button" type="submit">Save profile</button>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
             <section class="music-customer-card">
                 <header><h2>Change password</h2><span>Security</span></header>
                 <div class="music-customer-card-body">
