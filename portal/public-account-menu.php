@@ -54,9 +54,9 @@ function nmm_public_account_menu_context(): array
 function nmm_public_account_assets_html(): string
 {
     return '<link rel="stylesheet" href="'
-        . e(app_url('assets/css/public-account-menu-v66q7.css?v=20260802-v66Q20'))
+        . e(app_url('assets/css/public-account-menu-v66q7.css?v=20260801-v66Q12'))
         . '"><script defer src="'
-        . e(app_url('assets/js/public-account-menu-v66q12.js?v=20260802-v66Q20'))
+        . e(app_url('assets/js/public-account-menu-v66q12.js?v=20260801-v66Q12'))
         . '"></script>';
 }
 
