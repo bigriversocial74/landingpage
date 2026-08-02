@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/* North Mountain Media build: 20260801-public-account-menu-v66Q12 */
+/* North Mountain Media build: 20260802-public-account-menu-v66Q20 */
 
 require_once __DIR__ . '/public-follow.php';
 
@@ -10,13 +10,22 @@ function nmm_public_account_menu_context(): array
     $user = function_exists('current_user') ? current_user() : null;
 
     if ($user) {
-        $isAdmin = (string)($user['role'] ?? '') === 'admin';
-        $script = $isAdmin ? 'admin.php' : 'client.php';
+        $role = (string)($user['role'] ?? '');
+        $script = match ($role) {
+            'admin' => 'admin.php',
+            'customer' => 'customer.php',
+            default => 'client.php',
+        };
+        $roleLabel = match ($role) {
+            'admin' => 'Administrator',
+            'customer' => 'Customer',
+            default => 'Client',
+        };
 
         return [
             'signed_in' => true,
             'display_name' => trim((string)($user['display_name'] ?? 'Account')) ?: 'Account',
-            'role_label' => $isAdmin ? 'Administrator' : 'Client',
+            'role_label' => $roleLabel,
             'avatar_url' => function_exists('user_profile_image_url')
                 ? user_profile_image_url($user)
                 : '',
@@ -26,11 +35,17 @@ function nmm_public_account_menu_context(): array
         ];
     }
 
+    $customerEnabled = function_exists('music_customer_accounts_active')
+        && music_customer_accounts_active();
+
     return [
         'signed_in' => false,
         'display_name' => 'Account',
         'role_label' => 'Sign in',
         'avatar_url' => '',
+        'customer_enabled' => $customerEnabled,
+        'customer_url' => app_url('portal/login.php?role=customer'),
+        'customer_register_url' => app_url('portal/customer-register.php'),
         'client_url' => app_url('portal/login.php?role=client'),
         'admin_url' => app_url('portal/login.php?role=admin'),
     ];
@@ -39,9 +54,9 @@ function nmm_public_account_menu_context(): array
 function nmm_public_account_assets_html(): string
 {
     return '<link rel="stylesheet" href="'
-        . e(app_url('assets/css/public-account-menu-v66q7.css?v=20260801-v66Q12'))
+        . e(app_url('assets/css/public-account-menu-v66q7.css?v=20260802-v66Q20'))
         . '"><script defer src="'
-        . e(app_url('assets/js/public-account-menu-v66q12.js?v=20260801-v66Q12'))
+        . e(app_url('assets/js/public-account-menu-v66q12.js?v=20260802-v66Q20'))
         . '"></script>';
 }
 
@@ -73,6 +88,10 @@ function nmm_public_account_menu_html(): string
                 <a href="<?=e($context['account_url'])?>">Account settings</a>
                 <a class="public-account-signout" href="<?=e($context['logout_url'])?>">Sign out</a>
             <?php else: ?>
+                <?php if (!empty($context['customer_enabled'])): ?>
+                    <a href="<?=e($context['customer_url'])?>">Customer login</a>
+                    <a href="<?=e($context['customer_register_url'])?>">Create listener account</a>
+                <?php endif; ?>
                 <a href="<?=e($context['client_url'])?>">Client login</a>
                 <a href="<?=e($context['admin_url'])?>">Administrator login</a>
             <?php endif; ?>
@@ -93,7 +112,7 @@ function nmm_remove_direct_login_links_from_header(string $html): string
         '#<header\b[^>]*>.*?</header>#is',
         static function (array $match): string {
             return preg_replace(
-                '#<a\b[^>]*href=(?:"|\')[^"\']*portal/login\.php\?role=(?:client|admin)[^"\']*(?:"|\')[^>]*>.*?</a>#is',
+                '#<a\b[^>]*href=(?:"|\')[^"\']*portal/login\.php\?role=(?:client|admin|customer)[^"\']*(?:"|\')[^>]*>.*?</a>#is',
                 '',
                 (string)$match[0]
             ) ?? (string)$match[0];
