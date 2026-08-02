@@ -14,5 +14,6 @@ require __DIR__ . '/pod-one-click-follow-v66q15.php';
 require __DIR__ . '/music-summary-no-icons-v66q17.php';
 require __DIR__ . '/music-summary-uniform-covers-v66q18.php';
 require __DIR__ . '/music-customer-accounts-v66q20.php';
+require __DIR__ . '/music-customer-accounts-v66q21.php';
 
-echo "v66Q.20 consolidated portal repair contract passed.\n";
+echo "v66Q.21 consolidated portal repair contract passed.\n";
