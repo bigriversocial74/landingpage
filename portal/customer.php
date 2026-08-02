@@ -8,8 +8,12 @@ $user = require_music_customer_v21();
 $state = (array)$user['music_customer_state'];
 $mustChangePassword = (int)($user['must_change_password'] ?? 0) === 1;
 $view = (string)($_GET['view'] ?? 'playlists');
-if (!in_array($view, ['playlists', 'library', 'account'], true)) $view = 'playlists';
-if ($mustChangePassword) $view = 'account';
+if (!in_array($view, ['playlists', 'library', 'account'], true)) {
+    $view = 'playlists';
+}
+if ($mustChangePassword) {
+    $view = 'account';
+}
 
 if (is_post()) {
     verify_csrf();
@@ -22,7 +26,9 @@ if (is_post()) {
 
     try {
         if ($mustChangePassword && $action !== 'change_password') {
-            throw new RuntimeException('Change your temporary password before using the music account.');
+            throw new RuntimeException(
+                'Change your temporary password before using the music account.'
+            );
         }
 
         if ($action === 'create_playlist') {
@@ -66,24 +72,32 @@ if (is_post()) {
                 int_input('track_id'),
                 (int)$user['id']
             );
-            flash('success', $added
-                ? 'Track added to your playlist.'
-                : 'That track is already in the selected playlist.');
-            $query = trim((string)($_POST['return_query'] ?? ''));
+            flash(
+                'success',
+                $added
+                    ? 'Track added to your playlist.'
+                    : 'That track is already in the selected playlist.'
+            );
+            $query = mb_substr(trim(input('return_query')), 0, 100);
             $page = max(1, int_input('return_page', 1));
-            redirect('portal/customer.php?view=library'
+            redirect(
+                'portal/customer.php?view=library'
                 . ($query !== '' ? '&q=' . rawurlencode($query) : '')
-                . ($page > 1 ? '&page=' . $page : ''));
+                . ($page > 1 ? '&page=' . $page : '')
+            );
         }
 
         if ($action === 'remove_track') {
             $playlistId = int_input('playlist_id');
-            music_customer_remove_track_v21(
+            $removed = music_customer_remove_track_v21(
                 $playlistId,
                 int_input('track_id'),
                 (int)$user['id']
             );
-            flash('success', 'Track removed from your playlist.');
+            flash(
+                'success',
+                $removed ? 'Track removed from your playlist.' : 'The track was already removed.'
+            );
             redirect('portal/customer.php?view=playlists&id=' . $playlistId);
         }
 
@@ -103,12 +117,12 @@ if (is_post()) {
             $requestedEmail = strtolower(trim(input('email')));
             $emailPending = false;
             if (!hash_equals(strtolower((string)$user['email']), $requestedEmail)) {
-                $emailResult = music_customer_request_email_change(
+                $result = music_customer_request_email_change_final(
                     $user,
                     $requestedEmail,
                     (string)($_POST['current_password'] ?? '')
                 );
-                $emailPending = (bool)$emailResult['pending'];
+                $emailPending = (bool)$result['pending'];
             }
 
             save_account_profile(
@@ -122,9 +136,12 @@ if (is_post()) {
                 $_FILES['profile_image'] ?? null,
                 isset($_POST['remove_profile_image'])
             );
-            flash('success', $emailPending
-                ? 'Profile saved. Confirm the one-time link sent to the new email before it replaces the current address.'
-                : 'Account settings updated.');
+            flash(
+                'success',
+                $emailPending
+                    ? 'Profile saved. Confirm the one-time link sent to the new email before it replaces the current address.'
+                    : 'Account settings updated.'
+            );
             redirect('portal/customer.php?view=account');
         }
 
@@ -135,7 +152,10 @@ if (is_post()) {
                 (string)($_POST['new_password'] ?? ''),
                 (string)($_POST['confirm_password'] ?? '')
             );
-            flash('success', 'Password updated. Other customer sessions and unused account links were revoked.');
+            flash(
+                'success',
+                'Password updated. Other customer sessions and unused account links were revoked.'
+            );
             redirect('portal/customer.php?view=account');
         }
 
@@ -152,20 +172,23 @@ if (is_post()) {
         flash('error', $exception->getMessage());
         $redirect = 'portal/customer.php?view=' . $view;
         $playlistId = int_input('playlist_id');
-        if ($playlistId > 0 && $view === 'playlists') $redirect .= '&id=' . $playlistId;
+        if ($playlistId > 0 && $view === 'playlists') {
+            $redirect .= '&id=' . $playlistId;
+        }
         redirect($redirect);
     }
 }
 
 $playlists = music_customer_playlists((int)$user['id']);
 $selectedId = query_int('id');
-if ($selectedId <= 0 && $playlists) $selectedId = (int)$playlists[0]['id'];
+if ($selectedId <= 0 && $playlists) {
+    $selectedId = (int)$playlists[0]['id'];
+}
 $selectedPlaylist = $selectedId > 0
     ? music_customer_visible_playlist($selectedId, (int)$user['id'])
     : null;
-$search = trim((string)($_GET['q'] ?? ''));
-$trackPage = music_customer_public_track_page(
-    $search,
+$trackPage = music_customer_public_track_page_final(
+    (string)($_GET['q'] ?? ''),
     query_int('page', 1),
     25
 );
@@ -177,6 +200,9 @@ $title = match ($view) {
     default => 'My Playlists',
 };
 $pendingEmail = trim((string)($state['pending_email'] ?? ''));
+$firstPaginationPage = max(1, (int)$trackPage['page'] - 3);
+$lastPaginationPage = min((int)$trackPage['pages'], $firstPaginationPage + 6);
+$firstPaginationPage = max(1, $lastPaginationPage - 6);
 ?>
 <!doctype html>
 <html lang="en">
@@ -192,7 +218,9 @@ $pendingEmail = trim((string)($state['pending_email'] ?? ''));
 <a class="music-customer-skip-link" href="#customer-content">Skip to account content</a>
 <div class="music-customer-shell">
 <header class="music-customer-header">
-    <a class="music-customer-brand" href="<?=e(app_url('music-library.php'))?>"><img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>"></a>
+    <a class="music-customer-brand" href="<?=e(app_url('music-library.php'))?>">
+        <img src="<?=e(nmm_site_logo_url())?>" alt="<?=e(nmm_site_logo_alt())?>">
+    </a>
     <nav aria-label="Customer account">
         <?php if (!$mustChangePassword): ?>
             <a class="<?=$view === 'playlists' ? 'is-active' : ''?>" <?=$view === 'playlists' ? 'aria-current="page"' : ''?> href="<?=e(app_url('portal/customer.php?view=playlists'))?>">My Playlists</a>
@@ -217,7 +245,9 @@ $pendingEmail = trim((string)($state['pending_email'] ?? ''));
                         ? 'Manage your verified listener identity, password, profile photo, and account data.'
                         : 'Create private playlists, arrange the track order, and keep your music organized.')) ?></p>
         </div>
-        <?php if (!$mustChangePassword && $view !== 'library'): ?><a href="<?=e(app_url('portal/customer.php?view=library'))?>">Browse tracks</a><?php endif; ?>
+        <?php if (!$mustChangePassword && $view !== 'library'): ?>
+            <a href="<?=e(app_url('portal/customer.php?view=library'))?>">Browse tracks</a>
+        <?php endif; ?>
     </section>
 
     <?php foreach ($flashes as $flash): ?>
@@ -240,7 +270,9 @@ $pendingEmail = trim((string)($state['pending_email'] ?? ''));
                             </a>
                         <?php endforeach; ?>
                     </div>
-                    <?php if (!$playlists): ?><div class="music-customer-empty">No playlists yet. Create your first one below.</div><?php endif; ?>
+                    <?php if (!$playlists): ?>
+                        <div class="music-customer-empty">No playlists yet. Create your first one below.</div>
+                    <?php endif; ?>
                     <form method="post" class="music-customer-form" style="margin-top:18px">
                         <?=csrf_field()?>
                         <input type="hidden" name="action" value="create_playlist">
@@ -272,13 +304,11 @@ $pendingEmail = trim((string)($state['pending_email'] ?? ''));
                                         <td data-label="Track"><div class="music-customer-track"><img src="<?=e(music_cover_url('track', (int)$track['id']))?>" alt=""><span><strong><?=e($track['title'])?></strong><span><?=e($track['artist_name'])?></span></span></div></td>
                                         <td data-label="Album"><?=e($track['album_title'] ?: 'Single')?></td>
                                         <td data-label="Time"><?=e(music_duration_label(isset($track['duration_seconds']) ? (int)$track['duration_seconds'] : null))?></td>
-                                        <td data-label="Actions">
-                                            <div class="music-customer-track-actions">
-                                                <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="move_track"><input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>"><input type="hidden" name="track_id" value="<?=(int)$track['id']?>"><input type="hidden" name="direction" value="up"><button class="music-customer-icon-button" type="submit" aria-label="Move <?=e($track['title'])?> up" <?=$index === 0 ? 'disabled' : ''?>>↑</button></form>
-                                                <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="move_track"><input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>"><input type="hidden" name="track_id" value="<?=(int)$track['id']?>"><input type="hidden" name="direction" value="down"><button class="music-customer-icon-button" type="submit" aria-label="Move <?=e($track['title'])?> down" <?=$index === $trackCount - 1 ? 'disabled' : ''?>>↓</button></form>
-                                                <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="remove_track"><input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>"><input type="hidden" name="track_id" value="<?=(int)$track['id']?>"><button class="music-customer-icon-button" type="submit" aria-label="Remove <?=e($track['title'])?> from playlist">Remove</button></form>
-                                            </div>
-                                        </td>
+                                        <td data-label="Actions"><div class="music-customer-track-actions">
+                                            <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="move_track"><input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>"><input type="hidden" name="track_id" value="<?=(int)$track['id']?>"><input type="hidden" name="direction" value="up"><button class="music-customer-icon-button" type="submit" aria-label="Move <?=e($track['title'])?> up" <?=$index === 0 ? 'disabled' : ''?>>↑</button></form>
+                                            <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="move_track"><input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>"><input type="hidden" name="track_id" value="<?=(int)$track['id']?>"><input type="hidden" name="direction" value="down"><button class="music-customer-icon-button" type="submit" aria-label="Move <?=e($track['title'])?> down" <?=$index === $trackCount - 1 ? 'disabled' : ''?>>↓</button></form>
+                                            <form method="post"><?=csrf_field()?><input type="hidden" name="action" value="remove_track"><input type="hidden" name="playlist_id" value="<?=(int)$selectedPlaylist['id']?>"><input type="hidden" name="track_id" value="<?=(int)$track['id']?>"><button class="music-customer-icon-button" type="submit" aria-label="Remove <?=e($track['title'])?> from playlist">Remove</button></form>
+                                        </div></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 </tbody>
@@ -322,7 +352,9 @@ $pendingEmail = trim((string)($state['pending_email'] ?? ''));
                     </form>
                     <span class="music-customer-result-summary">Page <?=(int)$trackPage['page']?> of <?=(int)$trackPage['pages']?></span>
                 </div>
-                <?php if (!$playlists): ?><div class="music-customer-alert" role="status">Create a playlist before adding tracks. <a href="<?=e(app_url('portal/customer.php?view=playlists&new=1'))?>">Create playlist</a></div><?php endif; ?>
+                <?php if (!$playlists): ?>
+                    <div class="music-customer-alert" role="status">Create a playlist before adding tracks. <a href="<?=e(app_url('portal/customer.php?view=playlists&new=1'))?>">Create playlist</a></div>
+                <?php endif; ?>
                 <?php if ($tracks): ?>
                     <table class="music-customer-table">
                         <caption>Search results from the public Music Library</caption>
@@ -353,16 +385,16 @@ $pendingEmail = trim((string)($state['pending_email'] ?? ''));
                     </table>
                     <?php if ((int)$trackPage['pages'] > 1): ?>
                         <nav class="music-customer-pagination" aria-label="Music search pages">
-                            <?php for ($pageNumber = 1; $pageNumber <= (int)$trackPage['pages']; $pageNumber++): ?>
-                                <?php if ($pageNumber === (int)$trackPage['page']): ?>
-                                    <span aria-current="page"><?=$pageNumber?></span>
-                                <?php else: ?>
-                                    <a href="<?=e(app_url('portal/customer.php?view=library&page=' . $pageNumber . ($trackPage['query'] !== '' ? '&q=' . rawurlencode($trackPage['query']) : '')))?>"><?=$pageNumber?></a>
-                                <?php endif; ?>
+                            <?php if ((int)$trackPage['page'] > 1): ?><a href="<?=e(app_url('portal/customer.php?view=library&page=' . ((int)$trackPage['page'] - 1) . ($trackPage['query'] !== '' ? '&q=' . rawurlencode($trackPage['query']) : '')))?>">Previous</a><?php endif; ?>
+                            <?php for ($pageNumber = $firstPaginationPage; $pageNumber <= $lastPaginationPage; $pageNumber++): ?>
+                                <?php if ($pageNumber === (int)$trackPage['page']): ?><span aria-current="page"><?=$pageNumber?></span><?php else: ?><a href="<?=e(app_url('portal/customer.php?view=library&page=' . $pageNumber . ($trackPage['query'] !== '' ? '&q=' . rawurlencode($trackPage['query']) : '')))?>"><?=$pageNumber?></a><?php endif; ?>
                             <?php endfor; ?>
+                            <?php if ((int)$trackPage['page'] < (int)$trackPage['pages']): ?><a href="<?=e(app_url('portal/customer.php?view=library&page=' . ((int)$trackPage['page'] + 1) . ($trackPage['query'] !== '' ? '&q=' . rawurlencode($trackPage['query']) : '')))?>">Next</a><?php endif; ?>
                         </nav>
                     <?php endif; ?>
-                <?php else: ?><div class="music-customer-empty">No published tracks matched your search.</div><?php endif; ?>
+                <?php else: ?>
+                    <div class="music-customer-empty">No published tracks matched your search.</div>
+                <?php endif; ?>
             </div>
         </section>
     <?php endif; ?>
