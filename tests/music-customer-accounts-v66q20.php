@@ -29,6 +29,8 @@ $forbid = static function (string $source, string $needle, string $label): void 
 $bootstrap = $read('portal/bootstrap.php');
 $foundation = $read('portal/music-customer-accounts.php');
 $security = $read('portal/music-customer-security.php');
+$lifecycle = $read('portal/music-customer-lifecycle-v66q21.php');
+$hardening = $read('portal/music-customer-hardening-v66q21.php');
 $login = $read('portal/login.php');
 $register = $read('portal/customer-register.php');
 $customer = $read('portal/customer.php');
@@ -91,51 +93,57 @@ foreach ([
     "['admin', 'client', 'customer', 'pod']",
     "'customer' => 'Customer'",
     'music_customer_accounts_active()',
-    'attempt_login(input(\'email\')',
     'portal/customer-register.php',
+    'music_customer_attempt_login_v21(',
 ] as $contract) {
     $require($login, $contract, 'Customer login');
 }
 
 foreach ([
-    'role,email,password_hash,display_name,status,must_change_password',
-    '("customer",:email,:password_hash,:display_name,"active",0)',
-    'password_policy_errors($password, $email)',
-    "rate_limit_exceeded('music_customer_register'",
+    'music_customer_register_final(',
+    "rate_limit_exceeded('music_customer_register_ip'",
     'same_origin_request()',
-    'music_customer_start_session($userId)',
+    'Customer accounts never include client-project or administrator access',
 ] as $contract) {
     $require($register, $contract, 'Customer registration');
 }
+foreach ([
+    'role,email,password_hash,display_name,status,must_change_password',
+    '("customer",:email,:password_hash,:display_name,"active",0)',
+    'password_policy_errors($password, $email)',
+    'music_customer_start_secure_session(',
+] as $contract) {
+    $require($lifecycle . $hardening . $register, $contract, 'Hardened registration internals');
+}
 
 foreach ([
-    '$user = require_music_customer()',
+    '$user = require_music_customer_v21()',
     '$mustChangePassword = (int)($user[\'must_change_password\'] ?? 0) === 1',
     "['playlists', 'library', 'account']",
-    'if ($action === \'create_playlist\')',
-    'if ($action === \'add_track\')',
-    'if ($action === \'remove_track\')',
-    'if ($action === \'change_password\')',
+    "if (\$action === 'create_playlist')",
+    "if (\$action === 'add_track')",
+    "if (\$action === 'remove_track')",
+    "if (\$action === 'change_password')",
     "hash_equals('DELETE', input('delete_confirmation'))",
-    'music_customer_public_track_exists($trackId)',
     'music_customer_visible_playlist($selectedId',
-    "array_map('music_track_payload', music_public_tracks())",
+    'music_customer_public_track_page_final(',
 ] as $contract) {
     $require($customer, $contract, 'Customer workspace');
 }
-foreach (['projects', 'client_user_id', 'require_role(\'client\')'] as $forbidden) {
+foreach (['projects', 'client_user_id', "require_role('client')"] as $forbidden) {
     $forbid($customer, $forbidden, 'Customer/client separation');
 }
 
 foreach ([
-    "WHERE id=:id AND role=\"customer\"",
-    "UPDATE users SET status=:status WHERE id=:id AND role=\"customer\"",
-    'reset_customer_password',
+    'WHERE customer.id=:id AND customer.role="customer"',
+    'UPDATE users SET status=:status WHERE id=:id AND role="customer"',
+    'issue_customer_reset',
     'playlist_count',
     'saved_track_count',
 ] as $contract) {
     $require($adminCustomers, $contract, 'Customer administration');
 }
+$forbid($adminCustomers, 'random_password()', 'Hardened customer administration');
 
 foreach ([
     "'customer' => 'customer.php'",
@@ -158,4 +166,4 @@ foreach ([
     $require($css, $contract, 'Customer interface styles');
 }
 
-echo "v66Q.20 opt-in customer accounts, private playlists, public-track isolation, and role separation contract passed.\n";
+echo "v66Q.20 customer role, opt-in access, private playlists, public-track isolation, and role separation retained under v66Q.21.\n";
