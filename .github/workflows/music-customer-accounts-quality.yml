@@ -53,29 +53,51 @@ jobs:
       - name: Consolidated retained portal contract
         run: php tests/portal-repair-v66q7.php
 
-  database-quality:
-    name: Live database ${{ matrix.label }}
+  mysql-quality:
+    name: Live database MySQL 8.4
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: MySQL 8.4
-            image: mysql:8.4
-          - label: MariaDB 11.4
-            image: mariadb:11.4
     services:
       database:
-        image: ${{ matrix.image }}
+        image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: nmm_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          ini-file: production
+      - name: Live customer database contract
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm_test
+          DB_USER: root
+          DB_PASSWORD: root
+        run: php tests/music-customer-accounts-db-v66q21.php
+
+  mariadb-quality:
+    name: Live database MariaDB 11.4
+    runs-on: ubuntu-24.04
+    services:
+      database:
+        image: mariadb:11.4
+        env:
           MARIADB_ROOT_PASSWORD: root
           MARIADB_DATABASE: nmm_test
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-cmd="mariadb-admin ping -h 127.0.0.1 -proot --silent"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=20
