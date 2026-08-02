@@ -1,0 +1,96 @@
+name: Music Customer Accounts Quality
+
+on:
+  pull_request:
+    paths:
+      - 'portal/bootstrap.php'
+      - 'portal/login.php'
+      - 'portal/customer*.php'
+      - 'portal/music-customer*.php'
+      - 'portal/music-customers.php'
+      - 'assets/css/music-customer-accounts-*.css'
+      - 'database/music_customer_accounts_*.sql'
+      - 'database/music_library_v44.sql'
+      - 'install.php'
+      - 'tests/music-customer-accounts-*.php'
+      - 'tests/portal-repair-v66q7.php'
+      - '.github/workflows/music-customer-accounts-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    name: Source quality PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_mysql, openssl, fileinfo
+          ini-file: production
+      - name: PHP syntax
+        run: |
+          php -l portal/music-customer-lifecycle-v66q21.php
+          php -l portal/music-customer-hardening-v66q21.php
+          php -l portal/customer-register.php
+          php -l portal/customer-verify.php
+          php -l portal/customer-password.php
+          php -l portal/customer.php
+          php -l portal/music-customers.php
+          php -l portal/login.php
+          php -l install.php
+          php -l tests/music-customer-accounts-v66q21.php
+          php -l tests/music-customer-accounts-db-v66q21.php
+      - name: Customer account hardening contract
+        run: php tests/music-customer-accounts-v66q21.php
+      - name: Consolidated retained portal contract
+        run: php tests/portal-repair-v66q7.php
+
+  database-quality:
+    name: Live database ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: MySQL 8.4
+            image: mysql:8.4
+          - label: MariaDB 11.4
+            image: mariadb:11.4
+    services:
+      database:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nmm_test
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: nmm_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          ini-file: production
+      - name: Live customer database contract
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: nmm_test
+          DB_USER: root
+          DB_PASSWORD: root
+        run: php tests/music-customer-accounts-db-v66q21.php
